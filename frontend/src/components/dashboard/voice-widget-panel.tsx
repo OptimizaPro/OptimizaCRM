@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
-  ExternalLink, Maximize2, Rocket,
+  ExternalLink, Maximize2, Rocket, Globe2, Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -225,6 +225,36 @@ export function VoiceWidgetPanel() {
     onError:   (e: Error) => setPublishError(e.message || "Error al publicar"),
   });
 
+  // URL scraper
+  const [scrapeOpen,     setScrapeOpen]     = useState(false);
+  const [scrapeUrl,      setScrapeUrl]      = useState("");
+  const [scrapeImported, setScrapeImported] = useState<string[]>([]);
+  const scrapeMutation = useMutation({
+    mutationFn: () => voiceWidgetApi.scrapeUrl(auth.token, auth.orgId, scrapeUrl),
+    onSuccess: ({ knowledge_base }) => {
+      const imported: string[] = [];
+      const fieldsToMerge = [
+        "company_info", "products_services", "pricing", "faqs",
+        "working_hours", "contact_info", "appointment_rules", "qualification_questions",
+      ] as const;
+      setKbForm((prev) => {
+        const next = { ...prev };
+        for (const field of fieldsToMerge) {
+          const val = knowledge_base[field];
+          if (val && (typeof val === "string" ? val.trim() : (val as string[]).length > 0)) {
+            (next as Record<string, unknown>)[field] = val;
+            imported.push(field);
+          }
+        }
+        return next;
+      });
+      setDirty(true);
+      setScrapeImported(imported);
+      setScrapeUrl("");
+      setScrapeOpen(false);
+    },
+  });
+
   if (isLoading) return <div className="h-48 animate-pulse rounded-2xl bg-slate-800" />;
 
   const qualQsStr = (mergedKb.qualification_questions ?? []).join("\n");
@@ -393,7 +423,86 @@ export function VoiceWidgetPanel() {
 
         {/* ── C. Base de Conocimiento ──────────────────────────────────────── */}
         <div className="border-t border-slate-800 pt-5">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Base de Conocimiento</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Base de Conocimiento</p>
+            <button
+              type="button"
+              onClick={() => { setScrapeImported([]); setScrapeOpen(true); }}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-orange-600 hover:text-orange-400 transition-colors"
+              title="Importar base de conocimiento desde una URL"
+            >
+              <Globe2 className="h-3.5 w-3.5" />
+              Importar desde URL
+            </button>
+          </div>
+
+          {/* Import success banner */}
+          {scrapeImported.length > 0 && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-green-800 bg-green-950/40 px-3 py-2">
+              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400" />
+              <p className="text-xs text-green-300">
+                Datos importados en:{" "}
+                <span className="font-medium">{scrapeImported.join(", ")}</span>.
+                Revisa los campos y haz clic en <strong>Guardar cambios</strong> para confirmar.
+              </p>
+            </div>
+          )}
+
+          {/* Scrape URL Dialog */}
+          <Dialog open={scrapeOpen} onOpenChange={setScrapeOpen}>
+            <DialogContent className="max-w-lg border-slate-700 bg-slate-900 p-0">
+              <DialogHeader className="border-b border-slate-800 px-6 py-4">
+                <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Globe2 className="h-4 w-4 text-orange-400" />
+                  Importar base de conocimiento desde URL
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 px-6 py-5">
+                <p className="text-xs text-slate-400">
+                  Pega la URL de tu web corporativa, página de servicios o cualquier página pública.
+                  La IA extraerá y clasificará el contenido en los campos de la base de conocimiento.
+                </p>
+                <div>
+                  <label className={labelCls + " mb-1 block"}>URL de la página</label>
+                  <Input
+                    className={inputCls}
+                    value={scrapeUrl}
+                    onChange={(e) => setScrapeUrl(e.target.value)}
+                    placeholder="https://www.tuempresa.com"
+                    onKeyDown={(e) => { if (e.key === "Enter" && scrapeUrl) scrapeMutation.mutate(); }}
+                    autoFocus
+                  />
+                </div>
+                {scrapeMutation.isError && (
+                  <p className="text-xs text-red-400">
+                    {(scrapeMutation.error as Error)?.message || "Error al procesar la URL"}
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 border-t border-slate-800 px-6 py-4">
+                <Button
+                  variant="ghost"
+                  className="text-slate-400 hover:text-white"
+                  onClick={() => setScrapeOpen(false)}
+                  disabled={scrapeMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white"
+                  onClick={() => scrapeMutation.mutate()}
+                  disabled={!scrapeUrl.trim() || scrapeMutation.isPending}
+                >
+                  {scrapeMutation.isPending ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Importando…</>
+                  ) : (
+                    <><Globe2 className="h-3.5 w-3.5" /> Importar</>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <ExpandableTextarea
               label="Sobre la empresa"

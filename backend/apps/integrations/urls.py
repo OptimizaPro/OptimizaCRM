@@ -13,6 +13,7 @@ from .voice_views import (
     voice_tool_escalate,
     voice_tool_qualify,
     voice_call_ended,
+    voice_scrape_url,
 )
 
 router = DefaultRouter()
@@ -40,4 +41,7 @@ urlpatterns = [
 
     # ── Voice AI Widget — Vapi end-of-call webhook (public) ───────────────────
     path("voice-widget/call-ended/",            voice_call_ended,            name="voice-call-ended"),
+
+    # ── Voice AI Widget — URL scraper → KB classifier (authenticated) ─────────
+    path("voice-widget/scrape-url/",            voice_scrape_url,            name="voice-scrape-url"),
 ]

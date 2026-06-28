@@ -612,6 +612,49 @@ def voice_call_ended(request):
     return _cors(r, request)
 
 
+# ─── 7. Scrape URL → KB classifier ───────────────────────────────────────────
+
+@csrf_exempt
+def voice_scrape_url(request):
+    """
+    POST /api/v1/voice-widget/scrape-url/
+    Authenticated — requires JWT + X-Organization-ID.
+    Body: { "url": "https://..." }
+    Returns: { "knowledge_base": { ...KB fields... }, "char_count": N }
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "POST":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"error": "invalid JSON"}, status=400)
+
+    url = (body.get("url") or "").strip()
+    if not url:
+        return JsonResponse({"error": "url is required"}, status=400)
+
+    try:
+        from .scraper_service import scrape_and_classify
+        kb_data = scrape_and_classify(url, org)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=422)
+    except Exception as exc:
+        return JsonResponse({"error": f"Error al procesar la URL: {exc}"}, status=500)
+
+    total_chars = sum(len(v) for v in kb_data.values())
+    return JsonResponse({"knowledge_base": kb_data, "char_count": total_chars, "source_url": url})
+
+
 # ─── Private helpers ──────────────────────────────────────────────────────────
 
 def _get_first_admin(org):
