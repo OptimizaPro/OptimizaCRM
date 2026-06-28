@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight, ExternalLink,
+  Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
+  ExternalLink, Maximize2, Rocket,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { voiceWidgetApi, type VoiceWidget, type VoiceKnowledgeBase } from "@/lib/api";
+import { voiceWidgetApi, cmsApi, type VoiceWidget, type VoiceKnowledgeBase } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -21,21 +25,98 @@ const VOICE_OPTIONS = [
   { value: "Elvira", label: "Elvira — Femenina, España" },
 ];
 const MODEL_OPTIONS = [
-  { value: "groq/llama-3.3-70b-versatile",       label: "Groq Llama 3.3 70B (recomendado)" },
-  { value: "groq/llama-3.1-8b-instant",           label: "Groq Llama 3.1 8B (ultra rápido)" },
-  { value: "openai/gpt-4o",                        label: "OpenAI GPT-4o" },
-  { value: "openai/gpt-4o-mini",                   label: "OpenAI GPT-4o Mini" },
-  { value: "anthropic/claude-3-5-haiku-20241022",  label: "Anthropic Claude 3.5 Haiku" },
+  { value: "groq/llama-3.3-70b-versatile",      label: "Groq Llama 3.3 70B (recomendado)" },
+  { value: "groq/llama-3.1-8b-instant",          label: "Groq Llama 3.1 8B (ultra rápido)" },
+  { value: "openai/gpt-4o",                       label: "OpenAI GPT-4o" },
+  { value: "openai/gpt-4o-mini",                  label: "OpenAI GPT-4o Mini" },
+  { value: "anthropic/claude-3-5-haiku-20241022", label: "Anthropic Claude 3.5 Haiku" },
 ];
 
 const inputCls = "w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500";
-const labelCls = "mb-1 block text-xs font-medium text-slate-400";
+const labelCls = "text-xs font-medium text-slate-400";
+
+// ─── ExpandableTextarea ───────────────────────────────────────────────────────
+
+function ExpandableTextarea({
+  label, value, onChange, placeholder, rows = 3, hint, colSpan2 = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+  hint?: string;
+  colSpan2?: boolean;
+}) {
+  const [open,  setOpen]  = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    if (!open) setDraft(value);
+  }, [value, open]);
+
+  return (
+    <div className={colSpan2 ? "sm:col-span-2" : ""}>
+      <div className="mb-1 flex items-center justify-between">
+        <label className={labelCls}>
+          {label}
+          {hint && <span className="ml-1 text-slate-500">{hint}</span>}
+        </label>
+        <button
+          type="button"
+          onClick={() => { setDraft(value); setOpen(true); }}
+          className="text-slate-600 hover:text-orange-400 transition-colors"
+          title="Expandir editor"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <textarea
+        rows={rows}
+        className={inputCls + " resize-none"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl border-slate-700 bg-slate-900 p-0">
+          <DialogHeader className="border-b border-slate-800 px-6 py-4">
+            <DialogTitle className="text-sm font-semibold text-white">{label}</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-4">
+            <textarea
+              rows={18}
+              className={inputCls + " resize-y"}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={placeholder}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end gap-2 border-t border-slate-800 px-6 py-4">
+            <Button variant="ghost" className="text-slate-400 hover:text-white" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-orange-600 hover:bg-orange-500 text-white"
+              onClick={() => { onChange(draft); setOpen(false); }}
+            >
+              Aplicar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
 
 // ─── Snippet ─────────────────────────────────────────────────────────────────
+
 function VoiceSnippetBox({ token }: { token: string }) {
   const [copied, setCopied] = useState(false);
-  const origin  = typeof window !== "undefined" ? window.location.origin : "https://app.optimizacrm.com";
-  const apiUrl  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://app.optimizacrm.com";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
   const snippet = `<script\n  src="${origin}/voice-widget.js"\n  data-token="${token}"\n  data-api="${apiUrl}"\n  async\n></script>`;
 
   const copy = () => {
@@ -60,6 +141,7 @@ function VoiceSnippetBox({ token }: { token: string }) {
 }
 
 // ─── Default values ───────────────────────────────────────────────────────────
+
 const DEFAULT_WIDGET: VoiceWidget = {
   id: "", token: "", vapi_assistant_id: "", llm_model: "groq/llama-3.3-70b-versatile",
   is_active: true, lead_count: 0, call_count: 0,
@@ -74,12 +156,12 @@ const DEFAULT_KB: VoiceKnowledgeBase = {
 };
 
 // ─── Panel ───────────────────────────────────────────────────────────────────
+
 export function VoiceWidgetPanel() {
   const { tokens, organization } = useAuthStore();
   const qc   = useQueryClient();
   const auth = { token: tokens!.access, orgId: organization!.id };
 
-  // API keys (stored locally, sent on save)
   const [vapiPrivateKey, setVapiPrivateKey] = useState("");
   const [vapiPublicKey,  setVapiPublicKey]  = useState("");
 
@@ -89,14 +171,14 @@ export function VoiceWidgetPanel() {
     enabled:  !!tokens && !!organization,
   });
 
-  const widget  = data?.widget ?? null;
-  const [form,  setForm]  = useState<Partial<VoiceWidget>>({});
+  const widget = data?.widget ?? null;
+  const [form,   setForm]   = useState<Partial<VoiceWidget>>({});
   const [kbForm, setKbForm] = useState<Partial<VoiceKnowledgeBase>>({});
-  const [dirty, setDirty] = useState(false);
+  const [dirty,   setDirty]   = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
 
   const current: VoiceWidget = widget ?? DEFAULT_WIDGET;
-  const merged:  VoiceWidget = {
+  const merged: VoiceWidget  = {
     ...current,
     ...form,
     config: { ...current.config, ...(form.config ?? {}) },
@@ -106,25 +188,15 @@ export function VoiceWidgetPanel() {
     ...kbForm,
   };
 
-  const patch = (key: keyof VoiceWidget, value: unknown) => {
-    setForm((f) => ({ ...f, [key]: value }));
-    setDirty(true);
-  };
-  const patchCfg = (key: string, value: string) => {
-    setForm((f) => ({ ...f, config: { ...(f.config ?? {}), [key]: value } }));
-    setDirty(true);
-  };
-  const patchKb = (key: keyof VoiceKnowledgeBase, value: string | string[]) => {
-    setKbForm((f) => ({ ...f, [key]: value }));
-    setDirty(true);
-  };
+  const patch    = (key: keyof VoiceWidget, value: unknown) => { setForm((f) => ({ ...f, [key]: value })); setDirty(true); };
+  const patchCfg = (key: string, value: string)              => { setForm((f) => ({ ...f, config: { ...(f.config ?? {}), [key]: value } })); setDirty(true); };
+  const patchKb  = (key: keyof VoiceKnowledgeBase, value: string | string[]) => { setKbForm((f) => ({ ...f, [key]: value })); setDirty(true); };
 
   const saveMutation = useMutation({
     mutationFn: () =>
       voiceWidgetApi.save(auth.token, auth.orgId, {
         ...merged,
         knowledge_base: mergedKb,
-        // Pass Vapi keys if provided
         ...(vapiPrivateKey ? { vapi_private_key: vapiPrivateKey } as Record<string, unknown> : {}),
         ...(vapiPublicKey  ? { vapi_public_key:  vapiPublicKey  } as Record<string, unknown> : {}),
       }),
@@ -138,9 +210,22 @@ export function VoiceWidgetPanel() {
     },
   });
 
-  if (isLoading) {
-    return <div className="h-48 animate-pulse rounded-2xl bg-slate-800" />;
-  }
+  // Publish on optimizacrm.com
+  const [publishedOnWeb, setPublishedOnWeb] = useState(false);
+  const [publishError,   setPublishError]   = useState("");
+  const publishMutation = useMutation({
+    mutationFn: async (widgetToken: string) => {
+      const existing = await cmsApi.getSection("general").catch(() => ({ data: {} }));
+      return cmsApi.updateSection(auth.token, "general", {
+        ...(existing?.data ?? {}),
+        website_voice_widget_token: widgetToken,
+      }, auth.orgId);
+    },
+    onSuccess: () => { setPublishedOnWeb(true); setPublishError(""); },
+    onError:   (e: Error) => setPublishError(e.message || "Error al publicar"),
+  });
+
+  if (isLoading) return <div className="h-48 animate-pulse rounded-2xl bg-slate-800" />;
 
   const qualQsStr = (mergedKb.qualification_questions ?? []).join("\n");
 
@@ -151,8 +236,7 @@ export function VoiceWidgetPanel() {
           <div className="flex items-center gap-2">
             <Mic className="h-4 w-4 text-orange-500" />
             <CardTitle className="text-base">Agente de Voz IA</CardTitle>
-            {/* Vapi badge */}
-            <span className="rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-400 tracking-wide">
+            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-400">
               Powered by Vapi
             </span>
           </div>
@@ -167,18 +251,18 @@ export function VoiceWidgetPanel() {
                 <span className="text-xs font-semibold text-slate-300">{widget.lead_count} leads</span>
               </div>
               <button
-                onClick={() => { patch("is_active", !merged.is_active); }}
+                onClick={() => patch("is_active", !merged.is_active)}
                 className="text-slate-400 hover:text-orange-400 transition-colors"
                 title={merged.is_active ? "Desactivar asistente" : "Activar asistente"}
               >
                 {merged.is_active
                   ? <ToggleRight className="h-6 w-6 text-orange-500" />
-                  : <ToggleLeft className="h-6 w-6" />}
+                  : <ToggleLeft  className="h-6 w-6" />}
               </button>
             </div>
           )}
         </div>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="mt-1 text-xs text-slate-400">
           Añade un asistente de voz flotante a tu web. Cada organización conecta su propia cuenta de Vapi.
           Los costes de voz se facturan directamente por Vapi a tu tarjeta.
         </p>
@@ -188,12 +272,10 @@ export function VoiceWidgetPanel() {
 
         {/* ── A. Vapi API Keys ─────────────────────────────────────────────── */}
         <div>
-          <p className="mb-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
-            Claves API de Vapi
-          </p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Claves API de Vapi</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelCls}>Private API Key</label>
+              <label className={labelCls + " mb-1 block"}>Private API Key</label>
               <input
                 type="password"
                 className={inputCls}
@@ -204,7 +286,7 @@ export function VoiceWidgetPanel() {
               />
             </div>
             <div>
-              <label className={labelCls}>Public API Key</label>
+              <label className={labelCls + " mb-1 block"}>Public API Key</label>
               <Input
                 className={inputCls}
                 value={vapiPublicKey}
@@ -217,21 +299,19 @@ export function VoiceWidgetPanel() {
           <p className="mt-1.5 text-[11px] text-slate-500">
             Obtén tus keys en{" "}
             <a href="https://dashboard.vapi.ai" target="_blank" rel="noopener noreferrer"
-              className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5">
+              className="inline-flex items-center gap-0.5 text-orange-400 hover:text-orange-300">
               dashboard.vapi.ai <ExternalLink className="h-2.5 w-2.5" />
-            </a>
-            {" "}→ Account → API Keys
+            </a>{" "}
+            → Account → API Keys
           </p>
         </div>
 
-        {/* ── B. Widget Configuration ──────────────────────────────────────── */}
+        {/* ── B. Configuración del agente ──────────────────────────────────── */}
         <div className="border-t border-slate-800 pt-5">
-          <p className="mb-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
-            Configuración del Agente
-          </p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Configuración del Agente</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className={labelCls}>Nombre del agente</label>
+              <label className={labelCls + " mb-1 block"}>Nombre del agente</label>
               <Input
                 className={inputCls}
                 value={merged.config.agent_name ?? ""}
@@ -240,7 +320,7 @@ export function VoiceWidgetPanel() {
               />
             </div>
             <div>
-              <label className={labelCls}>Voz</label>
+              <label className={labelCls + " mb-1 block"}>Voz</label>
               <select
                 className={inputCls}
                 value={merged.config.voice ?? "Nuria"}
@@ -252,7 +332,7 @@ export function VoiceWidgetPanel() {
               </select>
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>Modelo LLM</label>
+              <label className={labelCls + " mb-1 block"}>Modelo LLM</label>
               <select
                 className={inputCls}
                 value={merged.llm_model ?? "groq/llama-3.3-70b-versatile"}
@@ -264,7 +344,7 @@ export function VoiceWidgetPanel() {
               </select>
             </div>
             <div>
-              <label className={labelCls}>Color principal</label>
+              <label className={labelCls + " mb-1 block"}>Color principal</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -282,7 +362,7 @@ export function VoiceWidgetPanel() {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Despedida</label>
+              <label className={labelCls + " mb-1 block"}>Despedida</label>
               <Input
                 className={inputCls}
                 value={merged.config.farewell ?? ""}
@@ -291,58 +371,64 @@ export function VoiceWidgetPanel() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>Saludo inicial</label>
-              <textarea
-                rows={2}
-                className={inputCls + " resize-none"}
+              <div className="mb-1 flex items-center justify-between">
+                <label className={labelCls}>Saludo inicial</label>
+                <button
+                  type="button"
+                  onClick={() => {/* handled by ExpandableTextarea */}}
+                  className="hidden"
+                />
+              </div>
+              <ExpandableTextarea
+                label="Saludo inicial"
                 value={merged.config.greeting ?? ""}
-                onChange={(e) => patchCfg("greeting", e.target.value)}
+                onChange={(v) => patchCfg("greeting", v)}
                 placeholder={`Hola, soy ${merged.config.agent_name || "Sofía"}. ¿En qué puedo ayudarte hoy?`}
+                rows={2}
+                colSpan2={false}
               />
             </div>
           </div>
         </div>
 
-        {/* ── C. Knowledge Base ────────────────────────────────────────────── */}
+        {/* ── C. Base de Conocimiento ──────────────────────────────────────── */}
         <div className="border-t border-slate-800 pt-5">
-          <p className="mb-3 text-xs font-semibold text-slate-300 uppercase tracking-wide">
-            Base de Conocimiento
-          </p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Base de Conocimiento</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Sobre la empresa</label>
-              <textarea rows={4} className={inputCls + " resize-none"}
-                value={mergedKb.company_info}
-                onChange={(e) => patchKb("company_info", e.target.value)}
-                placeholder="Describe quiénes sois, vuestra misión y valores…"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Productos y servicios</label>
-              <textarea rows={4} className={inputCls + " resize-none"}
-                value={mergedKb.products_services}
-                onChange={(e) => patchKb("products_services", e.target.value)}
-                placeholder="Lista los productos o servicios que ofreces…"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Precios y planes</label>
-              <textarea rows={3} className={inputCls + " resize-none"}
-                value={mergedKb.pricing}
-                onChange={(e) => patchKb("pricing", e.target.value)}
-                placeholder="Plan Básico: $X/mes — Plan Pro: $Y/mes…"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Preguntas frecuentes</label>
-              <textarea rows={4} className={inputCls + " resize-none"}
-                value={mergedKb.faqs}
-                onChange={(e) => patchKb("faqs", e.target.value)}
-                placeholder="P: ¿Tienen soporte 24/7? R: Sí, disponible por chat y email…"
-              />
-            </div>
+            <ExpandableTextarea
+              label="Sobre la empresa"
+              value={mergedKb.company_info}
+              onChange={(v) => patchKb("company_info", v)}
+              placeholder="Describe quiénes sois, vuestra misión y valores…"
+              rows={4}
+              colSpan2
+            />
+            <ExpandableTextarea
+              label="Productos y servicios"
+              value={mergedKb.products_services}
+              onChange={(v) => patchKb("products_services", v)}
+              placeholder="Lista los productos o servicios que ofreces…"
+              rows={4}
+              colSpan2
+            />
+            <ExpandableTextarea
+              label="Precios y planes"
+              value={mergedKb.pricing}
+              onChange={(v) => patchKb("pricing", v)}
+              placeholder="Plan Básico: $X/mes — Plan Pro: $Y/mes…"
+              rows={3}
+              colSpan2
+            />
+            <ExpandableTextarea
+              label="Preguntas frecuentes"
+              value={mergedKb.faqs}
+              onChange={(v) => patchKb("faqs", v)}
+              placeholder="P: ¿Tienen soporte 24/7? R: Sí, disponible por chat y email…"
+              rows={4}
+              colSpan2
+            />
             <div>
-              <label className={labelCls}>Horario de atención</label>
+              <label className={labelCls + " mb-1 block"}>Horario de atención</label>
               <Input
                 className={inputCls}
                 value={mergedKb.working_hours}
@@ -351,7 +437,7 @@ export function VoiceWidgetPanel() {
               />
             </div>
             <div>
-              <label className={labelCls}>Número WhatsApp de escalado</label>
+              <label className={labelCls + " mb-1 block"}>WhatsApp de escalado</label>
               <Input
                 className={inputCls}
                 value={mergedKb.whatsapp_number}
@@ -359,40 +445,35 @@ export function VoiceWidgetPanel() {
                 placeholder="Con código país: 50212345678"
               />
             </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Información de contacto</label>
-              <textarea rows={2} className={inputCls + " resize-none"}
-                value={mergedKb.contact_info}
-                onChange={(e) => patchKb("contact_info", e.target.value)}
-                placeholder="Email: hola@empresa.com | Tel: +502 1234 5678"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>Reglas de citas / agenda</label>
-              <textarea rows={3} className={inputCls + " resize-none"}
-                value={mergedKb.appointment_rules}
-                onChange={(e) => patchKb("appointment_rules", e.target.value)}
-                placeholder="Las citas se reservan con 24h de antelación. Duración: 30 min…"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className={labelCls}>
-                Preguntas de calificación
-                <span className="ml-1 text-slate-500">(una por línea)</span>
-              </label>
-              <textarea rows={3} className={inputCls + " resize-none"}
-                value={qualQsStr}
-                onChange={(e) => {
-                  const lines = e.target.value.split("\n").map((l) => l.trimStart());
-                  patchKb("qualification_questions", lines);
-                }}
-                placeholder={"¿Cuántos empleados tiene tu empresa?\n¿Qué presupuesto manejas?\n¿Cuándo planeas implementar la solución?"}
-              />
-            </div>
+            <ExpandableTextarea
+              label="Información de contacto"
+              value={mergedKb.contact_info}
+              onChange={(v) => patchKb("contact_info", v)}
+              placeholder="Email: hola@empresa.com | Tel: +502 1234 5678"
+              rows={2}
+              colSpan2
+            />
+            <ExpandableTextarea
+              label="Reglas de citas / agenda"
+              value={mergedKb.appointment_rules}
+              onChange={(v) => patchKb("appointment_rules", v)}
+              placeholder="Las citas se reservan con 24h de antelación. Duración: 30 min…"
+              rows={3}
+              colSpan2
+            />
+            <ExpandableTextarea
+              label="Preguntas de calificación"
+              hint="(una por línea)"
+              value={qualQsStr}
+              onChange={(v) => patchKb("qualification_questions", v.split("\n").map((l) => l.trimStart()))}
+              placeholder={"¿Cuántos empleados tiene tu empresa?\n¿Qué presupuesto manejas?\n¿Cuándo planeas implementar la solución?"}
+              rows={3}
+              colSpan2
+            />
           </div>
         </div>
 
-        {/* ── Save ─────────────────────────────────────────────────────────── */}
+        {/* ── Guardar ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 border-t border-slate-800 pt-5">
           <Button
             onClick={() => saveMutation.mutate()}
@@ -401,9 +482,7 @@ export function VoiceWidgetPanel() {
           >
             {saveMutation.isPending
               ? "Sincronizando con Vapi…"
-              : widget
-              ? "Guardar cambios"
-              : "Crear asistente"}
+              : widget ? "Guardar cambios" : "Crear asistente"}
           </Button>
           {saveMsg && (
             <span className="flex items-center gap-1.5 text-xs text-green-400">
@@ -417,15 +496,45 @@ export function VoiceWidgetPanel() {
           )}
         </div>
 
-        {/* ── D. Embed snippet ─────────────────────────────────────────────── */}
+        {/* ── Snippet + Publicar ───────────────────────────────────────────── */}
         {widget && widget.vapi_assistant_id && (
           <div className="space-y-2 border-t border-slate-800 pt-5">
-            <p className="text-xs font-medium text-slate-400">Código para embeber el agente de voz</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-slate-400">Código para embeber el agente de voz</p>
+            </div>
             <VoiceSnippetBox token={widget.token} />
             <p className="text-[11px] text-slate-500">
               Pega este script antes del cierre de <code className="text-slate-400">&lt;/body&gt;</code>.
               El widget se carga de forma asíncrona y no afecta el rendimiento de tu web.
             </p>
+
+            {/* Publicar en optimizacrm.com */}
+            {publishError && (
+              <p className="mt-2 text-xs text-red-400">{publishError}</p>
+            )}
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+              <div>
+                <p className="text-xs font-semibold text-slate-200">Activar en optimizacrm.com</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">Publica el agente de voz en todas las páginas de tu landing</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => publishMutation.mutate(widget.token)}
+                disabled={publishMutation.isPending || publishedOnWeb}
+                className={cn(
+                  "gap-1.5 text-xs",
+                  publishedOnWeb
+                    ? "bg-green-700 hover:bg-green-700 cursor-default text-white"
+                    : "bg-orange-600 hover:bg-orange-500 text-white"
+                )}
+              >
+                {publishedOnWeb ? (
+                  <><Check className="h-3 w-3" /> Publicado</>
+                ) : (
+                  <><Rocket className="h-3 w-3" /> {publishMutation.isPending ? "Publicando…" : "Publicar"}</>
+                )}
+              </Button>
+            </div>
           </div>
         )}
 
