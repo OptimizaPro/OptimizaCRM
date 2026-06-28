@@ -12,6 +12,7 @@ import { useAuthStore } from "@/store/auth";
 import { integrationsApi, type Integration } from "@/lib/api";
 import { WebWidgetPanel } from "@/components/dashboard/web-widget-panel";
 import { EmbedFormsPanel } from "@/components/dashboard/embed-forms-panel";
+import { VoiceWidgetPanel } from "@/components/dashboard/voice-widget-panel";
 
 type ChannelType = 'whatsapp' | 'email' | 'brevo' | 'outlook' | 'facebook' | 'instagram' | 'telegram' | 'sms' | 'tiktok' | 'google_calendar' | 'automation_webhook' | 'ai_provider';
 
@@ -696,6 +697,11 @@ export default function IntegrationsPage() {
 
       <DashboardHeader title="Integraciones" />
       <div className="flex-1 overflow-y-auto p-6">
+        {/* Voice Agent Widget section */}
+        <div className="mb-8">
+          <VoiceWidgetPanel />
+        </div>
+
         {/* Web Widget section */}
         <div className="mb-8">
           <WebWidgetPanel />

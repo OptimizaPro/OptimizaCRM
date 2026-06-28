@@ -18,12 +18,13 @@ class Lead(TenantModel):
         ("lost",      "Perdido"),
     ]
     SOURCE_CHOICES = [
-        ("web",       "Sitio web"),
-        ("referral",  "Referido"),
-        ("cold_call", "Llamada en frío"),
-        ("social",    "Redes sociales"),
-        ("event",     "Evento"),
-        ("other",     "Otro"),
+        ("web",         "Sitio web"),
+        ("referral",    "Referido"),
+        ("cold_call",   "Llamada en frío"),
+        ("social",      "Redes sociales"),
+        ("event",       "Evento"),
+        ("voice_agent", "Agente de voz"),
+        ("other",       "Otro"),
     ]
 
     assigned_to = models.ForeignKey(
@@ -232,6 +233,13 @@ class CalendarEvent(TenantModel):
     related_type = models.CharField(max_length=50, blank=True)
     related_id   = models.UUIDField(null=True, blank=True)
     is_all_day   = models.BooleanField(default=False)
+
+    STATUS_CHOICES = [
+        ("confirmed",            "Confirmada"),
+        ("pending_confirmation", "Pendiente de confirmación"),
+        ("cancelled",            "Cancelada"),
+    ]
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="confirmed")
 
     class Meta:
         db_table = "calendar_events"

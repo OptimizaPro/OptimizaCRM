@@ -716,6 +716,46 @@ export const widgetApi = {
     api.post<{ widget: WebWidget }>("/widget/manage/", data, { token, orgId }),
 };
 
+// ── Voice Widget ──────────────────────────────────────────────────────────────
+
+export interface VoiceKnowledgeBase {
+  company_info:            string;
+  products_services:       string;
+  pricing:                 string;
+  faqs:                    string;
+  working_hours:           string;
+  contact_info:            string;
+  appointment_rules:       string;
+  qualification_questions: string[];
+  whatsapp_number:         string;
+}
+
+export interface VoiceWidget {
+  id:                string;
+  token:             string;
+  vapi_assistant_id: string;
+  llm_model:         string;
+  is_active:         boolean;
+  lead_count:        number;
+  call_count:        number;
+  config: {
+    agent_name?:  string;
+    voice?:       string;
+    color?:       string;
+    greeting?:    string;
+    farewell?:    string;
+  };
+  knowledge_base: VoiceKnowledgeBase | null;
+}
+
+export const voiceWidgetApi = {
+  get: (token: string, orgId: string) =>
+    api.get<{ widget: VoiceWidget | null }>("/voice-widget/manage/", { token, orgId }),
+
+  save: (token: string, orgId: string, data: Partial<VoiceWidget & { knowledge_base: Partial<VoiceKnowledgeBase> }>) =>
+    api.post<{ widget: VoiceWidget }>("/voice-widget/manage/", data, { token, orgId }),
+};
+
 export interface AutomationRule {
   id: string;
   name: string;

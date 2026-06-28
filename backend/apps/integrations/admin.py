@@ -4,7 +4,7 @@ Optimiza-CRM – Integrations admin (django-unfold)
 
 from django.contrib import admin
 from unfold.admin import ModelAdmin as UnfoldModelAdmin
-from .models import Integration, IntegrationLog, Message, WebWidget
+from .models import Integration, IntegrationLog, Message, WebWidget, VoiceKnowledgeBase, VoiceWidget, VoiceCall
 
 
 @admin.register(Integration)
@@ -43,3 +43,69 @@ class WebWidgetAdmin(UnfoldModelAdmin):
     list_display    = ("token", "mode", "organization", "is_active", "lead_count", "created_at")
     list_filter     = ("mode", "is_active", "organization")
     readonly_fields = ("token", "lead_count", "created_at", "updated_at")
+
+
+@admin.register(VoiceKnowledgeBase)
+class VoiceKnowledgeBaseAdmin(UnfoldModelAdmin):
+    list_display    = ("organization", "working_hours", "created_at")
+    list_filter     = ("organization",)
+    search_fields   = ("organization__name",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets       = (
+        ("Organización", {"fields": ("organization",)}),
+        ("Contenido de la empresa", {
+            "fields": ("company_info", "products_services", "pricing", "faqs"),
+        }),
+        ("Operaciones", {
+            "fields": ("working_hours", "contact_info", "appointment_rules"),
+        }),
+        ("Agente de voz", {
+            "fields": ("qualification_questions", "whatsapp_number"),
+        }),
+        ("Fechas", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+
+@admin.register(VoiceWidget)
+class VoiceWidgetAdmin(UnfoldModelAdmin):
+    list_display    = ("token", "organization", "llm_model", "is_active", "lead_count", "call_count", "created_at")
+    list_filter     = ("is_active", "llm_model", "organization")
+    search_fields   = ("organization__name",)
+    readonly_fields = ("token", "vapi_assistant_id", "lead_count", "call_count", "created_at", "updated_at")
+    fieldsets       = (
+        ("Organización", {"fields": ("organization",)}),
+        ("Configuración", {
+            "fields": ("knowledge_base", "llm_model", "is_active", "config"),
+        }),
+        ("Vapi", {
+            "fields": ("token", "vapi_assistant_id"),
+        }),
+        ("Estadísticas", {
+            "fields": ("lead_count", "call_count"),
+        }),
+        ("Fechas", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+
+@admin.register(VoiceCall)
+class VoiceCallAdmin(UnfoldModelAdmin):
+    list_display    = ("vapi_call_id", "organization", "status", "duration_seconds", "escalated_to_human", "created_at")
+    list_filter     = ("status", "escalated_to_human", "organization")
+    search_fields   = ("vapi_call_id", "caller_name", "caller_phone", "organization__name")
+    readonly_fields = (
+        "id", "organization", "widget", "vapi_call_id",
+        "caller_name", "caller_phone", "status",
+        "duration_seconds", "transcript", "summary", "sentiment",
+        "lead", "appointment", "escalated_to_human",
+        "qualification_data", "ended_at",
+        "created_at", "updated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
