@@ -1,0 +1,275 @@
+{% extends 'admin/base.html' %}
+{% load i18n %}
+
+{% block title %}Dashboard | OptimizaCRM{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Dashboard OptimizaCRM ── */
+  .ocrm-welcome {
+    margin-bottom: 2rem;
+  }
+  .ocrm-welcome h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    margin: 0 0 .35rem;
+    letter-spacing: -0.02em;
+  }
+  .ocrm-welcome p {
+    font-size: .875rem;
+    color: #64748b;
+    margin: 0;
+  }
+  .ocrm-welcome p span {
+    color: #ea580c;
+    font-weight: 600;
+  }
+
+  .ocrm-section-label {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: #475569;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  /* Grid de cards */
+  .ocrm-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  @media (max-width: 1100px) { .ocrm-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px)  { .ocrm-grid { grid-template-columns: 1fr; } }
+
+  .ocrm-card {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-decoration: none !important;
+    display: block;
+    transition: background .15s, transform .15s;
+    border: 1px solid #243044;
+  }
+  .ocrm-card:hover {
+    background: #273549;
+    transform: translateY(-2px);
+    border-color: #ea580c40;
+  }
+  .ocrm-card-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
+    background: rgba(234,88,12,.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+  .ocrm-card-icon .material-symbols-outlined {
+    font-size: 22px;
+    color: #ea580c;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .ocrm-card-title {
+    font-size: .9375rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0 0 .25rem;
+    text-decoration: none !important;
+  }
+  .ocrm-card-subtitle {
+    font-size: .8125rem;
+    color: #64748b;
+    margin: 0;
+    text-decoration: none !important;
+  }
+
+  /* Stats strip */
+  .ocrm-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  @media (max-width: 1100px) { .ocrm-stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px)  { .ocrm-stats { grid-template-columns: repeat(2, 1fr); } }
+
+  .ocrm-stat {
+    background: #1e293b;
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid #243044;
+  }
+  .ocrm-stat-label {
+    font-size: .75rem;
+    color: #64748b;
+    margin: 0 0 .4rem;
+    font-weight: 500;
+  }
+  .ocrm-stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .ocrm-stat-accent {
+    font-size: .75rem;
+    color: #ea580c;
+    font-weight: 600;
+    margin-top: .25rem;
+  }
+
+  /* Recent activity */
+  .ocrm-activity {
+    background: #1e293b;
+    border-radius: 10px;
+    border: 1px solid #243044;
+    overflow: hidden;
+  }
+  .ocrm-activity-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #243044;
+    font-size: .8125rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .ocrm-activity ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .ocrm-activity li {
+    padding: .875rem 1.5rem;
+    border-bottom: 1px solid #1a2535;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+  .ocrm-activity li:last-child { border-bottom: none; }
+  .ocrm-activity-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ea580c;
+    flex-shrink: 0;
+  }
+  .ocrm-activity a {
+    font-size: .875rem;
+    color: #cbd5e1 !important;
+    text-decoration: none !important;
+  }
+  .ocrm-activity a:hover { color: #ea580c !important; }
+  .ocrm-activity .ocrm-activity-time {
+    font-size: .75rem;
+    color: #475569;
+    margin-left: auto;
+  }
+  .ocrm-empty {
+    padding: 2rem 1.5rem;
+    color: #475569;
+    font-size: .875rem;
+    text-align: center;
+  }
+</style>
+
+<div style="padding: 0.5rem 0 0;">
+
+  {# ── Bienvenida ── #}
+  <div class="ocrm-welcome">
+    <h1>Bienvenido, {{ user.first_name|default:user.email }} 👋</h1>
+    <p>Panel de administración — <span>OptimizaCRM</span></p>
+  </div>
+
+  {# ── Accesos rápidos ── #}
+  <p class="ocrm-section-label">Accesos rápidos</p>
+  <div class="ocrm-grid">
+
+    <a href="{% url 'admin:crm_lead_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">person_raised_hand</span></div>
+      <p class="ocrm-card-title">Leads</p>
+      <p class="ocrm-card-subtitle">Gestionar prospectos</p>
+    </a>
+
+    <a href="{% url 'admin:crm_customer_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">group</span></div>
+      <p class="ocrm-card-title">Clientes</p>
+      <p class="ocrm-card-subtitle">Base de clientes activos</p>
+    </a>
+
+    <a href="{% url 'admin:crm_opportunity_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">trending_up</span></div>
+      <p class="ocrm-card-title">Oportunidades</p>
+      <p class="ocrm-card-subtitle">Pipeline de ventas</p>
+    </a>
+
+    <a href="{% url 'admin:billing_subscription_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">credit_card</span></div>
+      <p class="ocrm-card-title">Suscripciones</p>
+      <p class="ocrm-card-subtitle">Planes activos</p>
+    </a>
+
+    <a href="{% url 'admin:accounts_organization_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">corporate_fare</span></div>
+      <p class="ocrm-card-title">Organizaciones</p>
+      <p class="ocrm-card-subtitle">Cuentas registradas</p>
+    </a>
+
+    <a href="{% url 'admin:accounts_user_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">manage_accounts</span></div>
+      <p class="ocrm-card-title">Usuarios</p>
+      <p class="ocrm-card-subtitle">Gestionar cuentas</p>
+    </a>
+
+    <a href="{% url 'admin:automation_automationrule_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">bolt</span></div>
+      <p class="ocrm-card-title">Automatizaciones</p>
+      <p class="ocrm-card-subtitle">Reglas activas</p>
+    </a>
+
+    <a href="{% url 'admin:analytics_salesgoal_changelist' %}" class="ocrm-card">
+      <div class="ocrm-card-icon"><span class="material-symbols-outlined">bar_chart</span></div>
+      <p class="ocrm-card-title">Analytics</p>
+      <p class="ocrm-card-subtitle">Metas y reportes</p>
+    </a>
+
+  </div>
+
+  {# ── Actividad reciente ── #}
+  <p class="ocrm-section-label">Actividad reciente</p>
+  <div class="ocrm-activity">
+    <div class="ocrm-activity-header">Últimas acciones en el sistema</div>
+    {% if user.is_active %}
+      {% load log %}
+      {% get_admin_log 10 as admin_log for_user user %}
+      {% if admin_log %}
+        <ul>
+          {% for entry in admin_log %}
+          <li>
+            <span class="ocrm-activity-dot"></span>
+            <a href="{{ entry.get_admin_url }}">
+              {% if entry.is_addition %}➕{% elif entry.is_change %}✏️{% else %}🗑{% endif %}
+              {{ entry.object_repr }}
+              <span style="color:#475569;font-weight:400"> · {{ entry.content_type }}</span>
+            </a>
+            <span class="ocrm-activity-time">{{ entry.action_time|timesince }} ago</span>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="ocrm-empty">No hay actividad reciente registrada.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

@@ -8,13 +8,13 @@ Desarrollado por **Nelson Alvarez** — [OptimizaPro](https://optimizapro.com)
 
 ## Stack
 
-| Capa       | Tecnología                                               |
-|------------|----------------------------------------------------------|
+| Capa       | Tecnología                                                                      |
+|------------|---------------------------------------------------------------------------------|
 | Frontend   | Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui, React Query, Zustand |
-| Backend    | Django 6, Django REST Framework, JWT, Celery             |
-| Base datos | PostgreSQL (prod) / SQLite (dev)                         |
-| IA         | Groq / OpenAI / Gemini — BYOK por organización           |
-| Deploy     | Railway · Vercel · Docker                                |
+| Backend    | Django 6, Django REST Framework, JWT, Celery                                    |
+| Base datos | PostgreSQL (prod) / SQLite (dev)                                                |
+| IA         | Groq / OpenAI / Gemini — BYOK por organización                                  |
+| Deploy     | Railway · Vercel · Docker                                                       |
 
 ## Módulos
 

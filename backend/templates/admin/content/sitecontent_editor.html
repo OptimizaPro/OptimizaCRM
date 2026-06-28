@@ -1,0 +1,342 @@
+{% extends 'admin/base.html' %}
+{% load i18n %}
+
+{% block title %}Contenido Web | OptimizaCRM Admin{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+
+{% block content %}
+<style>
+/* ── Layout CMS ─────────────────────────────────────────────────────────────── */
+.cms-wrap {
+  display: flex;
+  gap: 0;
+  min-height: calc(100vh - 100px);
+  margin: -1rem -1.5rem 0;
+}
+
+/* ── Panel izquierdo ─────────────────────────────────────────────────────────── */
+.cms-sidebar {
+  width: 230px;
+  flex-shrink: 0;
+  background: #020617;
+  border-right: 1px solid #1a2535;
+  display: flex;
+  flex-direction: column;
+}
+.cms-sidebar-header {
+  padding: 1.125rem 1rem .75rem;
+  border-bottom: 1px solid #1a2535;
+}
+.cms-sidebar-header h3 {
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: #475569;
+  margin: 0 0 .25rem;
+}
+.cms-sidebar-header p {
+  font-size: .72rem;
+  color: #334155;
+  margin: 0;
+  line-height: 1.4;
+}
+.cms-section-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: .375rem 0;
+}
+.cms-section-item {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  padding: .625rem .875rem;
+  cursor: pointer;
+  text-decoration: none !important;
+  border-left: 3px solid transparent;
+  transition: background .1s, border-color .1s;
+}
+.cms-section-item:hover { background: rgba(234,88,12,.06); }
+.cms-section-item.active {
+  background: rgba(234,88,12,.11);
+  border-left-color: #ea580c;
+}
+.cms-section-icon {
+  width: 30px; height: 30px;
+  border-radius: 6px;
+  background: rgba(234,88,12,.1);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cms-section-item.active .cms-section-icon { background: rgba(234,88,12,.2); }
+.cms-section-icon .material-symbols-outlined {
+  font-size: 16px; color: #ea580c;
+  font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20;
+}
+.cms-section-text strong {
+  display: block;
+  font-size: .8rem; font-weight: 600; color: #94a3b8; margin-bottom: .08rem;
+}
+.cms-section-item.active .cms-section-text strong { color: #f1f5f9; }
+.cms-section-text span { font-size: .68rem; color: #475569; line-height: 1.3; }
+.cms-sidebar-footer {
+  padding: .75rem 1rem;
+  border-top: 1px solid #1a2535;
+}
+.cms-sidebar-footer a {
+  font-size: .72rem; color: #475569 !important; text-decoration: none !important;
+  display: inline-flex; align-items: center; gap: .35rem;
+}
+.cms-sidebar-footer a:hover { color: #ea580c !important; }
+.cms-sidebar-footer a .material-symbols-outlined { font-size: 13px; }
+
+/* ── Panel derecho ───────────────────────────────────────────────────────────── */
+.cms-editor { flex: 1; overflow-y: auto; background: #0f172a; }
+
+.cms-topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: #0b1322;
+  border-bottom: 1px solid #1a2535;
+  padding: .75rem 1.25rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.cms-topbar-left h2 { font-size: .9375rem; font-weight: 700; color: #f1f5f9; margin: 0 0 .15rem; }
+.cms-topbar-left p  { font-size: .72rem; color: #64748b; margin: 0; }
+
+.cms-topbar-actions { display: flex; gap: .5rem; flex-shrink: 0; }
+.cms-btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .4rem .875rem; border-radius: 7px;
+  font-size: .78rem; font-weight: 600;
+  cursor: pointer; border: none; transition: background .12s, transform .1s;
+  text-decoration: none !important;
+}
+.cms-btn:active { transform: scale(.97); }
+.cms-btn .material-symbols-outlined {
+  font-size: 15px;
+  font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20;
+}
+.cms-btn-ghost {
+  background: transparent; border: 1px solid #2d3f55; color: #64748b !important;
+}
+.cms-btn-ghost:hover { border-color: #64748b; color: #f1f5f9 !important; }
+.cms-btn-save { background: #ea580c; color: #fff !important; }
+.cms-btn-save:hover { background: #c2410c; }
+.cms-btn-save:disabled { background: #7c2d12; opacity: .7; cursor: not-allowed; }
+
+/* ── Cuerpo del editor ───────────────────────────────────────────────────────── */
+.cms-body { padding: 1.25rem 1.5rem 3rem; max-width: 880px; }
+
+.cms-group-divider {
+  font-size: .62rem; font-weight: 800; letter-spacing: .14em;
+  text-transform: uppercase; color: #ea580c;
+  margin: 1.875rem 0 .875rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid rgba(234,88,12,.18);
+}
+
+.cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .875rem; }
+.cms-grid.cols-1 { grid-template-columns: 1fr; }
+.cms-full { grid-column: 1 / -1; }
+
+.cms-field { display: flex; flex-direction: column; gap: .3rem; }
+.cms-field label {
+  font-size: .72rem; font-weight: 600; color: #64748b !important; letter-spacing: .02em;
+}
+.cms-field .cms-hint { font-size: .68rem; color: #64748b; margin-top: -.15rem; }
+
+.cms-field input[type="text"],
+.cms-field textarea {
+  background: #1a2535 !important;
+  border: 1px solid #243044 !important;
+  border-radius: 7px !important;
+  color: #e2e8f0 !important;
+  font-size: .85rem !important;
+  padding: .55rem .8rem !important;
+  width: 100% !important; box-sizing: border-box !important;
+  transition: border-color .15s, box-shadow .15s !important;
+  outline: none !important; resize: vertical !important;
+}
+.cms-field input[type="text"]:focus,
+.cms-field textarea:focus {
+  border-color: #ea580c !important;
+  box-shadow: 0 0 0 3px rgba(234,88,12,.1) !important;
+  background: #1e2d42 !important;
+}
+.cms-field textarea { min-height: 72px; }
+.cms-field textarea.json-field {
+  font-family: 'JetBrains Mono','Fira Code',ui-monospace,monospace !important;
+  font-size: .775rem !important;
+  line-height: 1.65 !important;
+  min-height: 160px !important;
+  background: #111827 !important;
+  border-color: #1e3451 !important;
+  color: #a5b4fc !important;
+}
+.cms-field textarea.json-field:focus {
+  background: #131b2e !important; border-color: #ea580c !important;
+  color: #c7d2fe !important;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────────── */
+#cms-toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+  padding: .7rem 1.125rem; border-radius: 8px;
+  font-size: .825rem; font-weight: 600;
+  display: none; align-items: center; gap: .5rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45);
+  animation: slideUp .18s ease;
+}
+#cms-toast.ok  { background: #14532d; color: #86efac; border: 1px solid #166534; }
+#cms-toast.err { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+</style>
+
+<div id="cms-toast"></div>
+
+<div class="cms-wrap">
+
+  {# ── Sidebar de secciones ───────────────────────────────────────────────── #}
+  <aside class="cms-sidebar">
+    <div class="cms-sidebar-header">
+      <h3>Secciones</h3>
+      <p>Los cambios se reflejan en la web al instante.</p>
+    </div>
+
+    <nav class="cms-section-list">
+      {% for section in sections %}
+      <a href="?section={{ section.key }}"
+         class="cms-section-item{% if section.key == active.key %} active{% endif %}">
+        <div class="cms-section-icon">
+          <span class="material-symbols-outlined">{{ section.icon }}</span>
+        </div>
+        <div class="cms-section-text">
+          <strong>{{ section.label }}</strong>
+          <span>{{ section.desc }}</span>
+        </div>
+      </a>
+      {% endfor %}
+    </nav>
+
+    <div class="cms-sidebar-footer">
+      <a href="/" target="_blank">
+        <span class="material-symbols-outlined">open_in_new</span>
+        Ver sitio público
+      </a>
+    </div>
+  </aside>
+
+  {# ── Editor ─────────────────────────────────────────────────────────────── #}
+  <div class="cms-editor">
+
+    <div class="cms-topbar">
+      <div class="cms-topbar-left">
+        <h2>{{ active.label }}</h2>
+        <p>{{ active.desc }}</p>
+      </div>
+      <div class="cms-topbar-actions">
+        <button class="cms-btn cms-btn-ghost" onclick="reloadPage()">
+          <span class="material-symbols-outlined">refresh</span>
+          Recargar
+        </button>
+        <button id="save-btn" class="cms-btn cms-btn-save" onclick="saveSection()">
+          <span class="material-symbols-outlined">save</span>
+          Guardar cambios
+        </button>
+      </div>
+    </div>
+
+    <div class="cms-body">
+      <form id="cms-form">
+        {% for group in active.groups %}
+
+          {% if group.label %}
+          <div class="cms-group-divider">{{ group.label }}</div>
+          {% endif %}
+
+          <div class="cms-grid {% if group.cols == 1 %}cols-1{% endif %}">
+            {% for field in group.fields %}
+              {% if group.cols == 2 and field.col == 2 %}
+                <div class="cms-field cms-full">
+              {% else %}
+                <div class="cms-field">
+              {% endif %}
+
+                <label for="f_{{ field.key }}">{{ field.label }}</label>
+                {% if field.hint %}<p class="cms-hint">{{ field.hint }}</p>{% endif %}
+
+                {% if field.type == "json" %}
+                  <textarea id="f_{{ field.key }}" name="{{ field.key }}"
+                            class="json-field" rows="8">{{ field.value }}</textarea>
+                {% elif field.type == "textarea" %}
+                  <textarea id="f_{{ field.key }}" name="{{ field.key }}"
+                            rows="3">{{ field.value }}</textarea>
+                {% else %}
+                  <input type="text" id="f_{{ field.key }}"
+                         name="{{ field.key }}" value="{{ field.value }}">
+                {% endif %}
+
+              </div>
+            {% endfor %}
+          </div>
+
+        {% endfor %}
+      </form>
+    </div>
+
+  </div>{# /cms-editor #}
+</div>{# /cms-wrap #}
+
+<script>
+const SECTION_KEY = "{{ active.key }}";
+const SAVE_URL    = "{% url 'admin:content_sitecontent_save' %}";
+const CSRF_TOKEN  = "{{ csrf_token }}";
+
+function getFormData() {
+  const data = {};
+  document.querySelectorAll("#cms-form input[name], #cms-form textarea[name]")
+    .forEach(el => { data[el.name] = el.value; });
+  return data;
+}
+
+async function saveSection() {
+  const btn = document.getElementById("save-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Guardando…';
+
+  try {
+    const res  = await fetch(SAVE_URL, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF_TOKEN },
+      body:    JSON.stringify({ section: SECTION_KEY, data: getFormData() }),
+    });
+    const json = await res.json();
+    showToast(json.ok, json.message || json.error);
+  } catch (e) {
+    showToast(false, "Error de red. Intenta de nuevo.");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined">save</span> Guardar cambios';
+  }
+}
+
+function reloadPage() { window.location.href = "?section=" + SECTION_KEY; }
+
+function showToast(ok, msg) {
+  const t = document.getElementById("cms-toast");
+  t.className = ok ? "ok" : "err";
+  t.textContent = (ok ? "✓  " : "✕  ") + msg;
+  t.style.display = "flex";
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = "none"; }, 4000);
+}
+
+// Guardar con Ctrl+S / Cmd+S
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); saveSection(); }
+});
+</script>
+{% endblock %}

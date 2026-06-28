@@ -1,0 +1,344 @@
+/*
+ * OptimizaCRM — Django Admin custom theme
+ * Replica exacta del branding: sidebar negro, main navy, naranja de acento
+ *
+ * Colores base:
+ *   Sidebar / Header  : #020617  (slate-950 — negro puro)
+ *   Main background   : #0f172a  (slate-900 — navy oscuro)
+ *   Cards / módulos   : #1e293b  (slate-800 — navy medio)
+ *   Bordes            : #334155  (slate-700)
+ *   Texto principal   : #f1f5f9  (slate-100)
+ *   Texto muted       : #94a3b8  (slate-400)
+ *   Acento naranja    : #ea580c  (orange-600)
+ */
+
+/* ── Sidebar ────────────────────────────────────────────────────────────────── */
+
+#nav-sidebar,
+#nav-sidebar > div:first-child {
+  background-color: #020617 !important;
+  border-color: #1e293b !important;
+}
+
+/* Logo / site header dentro del sidebar */
+#nav-sidebar .bg-base-50,
+#nav-sidebar [class*="bg-base"] {
+  background-color: #020617 !important;
+}
+
+/* ── Topbar / Header ────────────────────────────────────────────────────────── */
+
+[class*="dark:bg-base-900"][class*="border-b"],
+div[class*="bg-white"][class*="border-b"] {
+  background-color: #020617 !important;
+  border-color: #1e293b !important;
+}
+
+/* ── Main body background ───────────────────────────────────────────────────── */
+
+body {
+  background-color: #0f172a !important;
+}
+
+#main {
+  background-color: #0f172a !important;
+}
+
+/* ── Cards / módulos / tablas ───────────────────────────────────────────────── */
+
+.module,
+.card,
+[class*="bg-base-100"],
+[class*="dark\\:bg-base-800"],
+[class*="rounded"][class*="border"],
+.result-list,
+#changelist-form .module,
+.submit-row {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* Filas alternas de la tabla */
+#result_list tr:nth-child(odd) td {
+  background-color: #1e293b !important;
+}
+#result_list tr:nth-child(even) td {
+  background-color: #162032 !important;
+}
+#result_list tr:hover td {
+  background-color: #273549 !important;
+}
+
+/* Cabeceras de tabla */
+#result_list th,
+#result_list thead {
+  background-color: #162032 !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+/* ── Inputs / formularios ───────────────────────────────────────────────────── */
+
+input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #ea580c !important;
+  outline-color: #ea580c !important;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.2) !important;
+}
+
+/* ── Fieldsets / secciones de formulario ────────────────────────────────────── */
+
+fieldset {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+fieldset h2,
+fieldset legend {
+  background-color: #162032 !important;
+  color: #f1f5f9 !important;
+  border-color: #334155 !important;
+}
+
+/* ── Texto general ──────────────────────────────────────────────────────────── */
+
+body,
+#main,
+#nav-sidebar,
+table,
+td, th,
+label,
+.help {
+  color: #f1f5f9 !important;
+}
+
+a {
+  color: #fb923c !important;   /* orange-400 */
+}
+
+a:hover {
+  color: #ea580c !important;   /* orange-600 */
+}
+
+/* Botones con fondo naranja/primario — texto blanco siempre (Unfold usa text-white via Tailwind
+   pero nuestro a { color } con !important lo sobreescribe) */
+a[class*="text-white"],
+a[class*="bg-primary-"],
+ul.object-tools li a {
+  color: #fff !important;
+}
+a[class*="text-white"]:hover,
+a[class*="bg-primary-"]:hover,
+ul.object-tools li a:hover {
+  color: #fff !important;
+  background: #c2410c !important;
+}
+
+/* ── Breadcrumbs ────────────────────────────────────────────────────────────── */
+
+div.breadcrumbs {
+  background-color: #162032 !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+div.breadcrumbs a {
+  color: #fb923c !important;
+}
+
+/* ── Paginación ─────────────────────────────────────────────────────────────── */
+
+.paginator {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+.paginator a,
+.paginator .this-page {
+  color: #f1f5f9 !important;
+}
+
+/* ── Mensaje de éxito / error ───────────────────────────────────────────────── */
+
+.messagelist li.success { background-color: #14532d !important; color: #bbf7d0 !important; }
+.messagelist li.error   { background-color: #7f1d1d !important; color: #fecaca !important; }
+.messagelist li.warning { background-color: #78350f !important; color: #fde68a !important; }
+
+/* ── Changelist: tabla como card redondeada ─────────────────────────────────── */
+
+#changelist {
+  background: #1e293b !important;
+  border-radius: 12px !important;
+  border: 1px solid #243044 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+#changelist-form > .module {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* Cabecera de la tabla */
+#result_list thead th {
+  background: #162032 !important;
+  border-bottom: 1px solid #243044 !important;
+  font-size: .7rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .07em !important;
+  color: #64748b !important;
+  padding: .875rem 1rem !important;
+}
+
+/* Celdas */
+#result_list td {
+  padding: .875rem 1rem !important;
+  border-bottom: 1px solid #1a2535 !important;
+  font-size: .875rem !important;
+  vertical-align: middle !important;
+}
+
+/* Links en tabla */
+#result_list td a,
+#result_list th a {
+  color: #cbd5e1 !important;
+  text-decoration: none !important;
+}
+#result_list td a:hover { color: #ea580c !important; }
+
+/* Sort arrow activo */
+#result_list th.sorted a { color: #ea580c !important; }
+
+/* ── Barra de búsqueda ──────────────────────────────────────────────────────── */
+
+#toolbar {
+  background: #162032 !important;
+  border-bottom: 1px solid #243044 !important;
+  border-radius: 12px 12px 0 0 !important;
+  padding: .75rem 1rem !important;
+  margin: 0 !important;
+}
+
+#searchbar {
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
+  color: #f1f5f9 !important;
+  border-radius: 6px !important;
+  padding: .4rem .75rem !important;
+}
+#searchbar:focus {
+  border-color: #ea580c !important;
+  outline: none !important;
+}
+
+/* ── Filtros laterales ──────────────────────────────────────────────────────── */
+
+#changelist-filter {
+  background: #1e293b !important;
+  border-left: 1px solid #243044 !important;
+  border-radius: 0 12px 12px 0 !important;
+}
+
+#changelist-filter h2 {
+  background: #162032 !important;
+  color: #64748b !important;
+  font-size: .7rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: .07em !important;
+  padding: .875rem 1rem !important;
+  border-bottom: 1px solid #243044 !important;
+}
+
+#changelist-filter h3 {
+  color: #94a3b8 !important;
+  font-size: .75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: .06em !important;
+}
+
+#changelist-filter a {
+  color: #94a3b8 !important;
+}
+#changelist-filter a:hover,
+#changelist-filter li.selected a {
+  color: #ea580c !important;
+}
+
+/* ── Formulario de detalle (change form) ────────────────────────────────────── */
+
+.change-form fieldset {
+  background: #1e293b !important;
+  border: 1px solid #243044 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  margin-bottom: 1rem !important;
+}
+
+.change-form fieldset h2 {
+  background: #162032 !important;
+  color: #94a3b8 !important;
+  font-size: .7rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  font-weight: 700 !important;
+  padding: .75rem 1rem !important;
+  border-bottom: 1px solid #243044 !important;
+  margin: 0 !important;
+}
+
+.form-row {
+  border-bottom: 1px solid #1a2535 !important;
+}
+.form-row:last-child { border-bottom: none !important; }
+
+/* ── Submit row ─────────────────────────────────────────────────────────────── */
+
+.submit-row {
+  background: #162032 !important;
+  border: 1px solid #243044 !important;
+  border-radius: 10px !important;
+  padding: 1rem !important;
+}
+
+.submit-row input[type="submit"],
+.submit-row a.deletelink,
+.submit-row a.closelink {
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  font-size: .875rem !important;
+  padding: .5rem 1.25rem !important;
+}
+
+/* ── JSON textarea — ancho completo ─────────────────────────────────────────── */
+
+.form-row textarea[style*="JetBrains Mono"],
+.form-row textarea[style*="monospace"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ── Object tools (añadir, historial) ──────────────────────────────────────── */
+
+ul.object-tools li a {
+  background: #ea580c !important;
+  color: #fff !important;
+  border-radius: 6px !important;
+  font-size: .8125rem !important;
+  font-weight: 600 !important;
+  padding: .45rem 1rem !important;
+  text-decoration: none !important;
+}
+ul.object-tools li a:hover { background: #c2410c !important; }
