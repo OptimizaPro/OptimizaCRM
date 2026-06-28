@@ -300,7 +300,10 @@ export function VoiceWidgetPanel() {
 
   if (isLoading) return <div className="h-48 animate-pulse rounded-2xl bg-slate-800" />;
 
-  const qualQsStr = (mergedKb.qualification_questions ?? []).join("\n");
+  const _qs = mergedKb.qualification_questions;
+  const qualQsStr = Array.isArray(_qs)
+    ? _qs.join("\n")
+    : typeof _qs === "string" ? _qs : "";
 
   return (
     <Card className="rounded-2xl border border-slate-700 bg-slate-950">

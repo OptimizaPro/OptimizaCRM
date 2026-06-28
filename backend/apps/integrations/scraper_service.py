@@ -157,7 +157,7 @@ Directrices por campo:
 - working_hours: Horarios de atención si los hay. Si no hay, deja vacío "".
 - contact_info: Email, teléfono, dirección, redes sociales que aparezcan.
 - appointment_rules: Instrucciones para agendar citas si aplica. Si no aplica, deja vacío "".
-- qualification_questions: 3-5 preguntas clave para calificar prospectos, basadas en el negocio.
+- qualification_questions: Array JSON de 3-5 strings. Preguntas clave para calificar prospectos, basadas en el negocio. Ejemplo: ["¿Cuántos empleados tiene?", "¿Cuál es tu presupuesto?"]
 
 Si un campo no tiene información suficiente, pon "" (cadena vacía). No inventes datos que no están en el texto.
 """.strip()
@@ -247,7 +247,22 @@ def classify_text(text: str, org=None) -> dict:
     if not raw:
         raise ValueError(f"Error al clasificar el contenido: {last_error}")
 
-    return {field: str(raw.get(field, "") or "").strip() for field in KB_FIELDS}
+    result = {}
+    for field in KB_FIELDS:
+        val = raw.get(field) or ""
+        if field == "qualification_questions":
+            # Keep as list; normalise whatever the AI returned
+            if isinstance(val, list):
+                result[field] = [str(q).strip() for q in val if str(q).strip()]
+            elif isinstance(val, str) and val.strip():
+                # AI returned a plain string — split on newlines or semicolons
+                items = re.split(r"\n|;", val)
+                result[field] = [q.strip() for q in items if q.strip()]
+            else:
+                result[field] = []
+        else:
+            result[field] = str(val).strip()
+    return result
 
 
 def scrape_and_classify_file(file_bytes: bytes, filename: str, org=None) -> dict:
