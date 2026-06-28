@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
-  ExternalLink, Maximize2, Rocket, Globe2, Loader2, FileUp,
+  ExternalLink, Maximize2, Rocket, Globe2, Loader2, FileUp, Eye, EyeOff,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -162,8 +162,10 @@ export function VoiceWidgetPanel() {
   const qc   = useQueryClient();
   const auth = { token: tokens!.access, orgId: organization!.id };
 
-  const [vapiPrivateKey, setVapiPrivateKey] = useState("");
-  const [vapiPublicKey,  setVapiPublicKey]  = useState("");
+  const [vapiPrivateKey,    setVapiPrivateKey]    = useState("");
+  const [vapiPublicKey,     setVapiPublicKey]     = useState("");
+  const [showPrivateKey,    setShowPrivateKey]    = useState(false);
+  const [showPublicKey,     setShowPublicKey]     = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["voice-widget"],
@@ -347,24 +349,47 @@ export function VoiceWidgetPanel() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className={labelCls + " mb-1 block"}>Private API Key</label>
-              <input
-                type="password"
-                className={inputCls}
-                value={vapiPrivateKey}
-                onChange={(e) => { setVapiPrivateKey(e.target.value); setDirty(true); }}
-                placeholder="sk-••••••••••••••••"
-                autoComplete="off"
-              />
+              <div className="relative">
+                <input
+                  type={showPrivateKey ? "text" : "password"}
+                  className={inputCls + " pr-9"}
+                  value={vapiPrivateKey}
+                  onChange={(e) => { setVapiPrivateKey(e.target.value); setDirty(true); }}
+                  placeholder="sk-••••••••••••••••"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPrivateKey((v) => !v)}
+                  className="absolute inset-y-0 right-2.5 flex items-center text-slate-500 hover:text-orange-400 transition-colors"
+                  tabIndex={-1}
+                  title={showPrivateKey ? "Ocultar clave" : "Mostrar clave"}
+                >
+                  {showPrivateKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className={labelCls + " mb-1 block"}>Public API Key</label>
-              <Input
-                className={inputCls}
-                value={vapiPublicKey}
-                onChange={(e) => { setVapiPublicKey(e.target.value); setDirty(true); }}
-                placeholder="pk-••••••••••••••••"
-                autoComplete="off"
-              />
+              <div className="relative">
+                <input
+                  type={showPublicKey ? "text" : "password"}
+                  className={inputCls + " pr-9"}
+                  value={vapiPublicKey}
+                  onChange={(e) => { setVapiPublicKey(e.target.value); setDirty(true); }}
+                  placeholder="pk-••••••••••••••••"
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPublicKey((v) => !v)}
+                  className="absolute inset-y-0 right-2.5 flex items-center text-slate-500 hover:text-orange-400 transition-colors"
+                  tabIndex={-1}
+                  title={showPublicKey ? "Ocultar clave" : "Mostrar clave"}
+                >
+                  {showPublicKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <p className="mt-1.5 text-[11px] text-slate-500">
