@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { PublicHeader, PublicFooter } from "@/components/layout/public-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,70 +10,65 @@ import {
   Mail, MessageCircle, Clock, CheckCircle,
   ArrowRight, Send, Building2, User, Loader2,
 } from "lucide-react";
+import { cmsApi } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FormState = "idle" | "sending" | "success" | "error";
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+type CmsData = {
+  badge:           string;
+  headline:        string;
+  subheadline:     string;
+  email:           string;
+  email_detail:    string;
+  whatsapp:        string;
+  whatsapp_href:   string;
+  whatsapp_detail: string;
+  response_time:   string;
+  form_headline:   string;
+  form_subtext:    string;
+  contact_reasons: string[];
+  faq_headline:    string;
+  faqs:            { q: string; a: string }[];
+  demo_headline:   string;
+  demo_text:       string;
+  demo_cta_text:   string;
+  demo_cta_href:   string;
+};
 
-const CONTACT_CHANNELS = [
-  {
-    icon: Mail,
-    label: "Email directo",
-    value: "hola@optimizacrm.com",
-    detail: "Respuesta en menos de 24 h",
-    href: "mailto:hola@optimizacrm.com",
-    color: "text-blue-400",
-    bg: "bg-blue-950/40 border-blue-900/50",
-  },
-  {
-    icon: MessageCircle,
-    label: "WhatsApp",
-    value: "+502 XXXX XXXX",
-    detail: "Lunes a viernes · 9h–18h",
-    href: "https://wa.me/502XXXXXXXX",
-    color: "text-green-400",
-    bg: "bg-green-950/40 border-green-900/50",
-  },
-  {
-    icon: Clock,
-    label: "Tiempo de respuesta",
-    value: "< 24 horas",
-    detail: "Garantizado en días hábiles",
-    href: null,
-    color: "text-orange-400",
-    bg: "bg-orange-950/40 border-orange-900/50",
-  },
-];
-
-const REASONS = [
-  "Quiero probar OptimizaCRM en mi empresa",
-  "Tengo dudas sobre precios o planes",
-  "Necesito una demo personalizada",
-  "Soy partner o quiero revenderte",
-  "Tengo una pregunta técnica",
-  "Otro",
-];
-
-const FAQS = [
-  {
-    q: "¿Cuánto tiempo tarda la configuración inicial?",
-    a: "Menos de 5 minutos. Creas tu cuenta, invitas a tu equipo y empiezas a registrar leads de inmediato. No necesitas contratar un consultor.",
-  },
-  {
-    q: "¿Mis datos están seguros?",
-    a: "Sí. Cada organización tiene sus datos completamente aislados (arquitectura multi-tenant). Usamos JWT, HTTPS y cumplimiento OWASP desde el primer día.",
-  },
-  {
-    q: "¿Puedo migrar desde otro CRM?",
-    a: "Ofrecemos importación de contactos y leads vía CSV. Para migraciones más complejas, contáctanos y lo gestionamos juntos.",
-  },
-  {
-    q: "¿Hay soporte en español?",
-    a: "100%. El producto está diseñado para LATAM y todo el soporte se da en español. Sin bots, sin respuestas genéricas en inglés.",
-  },
-];
+const FALLBACK: CmsData = {
+  badge:           "Hablemos",
+  headline:        "¿Tienes preguntas? Estamos aquí",
+  subheadline:     "Cuéntanos sobre tu negocio y te ayudamos a evaluar si OptimizaCRM es la herramienta que necesitas. Sin presión, sin ventas agresivas.",
+  email:           "hola@optimizacrm.com",
+  email_detail:    "Respuesta en menos de 24 h",
+  whatsapp:        "+502 XXXX XXXX",
+  whatsapp_href:   "https://wa.me/502XXXXXXXX",
+  whatsapp_detail: "Lunes a viernes · 9h–18h",
+  response_time:   "< 24 horas",
+  form_headline:   "Envíanos un mensaje",
+  form_subtext:    "Te respondemos en menos de 24 horas hábiles.",
+  contact_reasons: [
+    "Quiero probar OptimizaCRM en mi empresa",
+    "Tengo dudas sobre precios o planes",
+    "Necesito una demo personalizada",
+    "Soy partner o quiero revenderte",
+    "Tengo una pregunta técnica",
+    "Otro",
+  ],
+  faq_headline: "Preguntas frecuentes",
+  faqs: [
+    { q: "¿Cuánto tiempo tarda la configuración inicial?", a: "Menos de 5 minutos. Creas tu cuenta, invitas a tu equipo y empiezas a registrar leads de inmediato. No necesitas contratar un consultor." },
+    { q: "¿Mis datos están seguros?",                      a: "Sí. Cada organización tiene sus datos completamente aislados (arquitectura multi-tenant). Usamos JWT, HTTPS y cumplimiento OWASP desde el primer día." },
+    { q: "¿Puedo migrar desde otro CRM?",                  a: "Ofrecemos importación de contactos y leads vía CSV. Para migraciones más complejas, contáctanos y lo gestionamos juntos." },
+    { q: "¿Hay soporte en español?",                       a: "100%. El producto está diseñado para LATAM y todo el soporte se da en español. Sin bots, sin respuestas genéricas en inglés." },
+  ],
+  demo_headline:   "¿Prefieres ver el producto en acción?",
+  demo_text:       "Agenda una demo personalizada de 30 minutos y te mostramos cómo OptimizaCRM puede adaptarse a tu equipo.",
+  demo_cta_text:   "Probar gratis 14 días",
+  demo_cta_href:   "/register",
+};
 
 // ─── FAQ Item ─────────────────────────────────────────────────────────────────
 
@@ -100,13 +96,45 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ContactPage() {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    company: "",
-    reason: "",
-    message: "",
+  const { data: cms } = useQuery<CmsData>({
+    queryKey:  ["cms", "contacto"],
+    queryFn:   () => cmsApi.getSection("contacto").then((r) => r.data as CmsData),
+    staleTime: 5 * 60 * 1000,
   });
+
+  const d = cms ?? FALLBACK;
+
+  const channels = [
+    {
+      icon:   Mail,
+      label:  "Email directo",
+      value:  d.email,
+      detail: d.email_detail,
+      href:   `mailto:${d.email}`,
+      color:  "text-blue-400",
+      bg:     "bg-blue-950/40 border-blue-900/50",
+    },
+    {
+      icon:   MessageCircle,
+      label:  "WhatsApp",
+      value:  d.whatsapp,
+      detail: d.whatsapp_detail,
+      href:   d.whatsapp_href,
+      color:  "text-green-400",
+      bg:     "bg-green-950/40 border-green-900/50",
+    },
+    {
+      icon:   Clock,
+      label:  "Tiempo de respuesta",
+      value:  d.response_time,
+      detail: "Garantizado en días hábiles",
+      href:   null as string | null,
+      color:  "text-orange-400",
+      bg:     "bg-orange-950/40 border-orange-900/50",
+    },
+  ];
+
+  const [form, setForm] = useState({ name: "", email: "", company: "", reason: "", message: "" });
   const [state, setState] = useState<FormState>("idle");
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -132,15 +160,13 @@ export default function ContactPage() {
           <div className="relative mx-auto max-w-3xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-800/50 bg-orange-950/40 px-4 py-1.5 text-sm font-medium text-orange-400">
               <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-              Hablemos
+              {d.badge}
             </div>
             <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl">
-              ¿Tienes preguntas?<br />
-              <span className="text-orange-500">Estamos aquí</span>
+              {d.headline}
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-slate-400">
-              Cuéntanos sobre tu negocio y te ayudamos a evaluar si OptimizaCRM
-              es la herramienta que necesitas. Sin presión, sin ventas agresivas.
+              {d.subheadline}
             </p>
           </div>
         </section>
@@ -149,7 +175,7 @@ export default function ContactPage() {
         <section className="px-6 pb-16 sm:px-12 lg:px-20">
           <div className="mx-auto max-w-6xl">
             <div className="grid gap-4 sm:grid-cols-3">
-              {CONTACT_CHANNELS.map(({ icon: Icon, label, value, detail, href, color, bg }) => {
+              {channels.map(({ icon: Icon, label, value, detail, href, color, bg }) => {
                 const content = (
                   <div className={`flex items-start gap-4 rounded-xl border p-5 transition-all ${bg} ${href ? "hover:scale-[1.02]" : ""}`}>
                     <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-slate-900 ${color}`}>
@@ -179,8 +205,8 @@ export default function ContactPage() {
 
               {/* Contact form */}
               <div>
-                <h2 className="text-3xl font-black text-white">Envíanos un mensaje</h2>
-                <p className="mt-2 text-slate-400">Te respondemos en menos de 24 horas hábiles.</p>
+                <h2 className="text-3xl font-black text-white">{d.form_headline}</h2>
+                <p className="mt-2 text-slate-400">{d.form_subtext}</p>
 
                 {state === "success" ? (
                   <div className="mt-8 rounded-2xl border border-green-800/50 bg-green-950/30 p-8 text-center">
@@ -189,7 +215,8 @@ export default function ContactPage() {
                     </div>
                     <h3 className="text-xl font-bold text-white">¡Mensaje enviado!</h3>
                     <p className="mt-2 text-slate-400">
-                      Gracias por contactarnos. Te responderemos a <span className="font-medium text-slate-200">{form.email}</span> en breve.
+                      Gracias por contactarnos. Te responderemos a{" "}
+                      <span className="font-medium text-slate-200">{form.email}</span> en breve.
                     </p>
                     <Button
                       onClick={() => { setState("idle"); setForm({ name: "", email: "", company: "", reason: "", message: "" }); }}
@@ -242,7 +269,7 @@ export default function ContactPage() {
                         ¿En qué podemos ayudarte? *
                       </label>
                       <div className="flex flex-wrap gap-2">
-                        {REASONS.map((r) => (
+                        {(d.contact_reasons ?? []).map((r) => (
                           <button
                             key={r}
                             type="button"
@@ -275,7 +302,7 @@ export default function ContactPage() {
 
                     {state === "error" && (
                       <p className="rounded-lg border border-red-800 bg-red-950/50 px-4 py-2.5 text-sm text-red-400">
-                        Ocurrió un error. Por favor escríbenos directamente a hola@optimizacrm.com
+                        Ocurrió un error. Por favor escríbenos directamente a {d.email}
                       </p>
                     )}
 
@@ -300,25 +327,22 @@ export default function ContactPage() {
 
               {/* FAQ */}
               <div>
-                <h2 className="text-3xl font-black text-white">Preguntas frecuentes</h2>
+                <h2 className="text-3xl font-black text-white">{d.faq_headline}</h2>
                 <p className="mt-2 text-slate-400">Respuestas rápidas a las dudas más comunes.</p>
 
                 <div className="mt-8 space-y-3">
-                  {FAQS.map((faq) => (
+                  {(d.faqs ?? []).map((faq) => (
                     <FaqItem key={faq.q} q={faq.q} a={faq.a} />
                   ))}
                 </div>
 
                 {/* Demo CTA */}
                 <div className="mt-8 rounded-2xl border border-orange-800/40 bg-orange-950/20 p-6">
-                  <h3 className="font-bold text-white">¿Prefieres ver el producto en acción?</h3>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Agenda una demo personalizada de 30 minutos y te mostramos cómo OptimizaCRM
-                    puede adaptarse a tu equipo.
-                  </p>
-                  <Link href="/register" className="mt-4 inline-block">
+                  <h3 className="font-bold text-white">{d.demo_headline}</h3>
+                  <p className="mt-1 text-sm text-slate-400">{d.demo_text}</p>
+                  <Link href={d.demo_cta_href ?? "/register"} className="mt-4 inline-block">
                     <Button className="gap-2 bg-orange-600 hover:bg-orange-500 text-white">
-                      Probar gratis 14 días <ArrowRight className="h-4 w-4" />
+                      {d.demo_cta_text} <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
                 </div>

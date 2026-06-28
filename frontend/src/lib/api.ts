@@ -704,6 +704,7 @@ export interface WebWidget {
     success_message?: string;
     whatsapp_number?: string;
     whatsapp_message?: string;
+    contact_reasons?: string[];
   };
 }
 

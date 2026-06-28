@@ -86,7 +86,7 @@ export function WebWidgetPanel() {
     setForm((f) => ({ ...f, [key]: value }));
     setDirty(true);
   };
-  const patchCfg = (key: string, value: string) => {
+  const patchCfg = (key: string, value: string | string[]) => {
     setForm((f) => ({ ...f, config: { ...(f.config ?? {}), [key]: value } }));
     setDirty(true);
   };
@@ -215,6 +215,22 @@ export function WebWidgetPanel() {
                   value={merged.config.success_message ?? ""}
                   onChange={(e) => patchCfg("success_message", e.target.value)}
                   placeholder="¡Gracias! Nos contactamos pronto."
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-slate-400">
+                  ¿En qué podemos ayudarte? — opciones
+                  <span className="ml-1 text-slate-500">(una por línea, dejar vacío para ocultar)</span>
+                </label>
+                <textarea
+                  rows={4}
+                  className={inputCls + " resize-none"}
+                  value={(merged.config.contact_reasons ?? []).join("\n")}
+                  onChange={(e) => {
+                    const lines = e.target.value.split("\n").map((l) => l.trimStart());
+                    patchCfg("contact_reasons", lines);
+                  }}
+                  placeholder={"Quiero una demo\nTengo dudas sobre precios\nSoy partner\nOtro"}
                 />
               </div>
             </>

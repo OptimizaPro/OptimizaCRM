@@ -64,6 +64,11 @@
       '.err{color:#f87171;font-size:12px;margin-bottom:8px}',
       '.close-btn{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.2);border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center}',
       '.close-btn:hover{background:rgba(255,255,255,.35)}',
+      '.reasons-label{font-size:11px;color:#94a3b8;margin-bottom:6px;display:block}',
+      '.reasons{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}',
+      '.reason-btn{border:1px solid #334155;background:rgba(15,23,42,.6);border-radius:20px;padding:5px 10px;font-size:11px;color:#94a3b8;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap}',
+      '.reason-btn:hover{border-color:#64748b;color:#e2e8f0}',
+      '.reason-btn.active{border-color:' + color + ';background:rgba(234,88,12,.12);color:' + color + '}',
     ].join('');
     shadow.appendChild(style);
 
@@ -105,7 +110,15 @@
           '<div id="ocw-form">',
             '<input id="ocw-name"    placeholder="Nombre *" required />',
             '<input id="ocw-email"   type="email" placeholder="Email *" required />',
+            '<input id="ocw-company" placeholder="Empresa (opcional)" />',
             '<input id="ocw-phone"   type="tel"   placeholder="Teléfono (opcional)" />',
+            (cfg.contact_reasons && cfg.contact_reasons.filter(function(r){return r.trim();}).length > 0
+              ? '<span class="reasons-label">¿En qué podemos ayudarte?</span><div class="reasons" id="ocw-reasons">' +
+                cfg.contact_reasons.filter(function(r){return r.trim();}).map(function(r){
+                  return '<button type="button" class="reason-btn" data-reason="' + escHtml(r) + '">' + escHtml(r) + '</button>';
+                }).join('') +
+                '</div>'
+              : ''),
             '<textarea id="ocw-msg"  placeholder="Mensaje (opcional)"></textarea>',
             '<div id="ocw-err" class="err" style="display:none"></div>',
             '<button class="btn btn-send" id="ocw-submit">' + escHtml(cfg.button_text || 'Enviar mensaje') + '</button>',
@@ -126,14 +139,33 @@
       formBtn.addEventListener('click', togglePanel);
       panel.querySelector('.close-btn').addEventListener('click', togglePanel);
 
+      // Reason pill selection
+      var selectedReason = '';
+      var reasonsEl = panel.querySelector('#ocw-reasons');
+      if (reasonsEl) {
+        reasonsEl.addEventListener('click', function (e) {
+          var btn = e.target.closest('.reason-btn');
+          if (!btn) return;
+          var already = btn.classList.contains('active');
+          reasonsEl.querySelectorAll('.reason-btn').forEach(function (b) { b.classList.remove('active'); });
+          if (!already) {
+            btn.classList.add('active');
+            selectedReason = btn.getAttribute('data-reason') || '';
+          } else {
+            selectedReason = '';
+          }
+        });
+      }
+
       // Submit
       panel.querySelector('#ocw-submit').addEventListener('click', function () {
-        var name  = panel.querySelector('#ocw-name').value.trim();
-        var email = panel.querySelector('#ocw-email').value.trim();
-        var phone = panel.querySelector('#ocw-phone').value.trim();
-        var msg   = panel.querySelector('#ocw-msg').value.trim();
-        var errEl = panel.querySelector('#ocw-err');
-        var btn   = panel.querySelector('#ocw-submit');
+        var name    = panel.querySelector('#ocw-name').value.trim();
+        var email   = panel.querySelector('#ocw-email').value.trim();
+        var company = panel.querySelector('#ocw-company').value.trim();
+        var phone   = panel.querySelector('#ocw-phone').value.trim();
+        var msg     = panel.querySelector('#ocw-msg').value.trim();
+        var errEl   = panel.querySelector('#ocw-err');
+        var btn     = panel.querySelector('#ocw-submit');
 
         errEl.style.display = 'none';
         if (!name || !email) {
@@ -148,7 +180,7 @@
         fetch(API_URL + '/widget/submit/', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ token: TOKEN, name: name, email: email, phone: phone, message: msg }),
+          body:    JSON.stringify({ token: TOKEN, name: name, email: email, company: company, phone: phone, reason: selectedReason, message: msg }),
         })
           .then(function (r) { return r.json(); })
           .then(function (res) {

@@ -510,6 +510,7 @@ def widget_config(request):
         "success_message":    cfg.get("success_message", "¡Gracias! Nos pondremos en contacto pronto."),
         "whatsapp_number":    cfg.get("whatsapp_number", ""),
         "whatsapp_message":   cfg.get("whatsapp_message", "Hola, me gustaría más información"),
+        "contact_reasons":    cfg.get("contact_reasons", []),
         "org_name":           widget.organization.name,
     })
     return _widget_cors_headers(r, request)
@@ -549,11 +550,21 @@ def widget_submit(request):
     name    = body.get("name", "").strip()
     email   = body.get("email", "").strip()
     phone   = body.get("phone", "").strip()
+    company = body.get("company", "").strip()
+    reason  = body.get("reason", "").strip()
     message = body.get("message", "").strip()
 
     if not name or not email:
         r = JsonResponse({"error": "name and email are required"}, status=400)
         return _widget_cors_headers(r, request)
+
+    # Build notes combining reason and message
+    notes_parts = []
+    if reason:
+        notes_parts.append(f"Motivo: {reason}")
+    if message:
+        notes_parts.append(message)
+    notes = "[Widget] " + " · ".join(notes_parts) if notes_parts else ""
 
     # Create Lead
     from apps.crm.models import Lead
@@ -564,9 +575,10 @@ def widget_submit(request):
         last_name    = parts[1] if len(parts) > 1 else "",
         email        = email,
         phone        = phone,
+        company      = company,
         source       = "website",
         status       = "new",
-        notes        = f"[Widget] {message}" if message else "",
+        notes        = notes,
     )
 
     # Increment counter
