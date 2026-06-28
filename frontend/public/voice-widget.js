@@ -23,23 +23,40 @@
     .catch(function (e) { console.warn('[OptimizaCRM Voice] Config error', e); });
 
   function loadVapiAndBoot(cfg) {
+    // Create the widget UI immediately so the button is always visible.
+    // Vapi SDK is loaded in the background; until it's ready the button
+    // shows a loading state when clicked.
+    var vapiClass = null;
+    var pendingStart = false;
+
+    var widgetAPI = boot(cfg, function getVapi() { return vapiClass; });
+
     var vapiScript = document.createElement('script');
     vapiScript.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/dist/index.js';
     vapiScript.onload = function () {
-      var VapiClass = window.Vapi || (window.vapiSdk && window.vapiSdk.Vapi);
-      if (!VapiClass) {
+      vapiClass = window.Vapi || (window.vapiSdk && window.vapiSdk.Vapi) || null;
+      if (!vapiClass) {
         console.warn('[OptimizaCRM Voice] Vapi SDK not found after script load');
-        return;
       }
-      boot(cfg, VapiClass);
+      // If user clicked the button while SDK was loading, start now
+      if (pendingStart && vapiClass && widgetAPI) {
+        widgetAPI.startCall();
+        pendingStart = false;
+      }
     };
     vapiScript.onerror = function () {
       console.warn('[OptimizaCRM Voice] Failed to load Vapi SDK from CDN');
+      if (widgetAPI) widgetAPI.showSdkError();
     };
     document.head.appendChild(vapiScript);
+
+    // Expose pendingStart setter so boot() can signal SDK-not-ready clicks
+    if (widgetAPI) widgetAPI.setPendingStart = function(v) { pendingStart = v; };
   }
 
-  function boot(cfg, VapiClass) {
+  // boot() now receives a getter function for VapiClass (loaded async)
+  // and returns a small control API for loadVapiAndBoot to use.
+  function boot(cfg, getVapi) {
     var color     = (cfg.config && cfg.config.color)      || '#EA580C';
     var agentName = (cfg.config && cfg.config.agent_name) || 'Asistente';
     var greeting  = (cfg.config && cfg.config.greeting)   || ('Hola, soy ' + agentName + '. ¿En qué puedo ayudarte?');
@@ -190,6 +207,17 @@
     // ── Vapi call ───────────────────────────────────────────────────────────────
     function startCall() {
       if (state !== 'idle') return;
+      var VapiClass = getVapi();
+      if (!VapiClass) {
+        // SDK still loading — signal loadVapiAndBoot to start once ready
+        setState('connecting');
+        if (widgetAPI && widgetAPI.setPendingStart) widgetAPI.setPendingStart(true);
+        return;
+      }
+      if (!cfg.assistant_id) {
+        showError('Agente no configurado. Guarda la configuración en el panel primero.');
+        return;
+      }
       try {
         vapi = new VapiClass(cfg.vapi_public_key);
 
@@ -234,6 +262,14 @@
 
     // Initialize idle state
     setState('idle');
+
+    // Return control API for loadVapiAndBoot
+    var widgetAPI = {
+      startCall: startCall,
+      showSdkError: function () { showError('No se pudo cargar el SDK de voz. Verifica tu conexión.'); },
+      setPendingStart: null, // filled by loadVapiAndBoot
+    };
+    return widgetAPI;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
