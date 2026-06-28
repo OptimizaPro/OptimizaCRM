@@ -606,11 +606,24 @@ export function VoiceWidgetPanel() {
         </div>
 
         {/* ── Snippet + Publicar ───────────────────────────────────────────── */}
-        {widget && widget.vapi_assistant_id && (
+        {widget && (
           <div className="space-y-2 border-t border-slate-800 pt-5">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-slate-400">Código para embeber el agente de voz</p>
+              <a
+                href={`/voice-widget-preview?token=${widget.token}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300"
+              >
+                <ExternalLink className="h-3 w-3" /> Vista previa
+              </a>
             </div>
+            {!widget.vapi_assistant_id && (
+              <p className="rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
+                El asistente aún no está sincronizado con Vapi. Configura tus API Keys y guarda para activar el widget.
+              </p>
+            )}
             <VoiceSnippetBox token={widget.token} />
             <p className="text-[11px] text-slate-500">
               Pega este script antes del cierre de <code className="text-slate-400">&lt;/body&gt;</code>.
