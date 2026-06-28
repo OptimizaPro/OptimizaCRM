@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
-  ExternalLink, Maximize2, Rocket, Globe2, Loader2,
+  ExternalLink, Maximize2, Rocket, Globe2, Loader2, FileUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -255,6 +255,47 @@ export function VoiceWidgetPanel() {
     },
   });
 
+  // File import
+  const [fileImporting,  setFileImporting]  = useState(false);
+  const [fileImported,   setFileImported]   = useState<string[]>([]);
+  const [fileImportError, setFileImportError] = useState("");
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";            // reset so same file can be re-selected
+    if (!file) return;
+
+    setFileImporting(true);
+    setFileImported([]);
+    setFileImportError("");
+
+    try {
+      const { knowledge_base } = await voiceWidgetApi.importFile(auth.token, auth.orgId, file);
+      const imported: string[] = [];
+      const fieldsToMerge = [
+        "company_info", "products_services", "pricing", "faqs",
+        "working_hours", "contact_info", "appointment_rules", "qualification_questions",
+      ] as const;
+      setKbForm((prev) => {
+        const next = { ...prev };
+        for (const field of fieldsToMerge) {
+          const val = knowledge_base[field];
+          if (val && (typeof val === "string" ? val.trim() : (val as string[]).length > 0)) {
+            (next as Record<string, unknown>)[field] = val;
+            imported.push(field);
+          }
+        }
+        return next;
+      });
+      setDirty(true);
+      setFileImported(imported);
+    } catch (err) {
+      setFileImportError((err as Error).message || "Error al importar el archivo");
+    } finally {
+      setFileImporting(false);
+    }
+  };
+
   if (isLoading) return <div className="h-48 animate-pulse rounded-2xl bg-slate-800" />;
 
   const qualQsStr = (mergedKb.qualification_questions ?? []).join("\n");
@@ -423,29 +464,71 @@ export function VoiceWidgetPanel() {
 
         {/* ── C. Base de Conocimiento ──────────────────────────────────────── */}
         <div className="border-t border-slate-800 pt-5">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Base de Conocimiento</p>
-            <button
-              type="button"
-              onClick={() => { setScrapeImported([]); setScrapeOpen(true); }}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-orange-600 hover:text-orange-400 transition-colors"
-              title="Importar base de conocimiento desde una URL"
-            >
-              <Globe2 className="h-3.5 w-3.5" />
-              Importar desde URL
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Import from URL */}
+              <button
+                type="button"
+                onClick={() => { setScrapeImported([]); setScrapeOpen(true); }}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-orange-600 hover:text-orange-400 transition-colors"
+                title="Importar base de conocimiento desde una URL"
+              >
+                <Globe2 className="h-3.5 w-3.5" />
+                URL
+              </button>
+              {/* Import from file */}
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-orange-600 hover:text-orange-400 transition-colors",
+                  fileImporting && "cursor-not-allowed opacity-50"
+                )}
+                title="Importar desde PDF o Markdown"
+              >
+                {fileImporting
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <FileUp   className="h-3.5 w-3.5" />}
+                PDF / MD
+                <input
+                  type="file"
+                  accept=".pdf,.md,.txt"
+                  className="sr-only"
+                  disabled={fileImporting}
+                  onChange={handleFileImport}
+                />
+              </label>
+            </div>
           </div>
 
-          {/* Import success banner */}
+          {/* URL import success banner */}
           {scrapeImported.length > 0 && (
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-green-800 bg-green-950/40 px-3 py-2">
               <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400" />
               <p className="text-xs text-green-300">
-                Datos importados en:{" "}
+                Importado desde URL:{" "}
                 <span className="font-medium">{scrapeImported.join(", ")}</span>.
-                Revisa los campos y haz clic en <strong>Guardar cambios</strong> para confirmar.
+                Revisa y haz clic en <strong>Guardar cambios</strong>.
               </p>
             </div>
+          )}
+
+          {/* File import success banner */}
+          {fileImported.length > 0 && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-green-800 bg-green-950/40 px-3 py-2">
+              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400" />
+              <p className="text-xs text-green-300">
+                Importado desde archivo:{" "}
+                <span className="font-medium">{fileImported.join(", ")}</span>.
+                Revisa y haz clic en <strong>Guardar cambios</strong>.
+              </p>
+            </div>
+          )}
+
+          {/* File import error */}
+          {fileImportError && (
+            <p className="mb-3 rounded-lg border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-400">
+              {fileImportError}
+            </p>
           )}
 
           {/* Scrape URL Dialog */}

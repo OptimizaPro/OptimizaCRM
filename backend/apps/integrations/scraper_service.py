@@ -1,13 +1,18 @@
 """
-Optimiza-CRM – URL scraper → Knowledge Base classifier
+Optimiza-CRM – URL / File → Knowledge Base classifier
 Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 
-Flow:
-  1. Fetch + extract readable text from a URL using trafilatura.
-  2. Send the text to an AI (Groq → OpenAI fallback) with a structured prompt.
-  3. Return a dict matching VoiceKnowledgeBase fields.
+Sources supported:
+  • URL  — trafilatura extracts readable text from any public webpage
+  • PDF  — pdfplumber extracts text page by page
+  • .md  — decoded directly as plain text (Markdown is already readable)
+  • .txt — decoded directly as plain text
+
+All sources feed the same AI classifier (Groq → OpenAI fallback) that maps
+the extracted text into the 8 VoiceKnowledgeBase fields.
 """
 
+import io
 import json
 import re
 from urllib.parse import urlparse
@@ -57,6 +62,72 @@ def fetch_and_extract(url: str) -> str:
         text = re.sub(r"\s{2,}", " ", text).strip()
 
     # Limit size: ~8 000 chars ≈ 2 000 tokens
+    return text[:8000]
+
+
+# ─── File extraction ─────────────────────────────────────────────────────────
+
+ALLOWED_EXTENSIONS = {".pdf", ".md", ".txt"}
+
+
+def extract_from_file(file_bytes: bytes, filename: str) -> str:
+    """
+    Extract readable text from an uploaded file.
+
+    Supported:
+    - .pdf  → pdfplumber (page by page, joined with newlines)
+    - .md   → UTF-8 decode, strip Markdown syntax
+    - .txt  → UTF-8 decode
+
+    Returns plain text truncated to 8 000 chars.
+    Raises ValueError for unsupported types or empty content.
+    """
+    name = (filename or "").lower()
+    ext  = ""
+    if "." in name:
+        ext = "." + name.rsplit(".", 1)[-1]
+
+    if ext not in ALLOWED_EXTENSIONS:
+        raise ValueError(
+            f"Formato no soportado '{ext}'. Se admiten: PDF, Markdown (.md) y texto plano (.txt)."
+        )
+
+    text = ""
+
+    if ext == ".pdf":
+        try:
+            import pdfplumber
+            with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+                pages = []
+                for page in pdf.pages:
+                    page_text = page.extract_text() or ""
+                    if page_text.strip():
+                        pages.append(page_text.strip())
+                text = "\n\n".join(pages)
+        except ImportError:
+            raise ValueError("pdfplumber no está instalado en el servidor.")
+        except Exception as exc:
+            raise ValueError(f"No se pudo leer el PDF: {exc}")
+
+    elif ext in (".md", ".txt"):
+        try:
+            text = file_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            text = file_bytes.decode("latin-1", errors="replace")
+
+        if ext == ".md":
+            # Strip common Markdown syntax to reduce noise for the AI
+            text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)  # headings
+            text = re.sub(r"\*{1,2}(.+?)\*{1,2}", r"\1", text)          # bold/italic
+            text = re.sub(r"`{1,3}[^`]*`{1,3}", "", text)               # code
+            text = re.sub(r"!\[.*?\]\(.*?\)", "", text)                  # images
+            text = re.sub(r"\[(.+?)\]\(.*?\)", r"\1", text)             # links
+            text = re.sub(r"^[-*>]\s+", "", text, flags=re.MULTILINE)   # lists/blockquotes
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+    if not text.strip():
+        raise ValueError("El archivo no contiene texto legible.")
+
     return text[:8000]
 
 
@@ -142,16 +213,13 @@ KB_FIELDS = [
 ]
 
 
-def scrape_and_classify(url: str, org=None) -> dict:
+def classify_text(text: str, org=None) -> dict:
     """
-    Main entry point.
-    1. Scrape the URL.
-    2. Classify text into KB fields via AI (org keys → global fallback).
-    3. Return a dict with KB fields (empty strings for missing data).
+    Shared classifier: takes plain text, calls AI, returns KB dict.
+    Used by both scrape_and_classify (URL) and scrape_and_classify_file (file upload).
     """
     from django.conf import settings
 
-    # Resolve API keys: org-level BYOK first, then global settings
     org_settings = (org.settings or {}) if org else {}
     groq_key   = org_settings.get("groq_api_key")   or getattr(settings, "GROQ_API_KEY",   "")
     openai_key = org_settings.get("openai_api_key") or getattr(settings, "OPENAI_API_KEY", "")
@@ -162,10 +230,6 @@ def scrape_and_classify(url: str, org=None) -> dict:
             "los ajustes de la organización o en las variables de entorno del servidor."
         )
 
-    # 1. Scrape
-    text = fetch_and_extract(url)
-
-    # 2. Classify — Groq preferred (faster + cheaper), OpenAI fallback
     raw: dict = {}
     last_error = ""
     if groq_key:
@@ -173,7 +237,6 @@ def scrape_and_classify(url: str, org=None) -> dict:
             raw = _call_groq(text, groq_key)
         except Exception as exc:
             last_error = str(exc)
-            raw = {}
 
     if not raw and openai_key:
         try:
@@ -184,6 +247,18 @@ def scrape_and_classify(url: str, org=None) -> dict:
     if not raw:
         raise ValueError(f"Error al clasificar el contenido: {last_error}")
 
-    # 3. Sanitise — keep only known fields, cast to str
-    result = {field: str(raw.get(field, "") or "").strip() for field in KB_FIELDS}
-    return result
+    return {field: str(raw.get(field, "") or "").strip() for field in KB_FIELDS}
+
+
+def scrape_and_classify_file(file_bytes: bytes, filename: str, org=None) -> dict:
+    """
+    Extract text from an uploaded PDF / .md / .txt file and classify into KB fields.
+    """
+    text = extract_from_file(file_bytes, filename)
+    return classify_text(text, org)
+
+
+def scrape_and_classify(url: str, org=None) -> dict:
+    """Scrape a public URL and classify its content into KB fields."""
+    text = fetch_and_extract(url)
+    return classify_text(text, org)

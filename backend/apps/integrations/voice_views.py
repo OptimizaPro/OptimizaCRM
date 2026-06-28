@@ -655,6 +655,50 @@ def voice_scrape_url(request):
     return JsonResponse({"knowledge_base": kb_data, "char_count": total_chars, "source_url": url})
 
 
+# ─── 8. Import file → KB classifier ─────────────────────────────────────────
+
+@csrf_exempt
+def voice_import_file(request):
+    """
+    POST /api/v1/voice-widget/import-file/
+    Authenticated — requires JWT + X-Organization-ID.
+    Body: multipart/form-data with field "file" (PDF, .md, or .txt).
+    Returns: { "knowledge_base": { ...KB fields... }, "filename": "..." }
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "POST":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    uploaded = request.FILES.get("file")
+    if not uploaded:
+        return JsonResponse({"error": "No se recibió ningún archivo (campo 'file')"}, status=400)
+
+    # 10 MB cap
+    MAX_BYTES = 10 * 1024 * 1024
+    if uploaded.size > MAX_BYTES:
+        return JsonResponse({"error": "El archivo supera el límite de 10 MB."}, status=413)
+
+    try:
+        file_bytes = uploaded.read()
+        from .scraper_service import scrape_and_classify_file
+        kb_data = scrape_and_classify_file(file_bytes, uploaded.name, org)
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=422)
+    except Exception as exc:
+        return JsonResponse({"error": f"Error al procesar el archivo: {exc}"}, status=500)
+
+    total_chars = sum(len(v) for v in kb_data.values())
+    return JsonResponse({"knowledge_base": kb_data, "char_count": total_chars, "filename": uploaded.name})
+
+
 # ─── Private helpers ──────────────────────────────────────────────────────────
 
 def _get_first_admin(org):

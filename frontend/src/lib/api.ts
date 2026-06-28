@@ -761,6 +761,25 @@ export const voiceWidgetApi = {
       { url },
       { token, orgId },
     ),
+
+  importFile: async (token: string, orgId: string, file: File) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${apiUrl}/voice-widget/import-file/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Organization-ID": orgId,
+      },
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || `Error ${res.status}`);
+    }
+    return res.json() as Promise<{ knowledge_base: VoiceKnowledgeBase; char_count: number; filename: string }>;
+  },
 };
 
 export interface AutomationRule {

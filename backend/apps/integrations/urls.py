@@ -14,6 +14,7 @@ from .voice_views import (
     voice_tool_qualify,
     voice_call_ended,
     voice_scrape_url,
+    voice_import_file,
 )
 
 router = DefaultRouter()
@@ -44,4 +45,7 @@ urlpatterns = [
 
     # ── Voice AI Widget — URL scraper → KB classifier (authenticated) ─────────
     path("voice-widget/scrape-url/",            voice_scrape_url,            name="voice-scrape-url"),
+
+    # ── Voice AI Widget — File import → KB classifier (authenticated) ──────────
+    path("voice-widget/import-file/",           voice_import_file,           name="voice-import-file"),
 ]
