@@ -654,3 +654,84 @@ def widget_manage(request):
         }})
 
     return JsonResponse({"error": "method not allowed"}, status=405)
+
+
+# ─── Hub Widget — unified multi-channel config ────────────────────────────────
+
+@csrf_exempt
+def hub_config(request):
+    """
+    GET /api/v1/widget/hub/?token=<web-widget-uuid>
+    Public — no auth. Returns all enabled channels for the org so hub-widget.js
+    can render the channel selector in one request.
+    """
+    if request.method == "OPTIONS":
+        return _widget_cors_headers(JsonResponse({}), request)
+
+    token = request.GET.get("token")
+    if not token:
+        return _widget_cors_headers(JsonResponse({"error": "token required"}, status=400), request)
+
+    try:
+        from .models import WebWidget
+        web = WebWidget.objects.select_related("organization").get(
+            token=token, is_active=True
+        )
+    except (WebWidget.DoesNotExist, Exception):
+        return _widget_cors_headers(JsonResponse({"error": "widget not found"}, status=404), request)
+
+    org = web.organization
+    cfg = web.config or {}
+    color = cfg.get("color", "#EA580C")
+
+    channels = []
+
+    # ── Voice AI ──────────────────────────────────────────────────────────────
+    try:
+        from .models import VoiceWidget
+        voice = VoiceWidget.objects.get(organization=org, is_active=True)
+        org_settings    = org.settings or {}
+        vapi_public_key = org_settings.get("vapi_public_key", "")
+        vcfg            = voice.config or {}
+        channels.append({
+            "type":             "voice",
+            "label":            "Hablar con IA",
+            "subtitle":         vcfg.get("agent_name", "Asistente") + " — atención inmediata",
+            "agent_name":       vcfg.get("agent_name", "Asistente"),
+            "color":            vcfg.get("color", color),
+            "assistant_id":     voice.vapi_assistant_id or "",
+            "vapi_public_key":  vapi_public_key,
+            "greeting":         vcfg.get("greeting", ""),
+        })
+    except Exception:
+        pass  # Voice widget not configured — skip channel
+
+    # ── Form ─────────────────────────────────────────────────────────────────
+    if web.mode in ("form", "both"):
+        channels.append({
+            "type":             "form",
+            "label":            cfg.get("title", "Envíanos un mensaje"),
+            "subtitle":         cfg.get("subtitle", "Te respondemos pronto"),
+            "button_text":      cfg.get("button_text", "Enviar mensaje"),
+            "success_message":  cfg.get("success_message", "¡Gracias! Nos contactamos pronto."),
+            "contact_reasons":  cfg.get("contact_reasons", []),
+        })
+
+    # ── WhatsApp ──────────────────────────────────────────────────────────────
+    wa_number = cfg.get("whatsapp_number", "")
+    if web.mode in ("whatsapp", "both") and wa_number:
+        channels.append({
+            "type":     "whatsapp",
+            "label":    "WhatsApp",
+            "subtitle": "Respuesta inmediata",
+            "number":   wa_number.replace(" ", ""),
+            "message":  cfg.get("whatsapp_message", "Hola, me gustaría más información"),
+        })
+
+    r = JsonResponse({
+        "color":    color,
+        "token":    str(web.token),
+        "org_name": org.name,
+        "channels": channels,
+    })
+    return _widget_cors_headers(r, request)

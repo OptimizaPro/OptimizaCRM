@@ -33,7 +33,8 @@ function SnippetBox({ token }: { token: string }) {
   const origin = typeof window !== "undefined" ? window.location.origin : "https://yourdomain.com";
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-  const snippet = `<script\n  src="${origin}/widget.js"\n  data-token="${token}"\n  data-api="${apiUrl}"\n  async\n></script>`;
+  // hub-widget.js unifies all channels (form, WhatsApp, Voice AI) in one FAB
+  const snippet = `<script\n  src="${origin}/hub-widget.js"\n  data-token="${token}"\n  data-api="${apiUrl}"\n  async\n></script>`;
 
   const copy = () => {
     navigator.clipboard.writeText(snippet).then(() => {
@@ -126,7 +127,7 @@ export function WebWidgetPanel() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Code2 className="h-4 w-4 text-orange-500" />
-            <CardTitle className="text-base">Widget Web embebible</CardTitle>
+            <CardTitle className="text-base">Hub de Contacto</CardTitle>
           </div>
           {widget && (
             <div className="flex items-center gap-3">
@@ -149,7 +150,7 @@ export function WebWidgetPanel() {
           )}
         </div>
         <p className="text-xs text-slate-400 mt-1">
-          Añade un widget flotante a tu web o la de tus clientes. Captura leads directamente en el CRM.
+          Un solo botón flotante que agrupa todos los canales activos: formulario, WhatsApp y Agente de Voz IA.
         </p>
       </CardHeader>
 
@@ -292,9 +293,9 @@ export function WebWidgetPanel() {
         {widget && (
           <div className="space-y-2 border-t border-slate-800 pt-5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-slate-400">Código para embeber en tu web</p>
+              <p className="text-xs font-medium text-slate-400">Código para embeber el Hub de Contacto</p>
               <a
-                href={`/widget-preview?token=${widget.token}`}
+                href={`/hub-preview?token=${widget.token}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300"
@@ -304,7 +305,7 @@ export function WebWidgetPanel() {
             </div>
             <SnippetBox token={widget.token} />
             <p className="text-[11px] text-slate-500">
-              Pega este script antes del cierre de <code className="text-slate-400">&lt;/body&gt;</code> en tu web. El widget se carga de forma asíncrona sin afectar el rendimiento.
+              Pega este script antes del cierre de <code className="text-slate-400">&lt;/body&gt;</code>. Muestra automáticamente todos los canales activos: WhatsApp, formulario y Agente de Voz IA.
             </p>
 
             {/* Publish on OptimizaCRM.com */}

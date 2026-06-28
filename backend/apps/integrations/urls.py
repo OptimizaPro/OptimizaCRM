@@ -5,7 +5,7 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import IntegrationViewSet, MessageViewSet, widget_config, widget_submit, widget_manage
+from .views import IntegrationViewSet, MessageViewSet, widget_config, widget_submit, widget_manage, hub_config
 from .voice_views import (
     voice_widget_config,
     voice_widget_manage,
@@ -28,6 +28,7 @@ urlpatterns = [
     path("widget/config/",  widget_config,  name="widget-config"),
     path("widget/submit/",  widget_submit,  name="widget-submit"),
     path("widget/manage/",  widget_manage,  name="widget-manage"),
+    path("widget/hub/",     hub_config,     name="widget-hub"),
 
     # ── Voice AI Widget — public config ───────────────────────────────────────
     path("voice-widget/config/",  voice_widget_config,  name="voice-widget-config"),
