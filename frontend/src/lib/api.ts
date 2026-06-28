@@ -752,8 +752,13 @@ export const voiceWidgetApi = {
   get: (token: string, orgId: string) =>
     api.get<{ widget: VoiceWidget | null }>("/voice-widget/manage/", { token, orgId }),
 
-  save: (token: string, orgId: string, data: Partial<VoiceWidget & { knowledge_base: Partial<VoiceKnowledgeBase> }>) =>
-    api.post<{ widget: VoiceWidget }>("/voice-widget/manage/", data, { token, orgId }),
+  save: (token: string, orgId: string, data: {
+    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config">>;
+    knowledge_base?: Partial<VoiceKnowledgeBase>;
+    vapi_private_key?: string;
+    vapi_public_key?: string;
+  }) =>
+    api.post<{ widget: VoiceWidget; vapi_warning?: string }>("/voice-widget/manage/", data, { token, orgId }),
 
   scrapeUrl: (token: string, orgId: string, url: string) =>
     api.post<{ knowledge_base: VoiceKnowledgeBase; char_count: number; source_url: string }>(

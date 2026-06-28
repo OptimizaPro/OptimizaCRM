@@ -196,11 +196,25 @@ def voice_widget_manage(request):
         except (json.JSONDecodeError, Exception):
             return JsonResponse({"error": "invalid JSON"}, status=400)
 
+        # ── Save Vapi keys to org.settings ───────────────────────────────────
+        vapi_private_key_in = (body.get("vapi_private_key") or "").strip()
+        vapi_public_key_in  = (body.get("vapi_public_key")  or "").strip()
+        if vapi_private_key_in or vapi_public_key_in:
+            org_settings = org.settings or {}
+            if vapi_private_key_in:
+                org_settings["vapi_private_key"] = vapi_private_key_in
+            if vapi_public_key_in:
+                org_settings["vapi_public_key"] = vapi_public_key_in
+            org.settings = org_settings
+            org.save(update_fields=["settings"])
+
         # Get or create widget
         widget, _ = VoiceWidget.objects.get_or_create(organization=org)
 
-        # Update widget fields
-        widget_data = body.get("widget", {})
+        # Update widget fields — support both nested {"widget":{...}} and flat body
+        widget_data = body.get("widget") or {
+            k: body[k] for k in ("llm_model", "is_active", "config") if k in body
+        }
         if "llm_model" in widget_data:
             widget.llm_model = widget_data["llm_model"]
         if "is_active" in widget_data:
@@ -229,7 +243,8 @@ def voice_widget_manage(request):
         else:
             kb = widget.knowledge_base
 
-        # Push to Vapi if keys are available
+        # Push to Vapi — use freshly saved org.settings
+        org.refresh_from_db(fields=["settings"])
         org_settings     = org.settings or {}
         vapi_private_key = org_settings.get("vapi_private_key", "")
         vapi_error       = None

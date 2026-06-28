@@ -197,18 +197,23 @@ export function VoiceWidgetPanel() {
   const saveMutation = useMutation({
     mutationFn: () =>
       voiceWidgetApi.save(auth.token, auth.orgId, {
-        ...merged,
+        widget: {
+          llm_model: merged.llm_model,
+          is_active: merged.is_active,
+          config:    merged.config,
+        },
         knowledge_base: mergedKb,
-        ...(vapiPrivateKey ? { vapi_private_key: vapiPrivateKey } as Record<string, unknown> : {}),
-        ...(vapiPublicKey  ? { vapi_public_key:  vapiPublicKey  } as Record<string, unknown> : {}),
-      }),
-    onSuccess: () => {
+        ...(vapiPrivateKey ? { vapi_private_key: vapiPrivateKey } : {}),
+        ...(vapiPublicKey  ? { vapi_public_key:  vapiPublicKey  } : {}),
+      } as Parameters<typeof voiceWidgetApi.save>[2]),
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["voice-widget"] });
       setForm({});
       setKbForm({});
       setDirty(false);
-      setSaveMsg("Asistente actualizado en Vapi");
-      setTimeout(() => setSaveMsg(""), 4000);
+      const warning = (data as Record<string, unknown>).vapi_warning as string | undefined;
+      setSaveMsg(warning ? `Guardado. Error Vapi: ${warning}` : "Asistente sincronizado con Vapi ✓");
+      setTimeout(() => setSaveMsg(""), 8000);
     },
   });
 
@@ -705,7 +710,10 @@ export function VoiceWidgetPanel() {
               : widget ? "Guardar cambios" : "Crear asistente"}
           </Button>
           {saveMsg && (
-            <span className="flex items-center gap-1.5 text-xs text-green-400">
+            <span className={cn(
+              "flex items-center gap-1.5 text-xs",
+              saveMsg.startsWith("Guardado. Error") ? "text-amber-400" : "text-green-400"
+            )}>
               <Check className="h-3.5 w-3.5" /> {saveMsg}
             </span>
           )}
