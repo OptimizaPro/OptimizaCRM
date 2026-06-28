@@ -106,6 +106,7 @@ export function PublicFooter() {
               <li><Link href="/precios"         className="hover:text-orange-400 transition-colors">Precios</Link></li>
               <li><Link href="/nosotros"        className="hover:text-orange-400 transition-colors">Nosotros</Link></li>
               <li><Link href="/contacto"        className="hover:text-orange-400 transition-colors">Contacto</Link></li>
+              <li><Link href="/servicios/implementacion"    className="hover:text-orange-400 transition-colors">Implementación CRM</Link></li>
               <li><Link href="/servicios/whatsapp-business" className="hover:text-orange-400 transition-colors">Setup WhatsApp Business</Link></li>
             </ul>
           </div>

@@ -26,6 +26,48 @@
   background-color: #020617 !important;
 }
 
+/* Logo — centrado y más grande */
+[data-icon="logo"] img,
+a[href="/"] img,
+nav img[src*="logo"],
+.sidebar img,
+aside img {
+  width: 100% !important;
+  max-width: 180px !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+/* Contenedor del logo en Unfold */
+[class*="sidebar"] a[href="/"],
+[class*="sidebar"] > div > a:first-child {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 1rem !important;
+  width: 100% !important;
+}
+
+/* Logo img directo en Unfold (generado por SITE_LOGO) */
+[class*="sidebar"] img[src*="logo"] {
+  width: 100% !important;
+  max-width: 180px !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+
+/* Fallback amplio — cualquier img en la cabecera del sidebar */
+nav > div:first-child img,
+aside > div:first-child img,
+nav > a:first-child img {
+  width: 160px !important;
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
 /* ── Topbar / Header ────────────────────────────────────────────────────────── */
 
 [class*="dark:bg-base-900"][class*="border-b"],

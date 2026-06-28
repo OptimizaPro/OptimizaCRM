@@ -304,6 +304,125 @@ SECTIONS = [
             },
         ],
     },
+    {
+        "key":   "servicios_whatsapp",
+        "label": "Setup WhatsApp",
+        "desc":  "Landing page /servicios/whatsapp-business",
+        "icon":  "chat",
+        "groups": [
+            {
+                "label": "HERO",
+                "cols":  2,
+                "fields": [
+                    {"key": "badge",              "label": "Badge",                 "hint": "", "type": "text",     "col": 1},
+                    {"key": "headline",           "label": "Titular H1",            "hint": "", "type": "text",     "col": 1},
+                    {"key": "headline_highlight", "label": "Titular — parte naranja","hint": "", "type": "text",    "col": 1},
+                    {"key": "subheadline",        "label": "Subtítulo",             "hint": "", "type": "textarea", "col": 2},
+                    {"key": "trust_strip",        "label": "Señales de confianza",  "hint": 'Array JSON — [{icon, text}]', "type": "json", "col": 2},
+                ],
+            },
+            {
+                "label": "TARJETA DE PRECIO",
+                "cols":  2,
+                "fields": [
+                    {"key": "price_card", "label": "Tarjeta de precio", "hint": 'Objeto JSON — {label, price, bullets[], cta_label, footer_text, footer_href, footer_label}', "type": "json", "col": 2},
+                ],
+            },
+            {
+                "label": "QUÉ INCLUYE",
+                "cols":  1,
+                "fields": [
+                    {"key": "includes", "label": "Servicios incluidos", "hint": 'Array JSON — [{icon, title, desc}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "PARA QUIÉN ES",
+                "cols":  1,
+                "fields": [
+                    {"key": "for_whom", "label": "Sección «Para quién»", "hint": 'Objeto JSON — {headline, headline_highlight, items[], guarantee_title, guarantee_text, guarantee_note}', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "PREGUNTAS FRECUENTES",
+                "cols":  1,
+                "fields": [
+                    {"key": "faqs", "label": "FAQs", "hint": 'Array JSON — [{q, a}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "CTA FINAL",
+                "cols":  2,
+                "fields": [
+                    {"key": "cta", "label": "Banner CTA", "hint": 'Objeto JSON — {headline, subheadline, secondary_label, secondary_href}', "type": "json", "col": 2},
+                ],
+            },
+        ],
+    },
+    {
+        "key":   "servicios_implementacion",
+        "label": "Implementación CRM",
+        "desc":  "Landing page /servicios/implementacion",
+        "icon":  "rocket_launch",
+        "groups": [
+            {
+                "label": "HERO",
+                "cols":  2,
+                "fields": [
+                    {"key": "badge",              "label": "Badge",                  "hint": "", "type": "text",     "col": 1},
+                    {"key": "headline",           "label": "Titular H1",             "hint": "", "type": "text",     "col": 2},
+                    {"key": "headline_highlight", "label": "Titular — parte naranja","hint": "", "type": "text",     "col": 2},
+                    {"key": "subheadline",        "label": "Subtítulo",              "hint": "", "type": "textarea", "col": 2},
+                    {"key": "cta_primary",        "label": "CTA principal — texto",  "hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_primary_href",   "label": "CTA principal — enlace", "hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_secondary",      "label": "CTA secundario — texto", "hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_secondary_href", "label": "CTA secundario — enlace","hint": "", "type": "text",     "col": 1},
+                ],
+            },
+            {
+                "label": "POR QUÉ IMPORTA",
+                "cols":  1,
+                "fields": [
+                    {"key": "why_cards", "label": "Tarjetas de argumento", "hint": 'Array JSON — [{icon, title, desc}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "PLANES",
+                "cols":  1,
+                "fields": [
+                    {"key": "tiers",       "label": "Planes / tiers",      "hint": 'Array JSON — [{key, name, tagline, price, days, popular, cta, features[{text, highlight}]}]', "type": "json", "col": 1},
+                    {"key": "trust_strip", "label": "Strip de confianza",  "hint": 'Array JSON — [{icon, text}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "TABLA COMPARATIVA",
+                "cols":  1,
+                "fields": [
+                    {"key": "comparison", "label": "Filas de comparación", "hint": 'Array JSON — [{item, arranque, impulso, escala}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "CÓMO FUNCIONA",
+                "cols":  1,
+                "fields": [
+                    {"key": "steps", "label": "Pasos del proceso", "hint": 'Array JSON — [{icon, title, desc}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "PREGUNTAS FRECUENTES",
+                "cols":  1,
+                "fields": [
+                    {"key": "faqs", "label": "FAQs", "hint": 'Array JSON — [{q, a}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "CTA FINAL",
+                "cols":  2,
+                "fields": [
+                    {"key": "cta", "label": "Banner CTA", "hint": 'Objeto JSON — {headline, subheadline, primary_label, primary_href, secondary_label, secondary_href}', "type": "json", "col": 2},
+                ],
+            },
+        ],
+    },
 ]
 
 SECTION_MAP = {s["key"]: s for s in SECTIONS}

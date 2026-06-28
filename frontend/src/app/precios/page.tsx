@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   CheckCircle, XCircle, ArrowRight, Zap, Shield,
   Users, Brain, MessageCircle, BarChart3,
-  UserPlus, GraduationCap, Workflow, Plug, LucideIcon, MapPin,
+  UserPlus, GraduationCap, Workflow, Plug, LucideIcon, MapPin, Target,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,6 +56,15 @@ const ADDON_ICONS: Record<string, LucideIcon> = {
   "brain":          Brain,
   "bar-chart-3":    BarChart3,
   "plug":           Plug,
+  "target":         Target,
+};
+
+// ─── Users per plan (matches comparison table) ────────────────────────────────
+
+const PLAN_USERS: Record<string, number> = {
+  basico:  2,
+  pro:     6,
+  equipo:  12,
 };
 
 // ─── UI helpers derivados del modelo ─────────────────────────────────────────
@@ -97,8 +106,8 @@ const COMPARISON: {
 
 const PRICING_FAQS = [
   {
-    q: "¿Por qué cobran por organización y no por usuario?",
-    a: "Porque en LATAM los equipos son pequeños y el precio por usuario escala rápido. Preferimos que pagues un precio fijo por tu empresa, sin importar cuántas personas se sumen dentro del límite de tu plan.",
+    q: "¿Cómo funciona el precio por usuario?",
+    a: "Cada plan tiene un precio por usuario al mes y un tamaño de equipo incluido. Por ejemplo, si el plan cuesta $19.50/usuario e incluye 2 usuarios, el total mensual es $39. Así puedes comparar directamente con cualquier otro CRM del mercado.",
   },
   {
     q: "¿Qué pasa al terminar los 14 días de prueba?",
@@ -110,7 +119,7 @@ const PRICING_FAQS = [
   },
   {
     q: "¿Qué ocurre si necesito más usuarios de los incluidos en mi plan?",
-    a: "Puedes subir al siguiente plan o contactarnos para una oferta Enterprise con el número de usuarios que necesites. No vendemos usuarios adicionales de forma suelta.",
+    a: "Sube al siguiente plan y obtienes más usuarios al mismo precio por persona. Si tu equipo supera el plan Equipo, contáctanos para una oferta Enterprise con el número exacto que necesites.",
   },
   {
     q: "¿Aceptan pago en moneda local?",
@@ -162,9 +171,11 @@ export default function PricingPage() {
   const [loading, setLoading]       = useState(true);
   const [addonLoading, setAddonLoading] = useState<string | null>(null);
   const [cms, setCms]         = useState({
-    badge:       "Sin permanencia · Cancela cuando quieras",
-    headline:    "Precios pensados para LATAM",
-    subheadline: "Gestiona leads, automatiza seguimientos y cierra más negocios. Precio fijo por organización, con IA integrable y 14 días de prueba gratis.",
+    badge:                    "Sin permanencia · Cancela cuando quieras",
+    headline:                 "Precios pensados para LATAM",
+    headline_highlight:       "LATAM",
+    headline_highlight_color: "orange",
+    subheadline:              "Gestiona leads, automatiza seguimientos y cierra más negocios. Precio claro por usuario, facturado por equipo, con IA integrable y 14 días de prueba gratis.",
   });
 
   useEffect(() => {
@@ -229,7 +240,20 @@ export default function PricingPage() {
               {cms.badge}
             </div>
             <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl">
-              {cms.headline}
+              {cms.headline_highlight && cms.headline.includes(cms.headline_highlight)
+                ? <>
+                    {cms.headline.split(cms.headline_highlight)[0]}
+                    <span className={
+                      cms.headline_highlight_color === "orange" ? "text-orange-500" :
+                      cms.headline_highlight_color === "green"  ? "text-green-400"  :
+                      cms.headline_highlight_color === "white"  ? "text-white"      :
+                      ""
+                    }>
+                      {cms.headline_highlight}
+                    </span>
+                    {cms.headline.split(cms.headline_highlight)[1]}
+                  </>
+                : cms.headline}
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-400">
               {cms.subheadline}
@@ -301,18 +325,34 @@ export default function PricingPage() {
                         <h2 className="text-lg font-bold text-white">{plan.name}</h2>
                         <p className="mt-1 text-sm text-slate-400">{plan.tagline}</p>
 
-                        <div className="mt-6 flex items-end gap-1.5">
-                          <span className="text-5xl font-black text-white">
-                            ${annual && annual_ > 0 ? annual_.toFixed(0) : monthly.toFixed(0)}
-                          </span>
-                          <div className="mb-1.5 leading-tight">
-                            <p className="text-xs text-slate-500">/mes por organización</p>
-                            {annual && saving > 0 && (
-                              <p className="text-[11px] font-medium text-green-400">Ahorras ${saving}/año</p>
-                            )}
-                          </div>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-500">+ impuestos según aplique</p>
+                        {(() => {
+                          const pricePerUser = annual && annual_ > 0 ? annual_ : monthly;
+                          const users        = PLAN_USERS[plan.slug] ?? 1;
+                          const total        = (pricePerUser * users).toFixed(2).replace(/\.00$/, "");
+                          const billing      = annual && annual_ > 0 ? "facturación anual" : "facturación mensual";
+                          return (
+                            <>
+                              <div className="mt-6 flex items-end gap-1.5">
+                                <span className="text-5xl font-black text-white">
+                                  ${pricePerUser % 1 === 0 ? pricePerUser.toFixed(0) : pricePerUser.toFixed(2)}
+                                </span>
+                                <div className="mb-1.5 leading-tight">
+                                  <p className="text-xs text-slate-500">/usuario/mes</p>
+                                </div>
+                              </div>
+                              <p className="mt-1 text-sm text-slate-400">
+                                {users} usuario{users !== 1 ? "s" : ""} incluido{users !== 1 ? "s" : ""}
+                              </p>
+                              <p className="mt-0.5 text-xs font-bold text-orange-400">
+                                ${pricePerUser % 1 === 0 ? pricePerUser.toFixed(0) : pricePerUser.toFixed(2)} × {users} usuarios = ${total} · {billing}
+                              </p>
+                              <p className="mt-0.5 text-xs text-slate-500">+ impuestos según aplique</p>
+                              {annual && saving > 0 && (
+                                <p className="mt-1 text-[11px] font-medium text-green-400">Ahorras ${saving}/año</p>
+                              )}
+                            </>
+                          );
+                        })()}
 
                         {plan.has_trial && plan.trial_days > 0 && (
                           <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-green-800/50 bg-green-950/40 px-3 py-1">
@@ -411,7 +451,7 @@ export default function PricingPage() {
               {[
                 { icon: Shield,        text: "Sin tarjeta de crédito" },
                 { icon: Zap,           text: "14 días de prueba" },
-                { icon: Users,         text: "Precio por organización" },
+                { icon: Users,         text: "Precio por usuario" },
                 { icon: MessageCircle, text: "Soporte en español" },
               ].map(({ icon: Icon, text }) => (
                 <div key={text} className="flex flex-col items-center gap-2">
@@ -568,22 +608,22 @@ export default function PricingPage() {
               <div>
                 <p className="text-sm font-semibold uppercase tracking-widest text-orange-500">Nuestra filosofía</p>
                 <h2 className="mt-4 text-4xl font-black tracking-tight text-white sm:text-5xl">
-                  Precio plano.<br />
-                  <span className="text-orange-500">Sin sorpresas al crecer.</span>
+                  Precio claro.<br />
+                  <span className="text-orange-500">Sin letra pequeña.</span>
                 </h2>
                 <p className="mt-5 text-lg leading-relaxed text-slate-400">
-                  Elige el plan que se ajusta al tamaño de tu equipo y paga siempre lo mismo.
-                  Todos los usuarios incluidos en tu plan acceden sin costo extra por asiento.
+                  Sabes exactamente lo que cuesta cada usuario de tu equipo. Sin tarifas ocultas,
+                  sin cargos sorpresa y sin que el precio cambie a mitad de camino.
                 </p>
                 <p className="mt-4 text-lg leading-relaxed text-slate-400">
-                  Tu precio no cambia si alguien nuevo se une al equipo. Es fijo hasta que tú
-                  decidas cambiar de plan — sin presiones, cuando lo necesites.
+                  Cada plan incluye un equipo de usuarios a ese precio por persona.
+                  Cuando necesites más, subes de plan — y sabes de antemano cuánto vas a pagar.
                 </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {[
-                  { icon: Users,     title: "Sin cobro por asiento",   desc: "Dentro de tu plan, todos los usuarios están incluidos. Nadie paga extra por sumarse." },
+                  { icon: Users,     title: "Precio por usuario",       desc: "Comparas manzanas con manzanas. Cada plan muestra el coste real por persona en tu equipo." },
                   { icon: Brain,     title: "IA a tu medida",           desc: "Conecta tu propia clave de IA y activa el lead scoring y las automatizaciones inteligentes." },
                   { icon: BarChart3, title: "Factura predecible",       desc: "Sabes exactamente lo que pagas cada mes. Sin cargos variables ni sorpresas." },
                   { icon: Shield,    title: "Sin permanencia",          desc: "Cancela cuando quieras. El plan anual se factura anticipado pero con garantía de devolución." },
@@ -619,6 +659,52 @@ export default function PricingPage() {
                 Escríbenos directamente
               </Link>
             </p>
+          </div>
+        </section>
+
+        {/* ── CTA implementación ───────────────────────────────────────── */}
+        <section className="px-6 py-16 sm:px-12 lg:px-20">
+          <div className="mx-auto max-w-4xl">
+            <div className="relative overflow-hidden rounded-2xl border border-orange-700/40 bg-gradient-to-br from-orange-950/60 via-slate-900 to-slate-900 px-8 py-10 shadow-xl shadow-orange-900/10">
+              {/* Glow decorativo */}
+              <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-orange-600/10 blur-3xl" />
+
+              <div className="relative flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
+                {/* Icono */}
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-orange-600/15 text-orange-400 ring-1 ring-orange-700/40">
+                  <Zap className="h-7 w-7" />
+                </div>
+
+                <div className="flex-1">
+                  {/* Badge */}
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-700/50 bg-orange-950/60 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-orange-400">
+                    Servicio de implementación
+                  </span>
+                  <h3 className="mt-3 text-2xl font-black text-white">
+                    ¿Quieres que lo configuremos nosotros?
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                    Nuestro equipo implementa OptimizaCRM a medida de tu negocio — pipelines,
+                    integraciones, automatizaciones y capacitación incluida.
+                    Tu equipo operativo en días, no semanas.
+                  </p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs text-slate-500 sm:justify-start">
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> Pago único, sin permanencia</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> Garantía de entrega</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> Soporte en español</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-shrink-0 flex-col items-center gap-2 sm:items-end">
+                  <Link href="/servicios/implementacion">
+                    <Button size="lg" className="gap-2 bg-orange-600 hover:bg-orange-500 text-white font-bold whitespace-nowrap shadow-lg shadow-orange-900/30">
+                      Ver planes <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-slate-500">Desde <span className="font-semibold text-slate-300">$499</span> · pago único</p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 

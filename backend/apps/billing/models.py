@@ -82,6 +82,7 @@ class AddOn(models.Model):
         ("brain",          "Inteligencia artificial"),
         ("bar-chart-3",    "Analítica"),
         ("plug",           "Integraciones"),
+        ("target",         "Estrategia / ventas"),
     ]
 
     name        = models.CharField(max_length=100, verbose_name="Nombre del complemento")

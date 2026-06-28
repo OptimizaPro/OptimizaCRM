@@ -11,6 +11,7 @@ import {
   FileText, DollarSign, Zap, Settings2,
   ExternalLink, Upload, X, ImageIcon,
   Users, Mail, Shield, ScrollText, Plus, GripVertical,
+  MessageCircle, Rocket,
 } from "lucide-react";
 
 // ─── Default content (mirrors backend apps/content/models.py DEFAULT_CONTENT) ──
@@ -40,9 +41,11 @@ const DEFAULT_CONTENT = {
     cta_section_button:   "Comenzar Gratis",
   },
   pricing: {
-    badge:       "Sin permanencia · Cancela cuando quieras",
-    headline:    "Precios pensados para LATAM",
-    subheadline: "Gestiona leads, automatiza seguimientos y cierra más negocios. Precio fijo por organización, con IA integrable y 14 días de prueba gratis.",
+    badge:                    "Sin permanencia · Cancela cuando quieras",
+    headline:                 "Precios pensados para LATAM",
+    headline_highlight:       "LATAM",
+    headline_highlight_color: "orange",
+    subheadline:              "Gestiona leads, automatiza seguimientos y cierra más negocios. Precio fijo por organización, con IA integrable y 14 días de prueba gratis.",
   },
   features_page: {
     headline:    "Funcionalidades potentes para equipos de ventas modernos",
@@ -160,6 +163,31 @@ const DEFAULT_CONTENT = {
     legal_email: "legal@optimizacrm.com",
   },
 
+  servicios_whatsapp: {
+    hero: {
+      badge: "Servicio de configuración profesional",
+      headline: "WhatsApp Business API",
+      headline_highlight: "sin complicaciones",
+      subheadline: "La configuración de Meta Business Suite puede ser engorrosa — verificaciones, documentos, tokens, webhooks... Nosotros lo hacemos por ti. Tu empresa lista en **48–72 horas**.",
+    },
+    price_card: { price: 199 },
+    includes: [],
+    for_whom: {},
+    faqs: [],
+    cta: {},
+  },
+  servicios_implementacion: {
+    hero: {
+      badge: "Servicios de implementación",
+      headline: "La diferencia entre instalar un CRM y",
+      headline_highlight: "adoptarlo de verdad.",
+    },
+    tiers: [],
+    steps: [],
+    comparison: [],
+    faqs: [],
+    cta: {},
+  },
   terminos: {
     headline:     "Términos y Condiciones",
     last_updated: "23 de junio de 2026",
@@ -206,7 +234,9 @@ type SectionKey =
   | "contacto"
   | "privacidad"
   | "terminos"
-  | "general";
+  | "general"
+  | "servicios_whatsapp"
+  | "servicios_implementacion";
 
 interface SectionMeta {
   key: SectionKey;
@@ -263,6 +293,18 @@ const SECTIONS: SectionMeta[] = [
     label: "General",
     description: "Logo, datos del sitio y redes",
     icon: Settings2,
+  },
+  {
+    key: "servicios_whatsapp",
+    label: "Setup WhatsApp",
+    description: "Landing /servicios/whatsapp-business",
+    icon: MessageCircle,
+  },
+  {
+    key: "servicios_implementacion",
+    label: "Implementación CRM",
+    description: "Landing /servicios/implementacion",
+    icon: Rocket,
   },
 ];
 
@@ -505,16 +547,53 @@ function HeroEditor({ data, onChange }: { data: Record<string, unknown>; onChang
   );
 }
 
+const HIGHLIGHT_COLOR_OPTIONS = [
+  { value: "orange", label: "Naranja (branding)", preview: "text-orange-500" },
+  { value: "green",  label: "Verde",              preview: "text-green-400"  },
+  { value: "white",  label: "Blanco",             preview: "text-white"      },
+  { value: "none",   label: "Sin color (hereda)", preview: "text-slate-300"  },
+];
+
 function PricingEditor({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
   const set = (key: string, val: unknown) => onChange({ ...data, [key]: val });
+  const selectedColor = String(data.headline_highlight_color ?? "orange");
+  const previewClass = HIGHLIGHT_COLOR_OPTIONS.find((o) => o.value === selectedColor)?.preview ?? "text-orange-500";
   return (
     <div className="space-y-5">
       <Field label="Badge" hint="Texto pequeño sobre el titular — ej. «Sin permanencia · Cancela cuando quieras»">
         <TextInput value={String(data.badge ?? "")} onChange={(v) => set("badge", v)} placeholder="Sin permanencia · Cancela cuando quieras" />
       </Field>
-      <Field label="Título de la página">
+      <Field label="Título de la página" hint="Incluye la palabra o frase que quieres destacar en color">
         <TextInput value={String(data.headline ?? "")} onChange={(v) => set("headline", v)} />
       </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Palabra destacada en el título" hint="Texto exacto dentro del titular que se coloreará">
+          <TextInput
+            value={String(data.headline_highlight ?? "")}
+            onChange={(v) => set("headline_highlight", v)}
+            placeholder="LATAM"
+          />
+        </Field>
+        <Field label="Color del destaque">
+          <select
+            value={selectedColor}
+            onChange={(e) => set("headline_highlight_color", e.target.value)}
+            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none"
+          >
+            {HIGHLIGHT_COLOR_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          {data.headline_highlight && (
+            <p className="mt-1.5 text-xs text-slate-500">
+              Vista previa:{" "}
+              <span className={previewClass + " font-semibold"}>
+                {String(data.headline_highlight)}
+              </span>
+            </p>
+          )}
+        </Field>
+      </div>
       <Field label="Subtítulo">
         <TextArea value={String(data.subheadline ?? "")} onChange={(v) => set("subheadline", v)} />
       </Field>
@@ -880,15 +959,149 @@ function GeneralEditor({ data, onChange }: { data: Record<string, unknown>; onCh
   );
 }
 
+function ServiciosWhatsappEditor({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const hero    = (data.hero    as Record<string, unknown>) ?? {};
+  const pc      = (data.price_card as Record<string, unknown>) ?? {};
+  const forWhom = (data.for_whom as Record<string, unknown>) ?? {};
+  const cta     = (data.cta     as Record<string, unknown>) ?? {};
+
+  const setHero    = (k: string, v: unknown) => onChange({ ...data, hero:       { ...hero,    [k]: v } });
+  const setPc      = (k: string, v: unknown) => onChange({ ...data, price_card: { ...pc,      [k]: v } });
+  const setForWhom = (k: string, v: unknown) => onChange({ ...data, for_whom:   { ...forWhom, [k]: v } });
+  const setCta     = (k: string, v: unknown) => onChange({ ...data, cta:        { ...cta,     [k]: v } });
+
+  return (
+    <div className="space-y-5">
+      <Divider label="Hero" />
+      <Field label="Badge"><TextInput value={String(hero.badge ?? "")} onChange={(v) => setHero("badge", v)} /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Titular H1"><TextInput value={String(hero.headline ?? "")} onChange={(v) => setHero("headline", v)} /></Field>
+        <Field label="Titular — parte verde (highlight)"><TextInput value={String(hero.headline_highlight ?? "")} onChange={(v) => setHero("headline_highlight", v)} /></Field>
+      </div>
+      <Field label="Subtítulo" hint="Usa **texto** para negritas"><TextArea value={String(hero.subheadline ?? "")} onChange={(v) => setHero("subheadline", v)} /></Field>
+      <Field label="Señales de confianza (trust strip)" hint='Array JSON — [{icon, text}]'>
+        <JsonArea value={(hero.trust_strip ?? [])} onChange={(v) => setHero("trust_strip", v)} />
+      </Field>
+
+      <Divider label="Tarjeta de precio" />
+      <Field label="Precio (USD)" hint="Solo el número — ej. 199">
+        <TextInput value={String(pc.price ?? "")} onChange={(v) => setPc("price", Number(v) || v)} placeholder="199" />
+      </Field>
+      <Field label="Etiqueta del precio"><TextInput value={String(pc.label ?? "")} onChange={(v) => setPc("label", v)} placeholder="Precio del servicio" /></Field>
+      <Field label="Ítems incluidos en la tarjeta" hint='Array JSON de strings — ej. ["Setup completo de Meta Business Suite"]'>
+        <JsonArea value={(pc.bullets ?? [])} onChange={(v) => setPc("bullets", v)} />
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Texto del botón de compra"><TextInput value={String(pc.cta_label ?? "")} onChange={(v) => setPc("cta_label", v)} placeholder="Contratar ahora" /></Field>
+        <Field label="Texto cargando"><TextInput value={String(pc.cta_loading ?? "")} onChange={(v) => setPc("cta_loading", v)} placeholder="Redirigiendo…" /></Field>
+      </div>
+
+      <Divider label="Qué incluye" />
+      <Field label="Servicios incluidos" hint='Array JSON — [{icon, title, desc}] — iconos: Shield, Phone, Key, Webhook, TestTube, FileText'>
+        <JsonArea value={(data.includes ?? [])} onChange={(v) => onChange({ ...data, includes: v })} />
+      </Field>
+
+      <Divider label="Para quién es" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Titular"><TextInput value={String(forWhom.headline ?? "")} onChange={(v) => setForWhom("headline", v)} /></Field>
+        <Field label="Titular — highlight verde"><TextInput value={String(forWhom.headline_highlight ?? "")} onChange={(v) => setForWhom("headline_highlight", v)} /></Field>
+      </div>
+      <Field label="Lista de destinatarios" hint='Array JSON de strings'>
+        <JsonArea value={(forWhom.items ?? [])} onChange={(v) => setForWhom("items", v)} />
+      </Field>
+      <Field label="Título de la garantía"><TextInput value={String(forWhom.guarantee_title ?? "")} onChange={(v) => setForWhom("guarantee_title", v)} /></Field>
+      <Field label="Texto de garantía"><TextArea value={String(forWhom.guarantee_text ?? "")} onChange={(v) => setForWhom("guarantee_text", v)} rows={3} /></Field>
+      <Field label="Nota destacada (recuadro verde)"><TextInput value={String(forWhom.guarantee_note ?? "")} onChange={(v) => setForWhom("guarantee_note", v)} /></Field>
+
+      <Divider label="Preguntas frecuentes" />
+      <Field label="FAQs" hint='Array JSON — [{q, a}]'>
+        <JsonArea value={(data.faqs ?? [])} onChange={(v) => onChange({ ...data, faqs: v })} />
+      </Field>
+
+      <Divider label="Banner CTA final" />
+      <Field label="Titular" hint="Usa \n para salto de línea"><TextArea value={String(cta.headline ?? "")} onChange={(v) => setCta("headline", v)} rows={2} /></Field>
+      <Field label="Subtítulo"><TextInput value={String(cta.subheadline ?? "")} onChange={(v) => setCta("subheadline", v)} /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Botón secundario — texto"><TextInput value={String(cta.secondary_label ?? "")} onChange={(v) => setCta("secondary_label", v)} /></Field>
+        <Field label="Botón secundario — enlace"><TextInput value={String(cta.secondary_href ?? "")} onChange={(v) => setCta("secondary_href", v)} /></Field>
+      </div>
+    </div>
+  );
+}
+
+function ServiciosImplementacionEditor({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const hero = (data.hero as Record<string, unknown>) ?? {};
+  const cta  = (data.cta  as Record<string, unknown>) ?? {};
+
+  const setHero = (k: string, v: unknown) => onChange({ ...data, hero: { ...hero, [k]: v } });
+  const setCta  = (k: string, v: unknown) => onChange({ ...data, cta:  { ...cta,  [k]: v } });
+
+  return (
+    <div className="space-y-5">
+      <Divider label="Hero" />
+      <Field label="Badge"><TextInput value={String(hero.badge ?? "")} onChange={(v) => setHero("badge", v)} /></Field>
+      <Field label="Titular H1 — primera línea"><TextInput value={String(hero.headline ?? "")} onChange={(v) => setHero("headline", v)} /></Field>
+      <Field label="Titular — parte naranja (highlight)"><TextInput value={String(hero.headline_highlight ?? "")} onChange={(v) => setHero("headline_highlight", v)} /></Field>
+      <Field label="Subtítulo"><TextArea value={String(hero.subheadline ?? "")} onChange={(v) => setHero("subheadline", v)} rows={3} /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="CTA principal — texto"><TextInput value={String(hero.cta_primary ?? "")} onChange={(v) => setHero("cta_primary", v)} /></Field>
+        <Field label="CTA principal — enlace"><TextInput value={String(hero.cta_primary_href ?? "")} onChange={(v) => setHero("cta_primary_href", v)} /></Field>
+        <Field label="CTA secundario — texto"><TextInput value={String(hero.cta_secondary ?? "")} onChange={(v) => setHero("cta_secondary", v)} /></Field>
+        <Field label="CTA secundario — enlace"><TextInput value={String(hero.cta_secondary_href ?? "")} onChange={(v) => setHero("cta_secondary_href", v)} /></Field>
+      </div>
+
+      <Divider label="Por qué importa" />
+      <Field label="Tarjetas de argumento" hint='Array JSON — [{icon, title, desc}] — iconos: TrendingUp, Clock, Users'>
+        <JsonArea value={(data.why_cards ?? [])} onChange={(v) => onChange({ ...data, why_cards: v })} />
+      </Field>
+
+      <Divider label="Planes (tiers)" />
+      <Field label="Tiers" hint='Array JSON — [{key, name, tagline, price, days, popular, cta, features:[{text, highlight}]}]'>
+        <JsonArea value={(data.tiers ?? [])} onChange={(v) => onChange({ ...data, tiers: v })} />
+      </Field>
+      <Field label="Trust strip" hint='Array JSON — [{icon, text}] — iconos: Shield, MessageCircle, Globe, Zap'>
+        <JsonArea value={(data.trust_strip ?? [])} onChange={(v) => onChange({ ...data, trust_strip: v })} />
+      </Field>
+
+      <Divider label="Tabla comparativa" />
+      <Field label="Filas de comparación" hint='Array JSON — [{item, arranque, impulso, escala}]'>
+        <JsonArea value={(data.comparison ?? [])} onChange={(v) => onChange({ ...data, comparison: v })} />
+      </Field>
+
+      <Divider label="Cómo funciona (pasos)" />
+      <Field label="Pasos" hint='Array JSON — [{icon, title, desc}] — iconos: CalendarCheck, Settings, Rocket, CheckCircle'>
+        <JsonArea value={(data.steps ?? [])} onChange={(v) => onChange({ ...data, steps: v })} />
+      </Field>
+
+      <Divider label="Preguntas frecuentes" />
+      <Field label="FAQs" hint='Array JSON — [{q, a}]'>
+        <JsonArea value={(data.faqs ?? [])} onChange={(v) => onChange({ ...data, faqs: v })} />
+      </Field>
+
+      <Divider label="Banner CTA final" />
+      <Field label="Titular"><TextInput value={String(cta.headline ?? "")} onChange={(v) => setCta("headline", v)} /></Field>
+      <Field label="Subtítulo"><TextInput value={String(cta.subheadline ?? "")} onChange={(v) => setCta("subheadline", v)} /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Botón primario — texto"><TextInput value={String(cta.primary_label ?? "")} onChange={(v) => setCta("primary_label", v)} /></Field>
+        <Field label="Botón primario — enlace"><TextInput value={String(cta.primary_href ?? "")} onChange={(v) => setCta("primary_href", v)} /></Field>
+        <Field label="Botón secundario — texto"><TextInput value={String(cta.secondary_label ?? "")} onChange={(v) => setCta("secondary_label", v)} /></Field>
+        <Field label="Botón secundario — enlace"><TextInput value={String(cta.secondary_href ?? "")} onChange={(v) => setCta("secondary_href", v)} /></Field>
+      </div>
+    </div>
+  );
+}
+
 const EDITORS: Record<SectionKey, React.ComponentType<{ data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }>> = {
-  hero:          HeroEditor,
-  pricing:       PricingEditor,
-  features_page: FeaturesEditor,
-  nosotros:      NosotrosEditor,
-  contacto:      ContactoEditor,
-  privacidad:    PrivacidadEditor,
-  terminos:      TerminosEditor,
-  general:       GeneralEditor,
+  hero:                      HeroEditor,
+  pricing:                   PricingEditor,
+  features_page:             FeaturesEditor,
+  nosotros:                  NosotrosEditor,
+  contacto:                  ContactoEditor,
+  privacidad:                PrivacidadEditor,
+  terminos:                  TerminosEditor,
+  general:                   GeneralEditor,
+  servicios_whatsapp:        ServiciosWhatsappEditor,
+  servicios_implementacion:  ServiciosImplementacionEditor,
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────

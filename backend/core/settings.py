@@ -223,6 +223,7 @@ UNFOLD = {
     "SITE_TITLE":  "OptimizaCRM",
     "SITE_HEADER": "OptimizaCRM",
     "SITE_URL":    "/",
+    "SITE_LOGO":   lambda request: static("logo.png"),
     "SHOW_HISTORY":      True,
     "SHOW_VIEW_ON_SITE": False,
     "THEME":       "dark",   # forzar modo oscuro siempre
