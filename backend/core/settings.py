@@ -15,6 +15,12 @@ SECRET_KEY    = config("SECRET_KEY", default="django-insecure-change-me-in-produ
 DEBUG         = config("DEBUG", default=True, cast=bool)
 ALLOWED_HOSTS       = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 BACKEND_PUBLIC_URL  = config("BACKEND_PUBLIC_URL", default="http://localhost:8000")
+FRONTEND_URL        = config("FRONTEND_URL", default="http://localhost:3000")
+
+# ─── Google Drive OAuth ───────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID     = config("GOOGLE_CLIENT_ID",     default="")
+GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET", default="")
+GOOGLE_REDIRECT_URI  = config("GOOGLE_REDIRECT_URI",  default="http://localhost:8000/api/v1/drive/callback/")
 
 # ─── Applications ─────────────────────────────────────────────────────────────
 
@@ -49,10 +55,12 @@ INSTALLED_APPS = [
     "apps.billing",
     "apps.forms",
     "apps.campaigns",
+    "apps.voice_plans",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -215,6 +223,12 @@ RECURRENTE_WEBHOOK_SECRET = config("RECURRENTE_WEBHOOK_SECRET", default="")
 RECURRENTE_ENV            = config("RECURRENTE_ENV",            default="sandbox")
 FRONTEND_URL              = config("FRONTEND_URL",              default="http://localhost:3000")
 
+# ─── Google Drive OAuth ───────────────────────────────────────────────────────
+
+GOOGLE_CLIENT_ID     = config("GOOGLE_CLIENT_ID",     default="")
+GOOGLE_CLIENT_SECRET = config("GOOGLE_CLIENT_SECRET", default="")
+GOOGLE_REDIRECT_URI  = config("GOOGLE_REDIRECT_URI",  default="http://localhost:8000/api/v1/drive/callback/")
+
 # ─── Django Unfold Admin ───────────────────────────────────────────────────────
 
 from django.templatetags.static import static  # noqa: E402
@@ -225,6 +239,7 @@ UNFOLD = {
     "SITE_HEADER": "OptimizaCRM",
     "SITE_URL":    "/",
     "SITE_LOGO":   lambda request: static("logo.png"),
+    "LOGIN_LOGO":  lambda request: static("logo.png"),
     "SHOW_HISTORY":      True,
     "SHOW_VIEW_ON_SITE": False,
     "THEME":       "dark",   # forzar modo oscuro siempre
@@ -339,6 +354,17 @@ UNFOLD = {
                 ],
             },
             {
+                "title": "Agente de Voz IA",
+                "separator": True,
+                "collapsible": True,
+                "items": [
+                    {"title": "Planes de Voz",      "icon": "mic",          "link": reverse_lazy("admin:voice_plans_voiceplan_changelist")},
+                    {"title": "Setup — Tiers",       "icon": "build",        "link": reverse_lazy("admin:voice_plans_voicesetupplan_changelist")},
+                    {"title": "FAQs",                "icon": "help",         "link": reverse_lazy("admin:voice_plans_voicefaq_changelist")},
+                    {"title": "Estadísticas",        "icon": "bar_chart",    "link": reverse_lazy("admin:voice_plans_voicestat_changelist")},
+                ],
+            },
+            {
                 "title": "Contenido web",
                 "separator": True,
                 "collapsible": True,
@@ -349,3 +375,31 @@ UNFOLD = {
         ],
     },
 }
+
+# ─── Producción — Static files (WhiteNoise) ───────────────────────────────────
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# ─── Producción — Cloudflare R2 (Media / uploads) ────────────────────────────
+
+R2_ACCOUNT_ID        = config("R2_ACCOUNT_ID",        default="")
+R2_ACCESS_KEY_ID     = config("R2_ACCESS_KEY_ID",     default="")
+R2_SECRET_ACCESS_KEY = config("R2_SECRET_ACCESS_KEY", default="")
+R2_BUCKET_NAME       = config("R2_BUCKET_NAME",       default="")
+R2_PUBLIC_URL        = config("R2_PUBLIC_URL",        default="")
+
+if R2_BUCKET_NAME:
+    INSTALLED_APPS.append("storages")
+    STORAGES = {
+        "default": {"BACKEND": "storages.backends.s3boto3.S3Boto3Storage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }
+    AWS_ACCESS_KEY_ID      = R2_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY  = R2_SECRET_ACCESS_KEY
+    AWS_STORAGE_BUCKET_NAME = R2_BUCKET_NAME
+    AWS_S3_ENDPOINT_URL    = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+    AWS_S3_CUSTOM_DOMAIN   = R2_PUBLIC_URL.replace("https://", "") if R2_PUBLIC_URL else None
+    AWS_DEFAULT_ACL        = None
+    AWS_S3_FILE_OVERWRITE  = False
+    AWS_QUERYSTRING_AUTH   = False
+    MEDIA_URL              = f"{R2_PUBLIC_URL}/"

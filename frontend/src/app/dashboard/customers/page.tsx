@@ -11,11 +11,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { useAuthStore } from "@/store/auth";
 import { crmApi, aiApi, csvApi, type Customer } from "@/lib/api";
+import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import { formatCurrency } from "@/lib/utils";
 import {
   Plus, Brain, Upload, Download, X, Loader2,
   Pencil, Trash2, Mail, Phone, Building2, MapPin, User,
-  Clock, AlertTriangle, Info, Search,
+  Clock, AlertTriangle, Info, Search, Filter,
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -27,6 +28,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
+
+const selectCls = "rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 focus:border-orange-500 focus:outline-none";
 
 const EMPTY_FORM = { name: "", email: "", phone: "", company: "", status: "active", address: "", notes: "" };
 
@@ -251,6 +254,9 @@ function CustomerPanel({
               disabled={!editing} rows={4} placeholder="Notas internas..."
               className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 disabled:opacity-70 disabled:cursor-default resize-none" />
           </div>
+
+          {/* Google Drive documents */}
+          <DriveDocumentsPanel entityType="customer" entityId={customer.id} />
         </div>
 
         {/* Footer */}
@@ -289,10 +295,20 @@ export default function CustomersPage() {
   const [form, setForm]                 = useState(EMPTY_FORM);
   const [selected, setSelected]         = useState<Customer | null>(null);
   const [search, setSearch]             = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const hasFilters = !!(search || statusFilter);
+  const clearFilters = () => { setSearch(""); setStatusFilter(""); };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["customers", search],
-    queryFn: () => crmApi.getCustomers(tokens!.access, organization!.id, search ? `search=${search}` : ""),
+    queryKey: ["customers", search, statusFilter],
+    queryFn: () => {
+      const qs = new URLSearchParams();
+      if (search)       qs.set("search", search);
+      if (statusFilter) qs.set("status", statusFilter);
+      const q = qs.toString();
+      return crmApi.getCustomers(tokens!.access, organization!.id, q || undefined);
+    },
     enabled: !!tokens && !!organization,
   });
 
@@ -415,12 +431,25 @@ export default function CustomersPage() {
       <div className="flex-1 overflow-y-auto p-6">
 
         {/* Toolbar */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input className="pl-9" placeholder="Buscar clientes..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input className="pl-9 w-52" placeholder="Buscar clientes..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <Filter className="h-4 w-4 text-slate-500 flex-shrink-0" />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectCls}>
+              <option value="">Todos los estados</option>
+              {STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            {hasFilters && (
+              <button onClick={clearFilters}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-700 px-3 py-2.5 text-xs text-slate-400 hover:border-red-700 hover:text-red-400 transition-colors">
+                <X className="h-3.5 w-3.5" /> Limpiar
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button variant="outline" onClick={() => { setShowImport(!showImport); setShowForm(false); setImportResult(null); }}
               className="gap-2 border-slate-700 text-slate-300 hover:border-orange-600 hover:bg-orange-600 hover:text-white">
               <Upload className="h-4 w-4" /> Importar

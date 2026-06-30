@@ -4,7 +4,7 @@ Optimiza-CRM – Integrations admin (django-unfold)
 
 from django.contrib import admin
 from unfold.admin import ModelAdmin as UnfoldModelAdmin
-from .models import Integration, IntegrationLog, Message, WebWidget, VoiceKnowledgeBase, VoiceWidget, VoiceCall
+from .models import Integration, IntegrationLog, Message, WebWidget, VoiceKnowledgeBase, VoiceKBSource, VoiceWidget, VoiceCall, GoogleDriveToken, DriveDocument
 
 
 @admin.register(Integration)
@@ -69,6 +69,14 @@ class VoiceKnowledgeBaseAdmin(UnfoldModelAdmin):
     )
 
 
+@admin.register(VoiceKBSource)
+class VoiceKBSourceAdmin(UnfoldModelAdmin):
+    list_display  = ("organization", "source_type", "name", "char_count", "created_at")
+    list_filter   = ("source_type", "organization")
+    search_fields = ("name", "organization__name")
+    readonly_fields = ("organization", "knowledge_base", "source_type", "name", "char_count", "created_at")
+
+
 @admin.register(VoiceWidget)
 class VoiceWidgetAdmin(UnfoldModelAdmin):
     list_display    = ("token", "organization", "llm_model", "is_active", "lead_count", "call_count", "created_at")
@@ -106,6 +114,27 @@ class VoiceCallAdmin(UnfoldModelAdmin):
         "qualification_data", "ended_at",
         "created_at", "updated_at",
     )
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(GoogleDriveToken)
+class GoogleDriveTokenAdmin(UnfoldModelAdmin):
+    list_display    = ("organization", "connected_at", "updated_at")
+    list_filter     = ("organization",)
+    readonly_fields = ("access_token", "refresh_token", "token_expiry", "connected_at", "updated_at")
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(DriveDocument)
+class DriveDocumentAdmin(UnfoldModelAdmin):
+    list_display    = ("name", "entity_type", "entity_id", "organization", "created_at")
+    list_filter     = ("entity_type", "organization")
+    search_fields   = ("name", "organization__name")
+    readonly_fields = ("organization", "entity_type", "entity_id", "drive_file_id", "name", "mime_type", "web_view_link", "icon_link", "created_at")
 
     def has_add_permission(self, request):
         return False

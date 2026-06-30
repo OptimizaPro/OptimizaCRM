@@ -129,6 +129,7 @@ def voice_widget_config(request):
             "greeting":   cfg.get("greeting", ""),
             "farewell":   cfg.get("farewell", ""),
             "voice":      cfg.get("voice", "es-MX-NuriaNeural"),
+            "avatar_url": cfg.get("avatar_url", ""),
         },
         "org_name": widget.organization.name,
     })
@@ -159,7 +160,11 @@ def voice_widget_manage(request):
 
     # ── GET ───────────────────────────────────────────────────────────────────
     if request.method == "GET":
-        widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base").first()
+        agent_id = request.GET.get("agent_id")
+        if agent_id:
+            widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base").first()
+        else:
+            widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base").first()
         if not widget:
             return JsonResponse({"widget": None, "knowledge_base": None})
 
@@ -208,8 +213,14 @@ def voice_widget_manage(request):
             org.settings = org_settings
             org.save(update_fields=["settings"])
 
-        # Get or create widget
-        widget, _ = VoiceWidget.objects.get_or_create(organization=org)
+        # Get or create widget — support multi-agent via agent_id
+        agent_id = (body.get("agent_id") or "").strip()
+        if agent_id:
+            widget = VoiceWidget.objects.filter(organization=org, id=agent_id).first()
+            if not widget:
+                return JsonResponse({"error": "Agent not found"}, status=404)
+        else:
+            widget, _ = VoiceWidget.objects.get_or_create(organization=org)
 
         # Update widget fields — support both nested {"widget":{...}} and flat body
         widget_data = body.get("widget") or {
@@ -250,6 +261,11 @@ def voice_widget_manage(request):
         vapi_error       = None
 
         if vapi_private_key:
+            # If a new private key was submitted, clear the stale assistant ID so a
+            # fresh assistant is created under the new Vapi account (avoids cross-account 403).
+            if vapi_private_key_in and widget.vapi_assistant_id:
+                widget.vapi_assistant_id = ""
+
             try:
                 from .vapi_service import create_or_update_assistant
                 assistant_id = create_or_update_assistant(widget, kb, vapi_private_key)
@@ -627,6 +643,91 @@ def voice_call_ended(request):
     return _cors(r, request)
 
 
+# ─── KB Source limits per plan ───────────────────────────────────────────────
+
+KB_SOURCE_LIMITS: dict[str, int] = {
+    "basico":     3,
+    "pro":        6,
+    "equipo":     9,
+    "enterprise": 50,   # a medida — ajustar por org según contrato
+}
+KB_SOURCE_LIMIT_DEFAULT = 3   # para orgs sin suscripción activa
+
+
+def _get_kb_source_limit(org) -> int:
+    """Returns the max KB sources for the org's plan."""
+    try:
+        plan = org.subscription.plan
+    except Exception:
+        plan = "basico"
+    return KB_SOURCE_LIMITS.get(plan, KB_SOURCE_LIMIT_DEFAULT)
+
+
+# ─── Helper: save KB source record ───────────────────────────────────────────
+
+def _save_kb_source(org, agent_id, source_type, name, char_count):
+    """
+    Looks up the VoiceWidget (by agent_id or first widget of org),
+    ensures its KB exists, checks plan limits, then creates a VoiceKBSource.
+
+    Returns:
+      { "source": {...} }                    on success
+      { "limit_error": True, "limit": N, "current": N, "plan": str }  on plan limit
+      None                                   if widget/KB not found or unexpected error
+    """
+    try:
+        from .models import VoiceWidget, VoiceKnowledgeBase, VoiceKBSource
+        if agent_id:
+            widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base").first()
+        else:
+            widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base").first()
+
+        if not widget:
+            return None
+
+        # Ensure KB exists
+        if not widget.knowledge_base:
+            kb = VoiceKnowledgeBase.objects.create(organization=org)
+            widget.knowledge_base = kb
+            widget.save(update_fields=["knowledge_base"])
+        else:
+            kb = widget.knowledge_base
+
+        # ── Plan limit check ──────────────────────────────────────────────────
+        limit = _get_kb_source_limit(org)
+        current_count = VoiceKBSource.objects.filter(knowledge_base=kb).count()
+        if current_count >= limit:
+            try:
+                plan = org.subscription.plan
+            except Exception:
+                plan = "basico"
+            return {
+                "limit_error": True,
+                "limit":       limit,
+                "current":     current_count,
+                "plan":        plan,
+            }
+
+        source = VoiceKBSource.objects.create(
+            organization=org,
+            knowledge_base=kb,
+            source_type=source_type,
+            name=name,
+            char_count=char_count,
+        )
+        return {
+            "source": {
+                "id":          source.id,
+                "source_type": source.source_type,
+                "name":        source.name,
+                "char_count":  source.char_count,
+                "created_at":  source.created_at.isoformat(),
+            }
+        }
+    except Exception:
+        return None
+
+
 # ─── 7. Scrape URL → KB classifier ───────────────────────────────────────────
 
 @csrf_exempt
@@ -634,8 +735,8 @@ def voice_scrape_url(request):
     """
     POST /api/v1/voice-widget/scrape-url/
     Authenticated — requires JWT + X-Organization-ID.
-    Body: { "url": "https://..." }
-    Returns: { "knowledge_base": { ...KB fields... }, "char_count": N }
+    Body: { "url": "https://...", "agent_id": "<optional>" }
+    Returns: { "knowledge_base": { ...KB fields... }, "char_count": N, "source": {...} }
     """
     if request.method == "OPTIONS":
         return _cors(JsonResponse({}), request)
@@ -654,7 +755,8 @@ def voice_scrape_url(request):
     except Exception:
         return JsonResponse({"error": "invalid JSON"}, status=400)
 
-    url = (body.get("url") or "").strip()
+    url      = (body.get("url")      or "").strip()
+    agent_id = (body.get("agent_id") or "").strip()
     if not url:
         return JsonResponse({"error": "url is required"}, status=400)
 
@@ -666,11 +768,126 @@ def voice_scrape_url(request):
     except Exception as exc:
         return JsonResponse({"error": f"Error al procesar la URL: {exc}"}, status=500)
 
-    total_chars = sum(len(v) for v in kb_data.values())
-    return JsonResponse({"knowledge_base": kb_data, "char_count": total_chars, "source_url": url})
+    total_chars = sum(len(v) for v in kb_data.values() if isinstance(v, str))
+    result = _save_kb_source(org, agent_id or None, "url", url, total_chars)
+
+    if result and result.get("limit_error"):
+        return JsonResponse({
+            "error":       f"Has alcanzado el límite de {result['limit']} fuentes para el plan {result['plan']}. Actualiza tu plan para añadir más.",
+            "limit_error": True,
+            "limit":       result["limit"],
+            "current":     result["current"],
+            "plan":        result["plan"],
+        }, status=402)
+
+    return JsonResponse({
+        "knowledge_base": kb_data,
+        "char_count":     total_chars,
+        "source_url":     url,
+        "source":         result.get("source") if result else None,
+    })
 
 
-# ─── 8. Import file → KB classifier ─────────────────────────────────────────
+# ─── 8. Reset assistant ID ───────────────────────────────────────────────────
+
+@csrf_exempt
+def voice_reset_assistant(request):
+    """
+    POST /api/v1/voice-widget/reset-assistant/
+    Authenticated — clears vapi_assistant_id so the next save creates a fresh one.
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+    if request.method != "POST":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    from .models import VoiceWidget
+    body = _tool_parse_body(request)
+    agent_id = (body.get("agent_id") or "").strip()
+    if agent_id:
+        updated = VoiceWidget.objects.filter(organization=org, id=agent_id).update(vapi_assistant_id="")
+    else:
+        updated = VoiceWidget.objects.filter(organization=org).update(vapi_assistant_id="")
+    return JsonResponse({"ok": True, "cleared": updated > 0})
+
+
+# ─── 9. Upload avatar ────────────────────────────────────────────────────────
+
+@csrf_exempt
+def voice_upload_avatar(request):
+    """
+    POST /api/v1/voice-widget/upload-avatar/
+    Authenticated — requires JWT + X-Organization-ID.
+    Body: multipart/form-data with field "avatar" (jpg/png/webp/gif, max 2 MB).
+    Saves the file to media/voice-avatars/<org_id>/ and stores the URL in widget.config.
+    Returns: { "avatar_url": "https://..." }
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "POST":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    uploaded = request.FILES.get("avatar")
+    if not uploaded:
+        return JsonResponse({"error": "No se recibió ningún archivo (campo 'avatar')"}, status=400)
+
+    MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+    if uploaded.size > MAX_BYTES:
+        return JsonResponse({"error": "La imagen supera el límite de 2 MB."}, status=413)
+
+    ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    content_type = uploaded.content_type or ""
+    if content_type not in ALLOWED_TYPES:
+        return JsonResponse({"error": "Formato no permitido. Usa JPG, PNG, WebP o GIF."}, status=415)
+
+    import os
+    import uuid
+    from django.conf import settings
+
+    ext = os.path.splitext(uploaded.name)[1].lower() or ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    rel_path = os.path.join("voice-avatars", str(org.id), filename)
+    abs_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+
+    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+    with open(abs_path, "wb") as f:
+        for chunk in uploaded.chunks():
+            f.write(chunk)
+
+    backend_url = getattr(settings, "BACKEND_PUBLIC_URL", "http://localhost:8000")
+    avatar_url = f"{backend_url}/media/{rel_path.replace(os.sep, '/')}"
+
+    # Persist in widget config
+    from .models import VoiceWidget
+    agent_id = request.POST.get("agent_id", "").strip()
+    if agent_id:
+        widget = VoiceWidget.objects.filter(organization=org, id=agent_id).first()
+        if not widget:
+            return JsonResponse({"error": "Agent not found"}, status=404)
+    else:
+        widget, _ = VoiceWidget.objects.get_or_create(organization=org)
+    cfg = widget.config or {}
+    cfg["avatar_url"] = avatar_url
+    widget.config = cfg
+    widget.save(update_fields=["config"])
+
+    return JsonResponse({"avatar_url": avatar_url})
+
+
+# ─── 9. Import file → KB classifier ─────────────────────────────────────────
 
 @csrf_exempt
 def voice_import_file(request):
@@ -701,6 +918,8 @@ def voice_import_file(request):
     if uploaded.size > MAX_BYTES:
         return JsonResponse({"error": "El archivo supera el límite de 10 MB."}, status=413)
 
+    agent_id = (request.POST.get("agent_id") or "").strip()
+
     try:
         file_bytes = uploaded.read()
         from .scraper_service import scrape_and_classify_file
@@ -710,8 +929,100 @@ def voice_import_file(request):
     except Exception as exc:
         return JsonResponse({"error": f"Error al procesar el archivo: {exc}"}, status=500)
 
-    total_chars = sum(len(v) for v in kb_data.values())
-    return JsonResponse({"knowledge_base": kb_data, "char_count": total_chars, "filename": uploaded.name})
+    total_chars = sum(len(v) for v in kb_data.values() if isinstance(v, str))
+    result = _save_kb_source(org, agent_id or None, "file", uploaded.name, total_chars)
+
+    if result and result.get("limit_error"):
+        return JsonResponse({
+            "error":       f"Has alcanzado el límite de {result['limit']} fuentes para el plan {result['plan']}. Actualiza tu plan para añadir más.",
+            "limit_error": True,
+            "limit":       result["limit"],
+            "current":     result["current"],
+            "plan":        result["plan"],
+        }, status=402)
+
+    return JsonResponse({
+        "knowledge_base": kb_data,
+        "char_count":     total_chars,
+        "filename":       uploaded.name,
+        "source":         result.get("source") if result else None,
+    })
+
+
+# ─── KB Sources — list & delete ──────────────────────────────────────────────
+
+@csrf_exempt
+def voice_kb_sources(request):
+    """
+    GET  /api/v1/voice-widget/kb-sources/?agent_id=<id>  — list sources for an agent's KB
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "GET":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    from .models import VoiceWidget, VoiceKBSource
+    agent_id = (request.GET.get("agent_id") or "").strip()
+
+    if agent_id:
+        widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base").first()
+    else:
+        widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base").first()
+
+    limit = _get_kb_source_limit(org)
+
+    if not widget or not widget.knowledge_base:
+        return JsonResponse({"sources": [], "limit": limit, "count": 0})
+
+    sources = VoiceKBSource.objects.filter(knowledge_base=widget.knowledge_base)
+    source_list = [
+        {
+            "id":          s.id,
+            "source_type": s.source_type,
+            "name":        s.name,
+            "char_count":  s.char_count,
+            "created_at":  s.created_at.isoformat(),
+        }
+        for s in sources
+    ]
+    return JsonResponse({
+        "sources": source_list,
+        "limit":   limit,
+        "count":   len(source_list),
+    })
+
+
+@csrf_exempt
+def voice_kb_source_delete(request, source_id):
+    """
+    DELETE /api/v1/voice-widget/kb-sources/<source_id>/  — delete a source record
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "DELETE":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    from .models import VoiceKBSource
+    try:
+        source = VoiceKBSource.objects.get(id=source_id, organization=org)
+        source.delete()
+        return JsonResponse({"ok": True})
+    except VoiceKBSource.DoesNotExist:
+        return JsonResponse({"error": "not found"}, status=404)
 
 
 # ─── Private helpers ──────────────────────────────────────────────────────────
@@ -801,3 +1112,133 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="",
         return lead
     except Exception:
         return None
+
+
+# ─── Multi-agent CRUD ─────────────────────────────────────────────────────────
+
+def _widget_summary(widget) -> dict:
+    """Compact representation used in the agents list."""
+    cfg = widget.config or {}
+    return {
+        "id":                str(widget.id),
+        "name":              widget.name,
+        "token":             str(widget.token),
+        "vapi_assistant_id": widget.vapi_assistant_id,
+        "is_active":         widget.is_active,
+        "lead_count":        widget.lead_count,
+        "call_count":        widget.call_count,
+        "config": {
+            "agent_name": cfg.get("agent_name", "Asistente"),
+            "color":      cfg.get("color", "#EA580C"),
+            "avatar_url": cfg.get("avatar_url", ""),
+            "voice":      cfg.get("voice", ""),
+        },
+    }
+
+
+def _plan_info(org) -> dict:
+    """Return the org's active voice plan limits."""
+    try:
+        from apps.voice_plans.models import VoicePlan
+        plan_slug = (org.settings or {}).get("voice_plan_slug", "starter")
+        plan = VoicePlan.objects.filter(slug=plan_slug, is_active=True).first()
+        if plan:
+            return {"slug": plan.slug, "name": plan.name, "agent_limit": plan.agents}
+    except Exception:
+        pass
+    return {"slug": "starter", "name": "Starter", "agent_limit": 1}
+
+
+@csrf_exempt
+def voice_widget_agents(request):
+    """
+    GET  /api/v1/voice-widget/agents/  — list all agents for the org
+    POST /api/v1/voice-widget/agents/  — create a new agent (checks plan limit)
+    Requires JWT + X-Organization-ID.
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    from .models import VoiceWidget
+
+    if request.method == "GET":
+        agents = VoiceWidget.objects.filter(organization=org).order_by("created_at")
+        plan   = _plan_info(org)
+        return JsonResponse({
+            "agents": [_widget_summary(w) for w in agents],
+            "plan":   plan,
+            "agent_count": agents.count(),
+        })
+
+    if request.method == "POST":
+        try:
+            body = json.loads(request.body)
+        except Exception:
+            return JsonResponse({"error": "invalid JSON"}, status=400)
+
+        # Plan limit check
+        plan  = _plan_info(org)
+        count = VoiceWidget.objects.filter(organization=org).count()
+        if count >= plan["agent_limit"]:
+            return JsonResponse({
+                "error": (
+                    f"Tu plan {plan['name']} permite máximo {plan['agent_limit']} agente(s). "
+                    "Actualiza tu plan para añadir más."
+                ),
+                "limit_reached": True,
+            }, status=402)
+
+        name = (body.get("name") or "Agente de Voz").strip()[:100]
+        widget = VoiceWidget.objects.create(organization=org, name=name)
+        return JsonResponse({"agent": _widget_summary(widget)}, status=201)
+
+    return JsonResponse({"error": "method not allowed"}, status=405)
+
+
+@csrf_exempt
+def voice_widget_agent_delete(request, agent_id):
+    """
+    DELETE /api/v1/voice-widget/agents/<agent_id>/  — delete a specific agent
+    Requires JWT + X-Organization-ID.
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "DELETE":
+        return JsonResponse({"error": "method not allowed"}, status=405)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    from .models import VoiceWidget
+    try:
+        widget = VoiceWidget.objects.get(organization=org, id=agent_id)
+    except VoiceWidget.DoesNotExist:
+        return JsonResponse({"error": "Agent not found"}, status=404)
+
+    # Delete Vapi assistant (best-effort)
+    if widget.vapi_assistant_id:
+        try:
+            org_settings = org.settings or {}
+            api_key = org_settings.get("vapi_private_key", "")
+            if api_key:
+                from .vapi_service import delete_assistant
+                delete_assistant(widget.vapi_assistant_id, api_key)
+        except Exception:
+            pass
+
+    # Delete KB and widget
+    if widget.knowledge_base:
+        widget.knowledge_base.delete()
+    widget.delete()
+
+    return JsonResponse({"ok": True})

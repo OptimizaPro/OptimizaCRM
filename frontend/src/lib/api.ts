@@ -162,6 +162,7 @@ export interface User {
   first_name: string;
   last_name: string;
   full_name: string;
+  is_staff?: boolean;
   role?: string;
   current_organization?: Organization;
 }
@@ -215,10 +216,12 @@ export interface Customer {
   updated_at: string;
 }
 
+export type OppStage = "new" | "contacted" | "qualified" | "proposal" | "negotiation" | "won" | "lost";
+
 export interface Opportunity {
   id: string;
   title: string;
-  stage: string;
+  stage: OppStage;
   amount: string;
   probability: number;
   expected_close_date: string | null;
@@ -229,13 +232,32 @@ export interface Opportunity {
   updated_at: string;
 }
 
+export type TaskStatus   = "pending" | "in_progress" | "completed" | "cancelled";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+
 export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  due_date: string | null;
+  id:           string;
+  title:        string;
+  description:  string;
+  priority:     TaskPriority;
+  status:       TaskStatus;
+  due_date:     string | null;
+  reminder_at:  string | null;
+  completed_at: string | null;
+  assigned_to:  string | null;
+  assigned_to_detail: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    avatar?: string;
+  } | null;
+  created_by:   string | null;
+  related_type: string;
+  related_id:   string | null;
+  created_at:   string;
+  updated_at:   string;
 }
 
 export interface PipelineStage {
@@ -263,18 +285,53 @@ export interface PipelineTemplate {
   created_at: string;
 }
 
+export interface PeriodMetric {
+  value:    number;
+  previous: number;
+  change:   number | null;   // null when previous = 0 (undefined %)
+  trend:    "up" | "down" | "neutral";
+}
+
+export type DashboardPeriod  = "month" | "quarter" | "year";
+export type DashboardCompare = "previous" | "yoy";
+
 export interface DashboardData {
-  revenue: { total: number; monthly: number; pipeline_value: number };
-  sales: {
-    total_leads: number;
-    converted_leads: number;
-    open_opportunities: number;
-    won_deals: number;
-    lost_deals: number;
+  period:        DashboardPeriod;
+  period_label:  string;
+  compare:       DashboardCompare;
+  compare_label: string;
+  revenue: {
+    total:          number;
+    monthly:        number;
+    pipeline_value: number;
+    period:         PeriodMetric;
   };
-  conversion: { lead_conversion_rate: number; win_rate: number };
-  customers: { total: number; active: number; at_risk: number };
-  tasks: { pending: number; overdue: number; completed_this_month: number };
+  sales: {
+    total_leads:        number;
+    converted_leads:    number;
+    open_opportunities: number;
+    won_deals:          number;
+    lost_deals:         number;
+    period_leads:       PeriodMetric;
+    period_won:         PeriodMetric;
+  };
+  conversion: {
+    lead_conversion_rate: number;
+    win_rate:             number;
+    period_conversion:    PeriodMetric;
+  };
+  customers: {
+    total:      number;
+    active:     number;
+    at_risk:    number;
+    period_new: PeriodMetric;
+  };
+  tasks: {
+    pending:             number;
+    overdue:             number;
+    completed_this_month: number;
+    period_done:         PeriodMetric;
+  };
   recent_activities: Array<{
     id: string;
     activity_type: string;
@@ -421,8 +478,8 @@ export const goalsApi = {
 };
 
 export const crmApi = {
-  getDashboard: (token: string, orgId: string) =>
-    api.get<DashboardData>("/dashboard/", { token, orgId }),
+  getDashboard: (token: string, orgId: string, period: DashboardPeriod = "month", compare: DashboardCompare = "previous") =>
+    api.get<DashboardData>(`/dashboard/?period=${period}&compare=${compare}`, { token, orgId }),
 
   getLeads: (token: string, orgId: string, params?: string) =>
     api.get<PaginatedResponse<Lead>>(`/leads/${params ? `?${params}` : ""}`, { token, orgId }),
@@ -448,8 +505,22 @@ export const crmApi = {
   deleteCustomer: (token: string, orgId: string, id: string) =>
     api.delete(`/customers/${id}/`, { token, orgId }),
 
-  getOpportunities: (token: string, orgId: string, params?: string) =>
-    api.get<PaginatedResponse<Opportunity>>(`/opportunities/${params ? `?${params}` : ""}`, { token, orgId }),
+  getOpportunities: (token: string, orgId: string, params?: {
+    stage?:       string;
+    search?:      string;
+    page?:        number;
+    page_size?:   number;
+    assigned_to?: string;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.stage)       qs.set("stage",       params.stage);
+    if (params?.search)      qs.set("search",      params.search);
+    if (params?.page)        qs.set("page",        String(params.page));
+    if (params?.page_size)   qs.set("page_size",   String(params.page_size));
+    if (params?.assigned_to) qs.set("assigned_to", params.assigned_to);
+    const q = qs.toString();
+    return api.get<PaginatedResponse<Opportunity>>(`/opportunities/${q ? `?${q}` : ""}`, { token, orgId });
+  },
 
   createOpportunity: (token: string, orgId: string, data: Partial<Opportunity>) =>
     api.post<Opportunity>("/opportunities/", data, { token, orgId }),
@@ -469,8 +540,40 @@ export const crmApi = {
   updateOpportunityStage: (token: string, orgId: string, id: string, stage: string) =>
     api.patch<Opportunity>(`/opportunities/${id}/stage/`, { stage }, { token, orgId }),
 
-  getTasks: (token: string, orgId: string) =>
-    api.get<PaginatedResponse<Task>>("/tasks/", { token, orgId }),
+  getTasks: (token: string, orgId: string, params?: {
+    status?:    string;
+    priority?:  string;
+    search?:    string;
+    page?:      number;
+    page_size?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.status)    qs.set("status",     params.status);
+    if (params?.priority)  qs.set("priority",   params.priority);
+    if (params?.search)    qs.set("search",     params.search);
+    if (params?.page)      qs.set("page",       String(params.page));
+    if (params?.page_size) qs.set("page_size",  String(params.page_size));
+    const q = qs.toString();
+    return api.get<PaginatedResponse<Task>>(`/tasks/${q ? `?${q}` : ""}`, { token, orgId });
+  },
+
+  createTask: (token: string, orgId: string, data: Partial<Task>) =>
+    api.post<Task>("/tasks/", data, { token, orgId }),
+
+  updateTask: (token: string, orgId: string, id: string, data: Partial<Task>) =>
+    api.patch<Task>(`/tasks/${id}/`, data, { token, orgId }),
+
+  deleteTask: (token: string, orgId: string, id: string) =>
+    api.delete(`/tasks/${id}/`, { token, orgId }),
+
+  completeTask: (token: string, orgId: string, id: string) =>
+    api.patch<Task>(`/tasks/${id}/complete/`, {}, { token, orgId }),
+
+  reopenTask: (token: string, orgId: string, id: string) =>
+    api.patch<Task>(`/tasks/${id}/reopen/`, {}, { token, orgId }),
+
+  updateTaskStatus: (token: string, orgId: string, id: string, status: TaskStatus) =>
+    api.patch<Task>(`/tasks/${id}/status/`, { status }, { token, orgId }),
 
   getRevenueAnalytics: (token: string, orgId: string) =>
     api.get<{ data: Array<{ period: string; revenue: number }> }>("/analytics/revenue/", { token, orgId }),
@@ -718,6 +821,14 @@ export const widgetApi = {
 
 // ── Voice Widget ──────────────────────────────────────────────────────────────
 
+export interface VoiceKBSource {
+  id:          number;
+  source_type: "url" | "file";
+  name:        string;
+  char_count:  number;
+  created_at:  string;
+}
+
 export interface VoiceKnowledgeBase {
   company_info:            string;
   products_services:       string;
@@ -733,6 +844,7 @@ export interface VoiceKnowledgeBase {
 export interface VoiceWidget {
   id:                string;
   token:             string;
+  name:              string;
   vapi_assistant_id: string;
   llm_model:         string;
   is_active:         boolean;
@@ -744,33 +856,86 @@ export interface VoiceWidget {
     color?:       string;
     greeting?:    string;
     farewell?:    string;
+    avatar_url?:  string;
   };
   knowledge_base: VoiceKnowledgeBase | null;
 }
 
+export interface VoiceAgentSummary {
+  id:                string;
+  name:              string;
+  token:             string;
+  vapi_assistant_id: string;
+  is_active:         boolean;
+  lead_count:        number;
+  call_count:        number;
+  config: {
+    agent_name?: string;
+    color?:      string;
+    avatar_url?: string;
+    voice?:      string;
+  };
+}
+
+export interface VoiceAgentPlan {
+  slug:        string;
+  name:        string;
+  agent_limit: number;
+}
+
 export const voiceWidgetApi = {
-  get: (token: string, orgId: string) =>
-    api.get<{ widget: VoiceWidget | null }>("/voice-widget/manage/", { token, orgId }),
-
-  save: (token: string, orgId: string, data: {
-    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config">>;
-    knowledge_base?: Partial<VoiceKnowledgeBase>;
-    vapi_private_key?: string;
-    vapi_public_key?: string;
-  }) =>
-    api.post<{ widget: VoiceWidget; vapi_warning?: string }>("/voice-widget/manage/", data, { token, orgId }),
-
-  scrapeUrl: (token: string, orgId: string, url: string) =>
-    api.post<{ knowledge_base: VoiceKnowledgeBase; char_count: number; source_url: string }>(
-      "/voice-widget/scrape-url/",
-      { url },
+  get: (token: string, orgId: string, agentId?: string) =>
+    api.get<{ widget: VoiceWidget | null }>(
+      agentId ? `/voice-widget/manage/?agent_id=${agentId}` : "/voice-widget/manage/",
       { token, orgId },
     ),
 
-  importFile: async (token: string, orgId: string, file: File) => {
+  save: (token: string, orgId: string, data: {
+    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config" | "name">>;
+    knowledge_base?: Partial<VoiceKnowledgeBase>;
+    vapi_private_key?: string;
+    vapi_public_key?: string;
+    agent_id?: string;
+  }) =>
+    api.post<{ widget: VoiceWidget; vapi_warning?: string }>("/voice-widget/manage/", data, { token, orgId }),
+
+  listAgents: (token: string, orgId: string) =>
+    api.get<{ agents: VoiceAgentSummary[]; plan: VoiceAgentPlan; agent_count: number }>(
+      "/voice-widget/agents/",
+      { token, orgId },
+    ),
+
+  createAgent: (token: string, orgId: string, name: string) =>
+    api.post<{ agent: VoiceAgentSummary }>("/voice-widget/agents/", { name }, { token, orgId }),
+
+  deleteAgent: async (token: string, orgId: string, agentId: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const res = await fetch(`${apiUrl}/voice-widget/agents/${agentId}/`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Organization-ID": orgId,
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || `Error ${res.status}`);
+    }
+    return res.json() as Promise<{ ok: boolean }>;
+  },
+
+  scrapeUrl: (token: string, orgId: string, url: string, agentId?: string) =>
+    api.post<{ knowledge_base: VoiceKnowledgeBase; char_count: number; source_url: string; source: VoiceKBSource | null }>(
+      "/voice-widget/scrape-url/",
+      { url, ...(agentId ? { agent_id: agentId } : {}) },
+      { token, orgId },
+    ),
+
+  importFile: async (token: string, orgId: string, file: File, agentId?: string) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
     const form = new FormData();
     form.append("file", file);
+    if (agentId) form.append("agent_id", agentId);
     const res = await fetch(`${apiUrl}/voice-widget/import-file/`, {
       method: "POST",
       headers: {
@@ -783,7 +948,55 @@ export const voiceWidgetApi = {
       const err = await res.json().catch(() => ({}));
       throw new Error((err as { error?: string }).error || `Error ${res.status}`);
     }
-    return res.json() as Promise<{ knowledge_base: VoiceKnowledgeBase; char_count: number; filename: string }>;
+    return res.json() as Promise<{ knowledge_base: VoiceKnowledgeBase; char_count: number; filename: string; source: VoiceKBSource | null }>;
+  },
+
+  listKbSources: (token: string, orgId: string, agentId?: string) =>
+    api.get<{ sources: VoiceKBSource[]; limit: number | null; count: number }>(
+      agentId ? `/voice-widget/kb-sources/?agent_id=${agentId}` : "/voice-widget/kb-sources/",
+      { token, orgId },
+    ),
+
+  deleteKbSource: async (token: string, orgId: string, sourceId: number) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const res = await fetch(`${apiUrl}/voice-widget/kb-sources/${sourceId}/`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Organization-ID": orgId,
+      },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || `Error ${res.status}`);
+    }
+    return res.json() as Promise<{ ok: boolean }>;
+  },
+
+  resetAssistant: (token: string, orgId: string, agentId?: string) =>
+    api.post<{ ok: boolean; cleared: boolean }>(
+      "/voice-widget/reset-assistant/",
+      agentId ? { agent_id: agentId } : {},
+      { token, orgId },
+    ),
+
+  uploadAvatar: async (token: string, orgId: string, file: File) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const form = new FormData();
+    form.append("avatar", file);
+    const res = await fetch(`${apiUrl}/voice-widget/upload-avatar/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Organization-ID": orgId,
+      },
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || `Error ${res.status}`);
+    }
+    return res.json() as Promise<{ avatar_url: string }>;
   },
 };
 
@@ -925,9 +1138,16 @@ export interface FormSubmission {
   created_at: string;
 }
 
+export interface EmbedFormsListResponse {
+  results:    EmbedForm[];
+  form_count: number;
+  form_limit: number;
+  plan:       string;
+}
+
 export const embedFormsApi = {
   list: (token: string, orgId: string) =>
-    api.get<PaginatedResponse<EmbedForm>>("/forms/", { token, orgId }),
+    api.get<EmbedFormsListResponse>("/forms/", { token, orgId }),
 
   create: (token: string, orgId: string, data: Partial<EmbedForm>) =>
     api.post<EmbedForm>("/forms/", data, { token, orgId }),
@@ -973,6 +1193,120 @@ export interface EmailCampaign {
   updated_at:             string;
 }
 
+// ─── Voice Plans Admin ────────────────────────────────────────────────────────
+
+export interface VoicePlanAdmin {
+  id: number;
+  slug: string;
+  name: string;
+  price_monthly: string;
+  annual_price: number;
+  agents: number;
+  minutes_included: number;
+  overage_per_minute: string;
+  overage_display: string;
+  features: string[];
+  cta_text: string;
+  is_popular: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface VoiceFAQAdmin {
+  id: number;
+  question: string;
+  answer: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface VoiceStatAdmin {
+  id: number;
+  value: string;
+  label: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface VoiceSetupPlanAdmin {
+  id: number;
+  slug: string;
+  name: string;
+  tagline: string;
+  price: string | null;
+  days: string;
+  features: { text: string; highlight: boolean }[];
+  cta_text: string;
+  is_popular: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
+
+// Public voice plan type (subset — no is_active, used on landing/precios)
+export interface VoicePlanPublic {
+  id: number;
+  slug: string;
+  name: string;
+  price_monthly: string;
+  annual_price: number;
+  agents: number;
+  minutes_included: number;
+  overage_per_minute: string;
+  overage_display: string;
+  features: string[];
+  cta_text: string;
+  is_popular: boolean;
+  sort_order: number;
+}
+
+export const voicePlansPublicApi = {
+  /** GET /voice/plans/ — no auth required */
+  list: (): Promise<VoicePlanPublic[]> =>
+    fetch(`${API_URL}/voice/plans/`).then((r) => r.json()),
+};
+
+export const voicePlansApi = {
+  // Plans
+  listPlans: (token: string, orgId: string) =>
+    api.get<VoicePlanAdmin[]>("/voice/admin/plans/", { token, orgId }),
+  createPlan: (token: string, orgId: string, data: Partial<VoicePlanAdmin>) =>
+    api.post<VoicePlanAdmin>("/voice/admin/plans/", data, { token, orgId }),
+  updatePlan: (token: string, orgId: string, id: number, data: Partial<VoicePlanAdmin>) =>
+    api.patch<VoicePlanAdmin>(`/voice/admin/plans/${id}/`, data, { token, orgId }),
+  deletePlan: (token: string, orgId: string, id: number) =>
+    api.delete(`/voice/admin/plans/${id}/`, { token, orgId }),
+
+  // FAQs
+  listFaqs: (token: string, orgId: string) =>
+    api.get<VoiceFAQAdmin[]>("/voice/admin/faqs/", { token, orgId }),
+  createFaq: (token: string, orgId: string, data: Partial<VoiceFAQAdmin>) =>
+    api.post<VoiceFAQAdmin>("/voice/admin/faqs/", data, { token, orgId }),
+  updateFaq: (token: string, orgId: string, id: number, data: Partial<VoiceFAQAdmin>) =>
+    api.patch<VoiceFAQAdmin>(`/voice/admin/faqs/${id}/`, data, { token, orgId }),
+  deleteFaq: (token: string, orgId: string, id: number) =>
+    api.delete(`/voice/admin/faqs/${id}/`, { token, orgId }),
+
+  // Stats
+  listStats: (token: string, orgId: string) =>
+    api.get<VoiceStatAdmin[]>("/voice/admin/stats/", { token, orgId }),
+  createStat: (token: string, orgId: string, data: Partial<VoiceStatAdmin>) =>
+    api.post<VoiceStatAdmin>("/voice/admin/stats/", data, { token, orgId }),
+  updateStat: (token: string, orgId: string, id: number, data: Partial<VoiceStatAdmin>) =>
+    api.patch<VoiceStatAdmin>(`/voice/admin/stats/${id}/`, data, { token, orgId }),
+  deleteStat: (token: string, orgId: string, id: number) =>
+    api.delete(`/voice/admin/stats/${id}/`, { token, orgId }),
+
+  // Setup Plans
+  listSetupPlans: (token: string, orgId: string) =>
+    api.get<VoiceSetupPlanAdmin[]>("/voice/admin/setup-plans/", { token, orgId }),
+  createSetupPlan: (token: string, orgId: string, data: Partial<VoiceSetupPlanAdmin>) =>
+    api.post<VoiceSetupPlanAdmin>("/voice/admin/setup-plans/", data, { token, orgId }),
+  updateSetupPlan: (token: string, orgId: string, id: number, data: Partial<VoiceSetupPlanAdmin>) =>
+    api.patch<VoiceSetupPlanAdmin>(`/voice/admin/setup-plans/${id}/`, data, { token, orgId }),
+  deleteSetupPlan: (token: string, orgId: string, id: number) =>
+    api.delete(`/voice/admin/setup-plans/${id}/`, { token, orgId }),
+};
+
 export const campaignsApi = {
   list: (token: string, orgId: string) =>
     api.get<PaginatedResponse<EmailCampaign>>("/campaigns/", { token, orgId }),
@@ -992,4 +1326,118 @@ export const campaignsApi = {
   syncStats: (token: string, orgId: string, id: string) =>
     api.post<EmailCampaign>(`/campaigns/${id}/sync_stats/`, undefined, { token, orgId }),
 };
+
+// ─── Google Drive ─────────────────────────────────────────────────────────────
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  webViewLink: string;
+  iconLink: string;
+  modifiedTime: string;
+}
+
+export interface DriveDocument {
+  id: number;
+  drive_file_id: string;
+  name: string;
+  mime_type: string;
+  web_view_link: string;
+  icon_link: string;
+  entity_type: "lead" | "customer" | "opportunity";
+  entity_id: string;
+  created_at: string;
+}
+
+export const driveApi = {
+  getAuthUrl: (token: string, orgId: string) =>
+    api.get<{ auth_url: string }>("/drive/auth-url/", { token, orgId }),
+
+  getStatus: (token: string, orgId: string) =>
+    api.get<{ connected: boolean; connected_at: string | null }>("/drive/status/", { token, orgId }),
+
+  disconnect: (token: string, orgId: string) =>
+    api.delete<{ disconnected: boolean }>("/drive/status/", { token, orgId }),
+
+  searchFiles: (token: string, orgId: string, q: string) =>
+    api.get<{ files: DriveFile[] }>(`/drive/search/?q=${encodeURIComponent(q)}`, { token, orgId }),
+
+  getDocuments: (token: string, orgId: string, entityType: string, entityId: string) =>
+    api.get<{ documents: DriveDocument[] }>(
+      `/drive/documents/?entity_type=${entityType}&entity_id=${encodeURIComponent(entityId)}`,
+      { token, orgId }
+    ),
+
+  linkDocument: (token: string, orgId: string, payload: {
+    entity_type: string;
+    entity_id: string;
+    drive_file_id: string;
+    name: string;
+    mime_type?: string;
+    web_view_link?: string;
+    icon_link?: string;
+  }) =>
+    api.post<{ document: DriveDocument; created: boolean }>("/drive/documents/", payload, { token, orgId }),
+
+  deleteDocument: (token: string, orgId: string, docId: number) =>
+    api.delete<{ deleted: boolean }>(`/drive/documents/${docId}/`, { token, orgId }),
+};
+
+// ─── Admin (staff-only) ───────────────────────────────────────────────────────
+
+export interface AdminUserOrg {
+  id: string;
+  name: string;
+  plan: string;
+  slug: string;
+  is_active: boolean;
+  role: string;
+  joined_at: string;
+  membership_id: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  phone?: string;
+  avatar?: string;
+  created_at: string;
+  is_staff: boolean;
+  is_active: boolean;
+  organization: AdminUserOrg | null;
+}
+
+export const adminApi = {
+  listUsers: (
+    token: string,
+    orgId: string,
+    params?: { search?: string; plan?: string; status?: string }
+  ) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set("search", params.search);
+    if (params?.plan)   qs.set("plan",   params.plan);
+    if (params?.status) qs.set("status", params.status);
+    const query = qs.toString();
+    return api.get<{ count: number; results: AdminUser[] }>(
+      `/admin/users/${query ? `?${query}` : ""}`,
+      { token, orgId }
+    );
+  },
+
+  createUser: (token: string, orgId: string, data: {
+    email: string; first_name: string; last_name: string;
+    phone?: string; password?: string; is_staff?: boolean; is_active?: boolean;
+  }) => api.post<AdminUser>("/admin/users/", data, { token, orgId }),
+
+  updateUser: (token: string, orgId: string, userId: string, data: Partial<Pick<AdminUser, "is_active" | "is_staff" | "first_name" | "last_name" | "phone">>) =>
+    api.patch<AdminUser>(`/admin/users/${userId}/`, data, { token, orgId }),
+
+  deleteUser: (token: string, orgId: string, userId: string) =>
+    api.delete(`/admin/users/${userId}/`, { token, orgId }),
+};
+
 

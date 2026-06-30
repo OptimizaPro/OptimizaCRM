@@ -6,6 +6,14 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import IntegrationViewSet, MessageViewSet, widget_config, widget_submit, widget_manage, hub_config
+from .drive_views import (
+    drive_status,
+    drive_auth_url,
+    drive_callback,
+    drive_search,
+    drive_documents,
+    drive_document_delete,
+)
 from .voice_views import (
     voice_widget_config,
     voice_widget_manage,
@@ -15,6 +23,12 @@ from .voice_views import (
     voice_call_ended,
     voice_scrape_url,
     voice_import_file,
+    voice_reset_assistant,
+    voice_upload_avatar,
+    voice_widget_agents,
+    voice_widget_agent_delete,
+    voice_kb_sources,
+    voice_kb_source_delete,
 )
 
 router = DefaultRouter()
@@ -49,4 +63,26 @@ urlpatterns = [
 
     # ── Voice AI Widget — File import → KB classifier (authenticated) ──────────
     path("voice-widget/import-file/",           voice_import_file,           name="voice-import-file"),
+
+    # ── Voice AI Widget — Reset assistant ID (authenticated) ─────────────────
+    path("voice-widget/reset-assistant/",        voice_reset_assistant,        name="voice-reset-assistant"),
+
+    # ── Voice AI Widget — Avatar upload (authenticated) ───────────────────────
+    path("voice-widget/upload-avatar/",         voice_upload_avatar,         name="voice-upload-avatar"),
+
+    # ── Voice AI Agents — Multi-agent CRUD (authenticated) ────────────────────
+    path("voice-widget/agents/",                voice_widget_agents,         name="voice-widget-agents"),
+    path("voice-widget/agents/<str:agent_id>/", voice_widget_agent_delete,   name="voice-widget-agent-delete"),
+
+    # ── Voice KB Sources — list & delete (authenticated) ─────────────────────
+    path("voice-widget/kb-sources/",              voice_kb_sources,          name="voice-kb-sources"),
+    path("voice-widget/kb-sources/<int:source_id>/", voice_kb_source_delete, name="voice-kb-source-delete"),
+
+    # ── Google Drive — OAuth + documents (authenticated) ─────────────────────
+    path("drive/status/",                    drive_status,          name="drive-status"),
+    path("drive/auth-url/",                  drive_auth_url,        name="drive-auth-url"),
+    path("drive/callback/",                  drive_callback,        name="drive-callback"),
+    path("drive/search/",                    drive_search,          name="drive-search"),
+    path("drive/documents/",                 drive_documents,       name="drive-documents"),
+    path("drive/documents/<int:doc_id>/",    drive_document_delete, name="drive-document-delete"),
 ]

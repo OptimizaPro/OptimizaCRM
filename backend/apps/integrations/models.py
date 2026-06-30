@@ -139,6 +139,35 @@ class VoiceKnowledgeBase(TenantModel):
         return f"KB – {self.organization.name}"
 
 
+class VoiceKBSource(TenantModel):
+    """Registro de cada fuente (URL o archivo) importada a la base de conocimiento de voz."""
+
+    SOURCE_URL  = "url"
+    SOURCE_FILE = "file"
+    SOURCE_TYPES = [
+        (SOURCE_URL,  "URL"),
+        (SOURCE_FILE, "Archivo"),
+    ]
+
+    knowledge_base = models.ForeignKey(
+        VoiceKnowledgeBase, on_delete=models.CASCADE,
+        related_name="sources", verbose_name="Base de conocimiento",
+    )
+    source_type = models.CharField(max_length=10, choices=SOURCE_TYPES, verbose_name="Tipo")
+    name        = models.CharField(max_length=500, verbose_name="Nombre / URL")
+    char_count  = models.PositiveIntegerField(default=0, verbose_name="Caracteres extraídos")
+    created_at  = models.DateTimeField(auto_now_add=True, verbose_name="Importado el")
+
+    class Meta:
+        db_table = "voice_kb_sources"
+        ordering = ["-created_at"]
+        verbose_name = "Fuente de KB de voz"
+        verbose_name_plural = "Fuentes de KB de voz"
+
+    def __str__(self):
+        return f"{self.get_source_type_display()}: {self.name[:60]}"
+
+
 class VoiceWidget(TenantModel):
     LLM_CHOICES = [
         ("groq/llama-3.3-70b-versatile",        "Groq Llama 3.3 70B (recomendado)"),
@@ -149,6 +178,7 @@ class VoiceWidget(TenantModel):
     ]
 
     token             = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    name              = models.CharField(max_length=100, default="Agente de Voz", verbose_name="Nombre del agente")
     vapi_assistant_id = models.CharField(max_length=100, blank=True, verbose_name="Vapi Assistant ID")
     knowledge_base    = models.OneToOneField(
         VoiceKnowledgeBase, on_delete=models.SET_NULL,
@@ -200,3 +230,47 @@ class VoiceCall(TenantModel):
 
     def __str__(self):
         return f"Call {self.vapi_call_id[:8]} – {self.organization.name}"
+
+
+class GoogleDriveToken(TenantModel):
+    """OAuth 2.0 tokens de Google Drive por organización."""
+    access_token  = models.TextField()
+    refresh_token = models.TextField(blank=True)
+    token_expiry  = models.DateTimeField(null=True, blank=True)
+    connected_at  = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "google_drive_tokens"
+
+    def __str__(self):
+        return f"Drive token – {self.organization.name}"
+
+
+class DriveDocument(TenantModel):
+    """Documento de Google Drive vinculado a una entidad CRM."""
+    ENTITY_LEAD        = "lead"
+    ENTITY_CUSTOMER    = "customer"
+    ENTITY_OPPORTUNITY = "opportunity"
+    ENTITY_TYPES = [
+        (ENTITY_LEAD,        "Lead"),
+        (ENTITY_CUSTOMER,    "Cliente"),
+        (ENTITY_OPPORTUNITY, "Oportunidad"),
+    ]
+
+    entity_type   = models.CharField(max_length=20, choices=ENTITY_TYPES)
+    entity_id     = models.CharField(max_length=100)   # UUID o int como string
+    drive_file_id = models.CharField(max_length=200)
+    name          = models.CharField(max_length=500)
+    mime_type     = models.CharField(max_length=200, blank=True)
+    web_view_link = models.URLField(max_length=1000, blank=True)
+    icon_link     = models.URLField(max_length=500, blank=True)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table       = "drive_documents"
+        ordering       = ["-created_at"]
+        unique_together = [("organization", "entity_type", "entity_id", "drive_file_id")]
+
+    def __str__(self):
+        return f"{self.name} → {self.entity_type}:{self.entity_id}"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, X, Plug } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
-import { integrationsApi, type Integration } from "@/lib/api";
-import { WebWidgetPanel } from "@/components/dashboard/web-widget-panel";
-import { EmbedFormsPanel } from "@/components/dashboard/embed-forms-panel";
-import { VoiceWidgetPanel } from "@/components/dashboard/voice-widget-panel";
+import { integrationsApi, driveApi, type Integration } from "@/lib/api";
 
 type ChannelType = 'whatsapp' | 'email' | 'brevo' | 'outlook' | 'facebook' | 'instagram' | 'telegram' | 'sms' | 'tiktok' | 'google_calendar' | 'automation_webhook' | 'ai_provider';
 
@@ -118,6 +116,17 @@ const AutomationIcon = () => (
     <circle cx="19" cy="6" r="2.5" fill="#8b5cf6" />
     <circle cx="19" cy="18" r="2.5" fill="#8b5cf6" />
     <path d="M7.5 12h4l2-6h2.5M7.5 12h4l2 6h2.5" stroke="#94a3b8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const GoogleDriveIcon = () => (
+  <svg viewBox="0 0 87.3 78" className="w-7 h-7 flex-shrink-0">
+    <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066da" />
+    <path d="M43.65 25L29.9 1.4c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5A9.06 9.06 0 000 53h27.5z" fill="#00ac47" />
+    <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75L86.1 57.5c.8-1.4 1.2-2.95 1.2-4.5H59.8l5.85 10.9z" fill="#ea4335" />
+    <path d="M43.65 25L57.4 1.4C56.05.6 54.5.2 52.9.2H34.4c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d" />
+    <path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc" />
+    <path d="M73.4 26.5l-13.1-22.8c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00" />
   </svg>
 );
 
@@ -538,12 +547,66 @@ function formatDate(dateStr: string | null) {
 export default function IntegrationsPage() {
   const { tokens, organization } = useAuthStore();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [activeChannel, setActiveChannel] = useState<ChannelType | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [guideChannel, setGuideChannel] = useState<ChannelConfig | null>(null);
+
+  // Handle Drive OAuth redirect params
+  const driveConnected = searchParams.get("drive_connected") === "1";
+  const driveError = searchParams.get("drive_error");
+
+  // Clear Drive URL params after reading them
+  useEffect(() => {
+    if (driveConnected || driveError) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("drive_connected");
+      url.searchParams.delete("drive_error");
+      router.replace(url.pathname + (url.search || ""), { scroll: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Drive status
+  const { data: driveStatusData, isLoading: driveStatusLoading } = useQuery({
+    queryKey: ["drive-status"],
+    queryFn: () => driveApi.getStatus(tokens!.access, organization!.id),
+    enabled: !!tokens && !!organization,
+  });
+
+  const isDriveConnected = driveStatusData?.connected ?? false;
+  const driveConnectedAt = driveStatusData?.connected_at ?? null;
+
+  // Drive connect
+  const [driveConnecting, setDriveConnecting] = useState(false);
+  const handleDriveConnect = async () => {
+    if (!tokens || !organization) return;
+    setDriveConnecting(true);
+    try {
+      const { auth_url } = await driveApi.getAuthUrl(tokens.access, organization.id);
+      window.location.href = auth_url;
+    } catch {
+      setDriveConnecting(false);
+    }
+  };
+
+  // Drive disconnect
+  const driveDisconnectMutation = useMutation({
+    mutationFn: () => driveApi.disconnect(tokens!.access, organization!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["drive-status"] });
+      setSuccessMessage("Google Drive desconectado.");
+      setTimeout(() => setSuccessMessage(null), 4000);
+    },
+  });
+
+  // Plan guard — equipo or enterprise only
+  const orgPlan = organization?.plan ?? "";
+  const driveAllowed = orgPlan === "equipo" || orgPlan === "enterprise";
 
   const { data, isLoading } = useQuery({
     queryKey: ['integrations'],
@@ -696,20 +759,103 @@ export default function IntegrationsPage() {
       )}
 
       <DashboardHeader title="Integraciones" />
-      <div className="flex-1 overflow-y-auto p-6">
-        {/* Voice Agent Widget section */}
-        <div className="mb-8">
-          <VoiceWidgetPanel />
-        </div>
+      <div className="flex-1 min-h-0 overflow-y-auto p-6">
 
-        {/* Web Widget section */}
+        {/* ── Google Drive ── */}
         <div className="mb-8">
-          <WebWidgetPanel />
-        </div>
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-white mb-1">
+            <GoogleDriveIcon />
+            Almacenamiento y documentos
+          </h2>
+          <p className="text-slate-400 text-sm mb-4">
+            Vincula archivos de Google Drive a leads, clientes y oportunidades.
+          </p>
 
-        {/* Embed Forms section */}
-        <div className="mb-8">
-          <EmbedFormsPanel />
+          {(driveConnected || driveError) && (
+            <div className={[
+              "mb-4 rounded-lg px-4 py-3 text-sm border",
+              driveConnected
+                ? "bg-green-950 border-green-800 text-green-300"
+                : "bg-red-950 border-red-800 text-red-300",
+            ].join(" ")}>
+              {driveConnected
+                ? "Google Drive conectado correctamente."
+                : `Error al conectar Google Drive${driveError !== "1" ? ` (${driveError})` : ""}. Inténtalo de nuevo.`}
+            </div>
+          )}
+
+          <div className="relative max-w-sm">
+            <Card className="bg-slate-950 border-slate-800">
+              <CardHeader className="pb-3">
+                <div className="flex items-start gap-3">
+                  <GoogleDriveIcon />
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-base">Google Drive</CardTitle>
+                    <p className="text-xs text-slate-300 mt-0.5">
+                      Busca y vincula archivos de Drive desde cada registro del CRM.
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between mb-3">
+                  {driveStatusLoading ? (
+                    <Badge className="bg-slate-800 text-slate-400 border-slate-700 animate-pulse">Cargando...</Badge>
+                  ) : isDriveConnected ? (
+                    <Badge className="bg-green-100 text-green-700 border-green-200">Conectado</Badge>
+                  ) : (
+                    <Badge className="bg-slate-100 text-slate-600 border-slate-200">Desconectado</Badge>
+                  )}
+                  <Badge className="bg-orange-950/40 text-orange-400 border-orange-800 text-xs">Plan Equipo</Badge>
+                </div>
+
+                {isDriveConnected && driveConnectedAt && (
+                  <p className="text-xs text-slate-400 mb-3">
+                    Conectado {formatDate(driveConnectedAt)}
+                  </p>
+                )}
+
+                {isDriveConnected ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    onClick={() => driveDisconnectMutation.mutate()}
+                    disabled={driveDisconnectMutation.isPending}
+                  >
+                    {driveDisconnectMutation.isPending ? "Desconectando..." : "Desconectar"}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="bg-orange-600 hover:bg-orange-500 text-white"
+                    onClick={handleDriveConnect}
+                    disabled={driveConnecting || !driveAllowed}
+                  >
+                    {driveConnecting ? "Redirigiendo..." : "Conectar con Google"}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Plan upgrade overlay */}
+            {!driveAllowed && (
+              <div className="absolute inset-0 rounded-xl bg-slate-950/85 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 p-4">
+                <p className="text-sm font-semibold text-slate-200 text-center">
+                  Disponible en Plan Equipo
+                </p>
+                <p className="text-xs text-slate-400 text-center">
+                  Actualiza tu plan para conectar Google Drive y vincular documentos.
+                </p>
+                <a
+                  href="/precios"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+                >
+                  Actualizar plan →
+                </a>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="mb-6">
