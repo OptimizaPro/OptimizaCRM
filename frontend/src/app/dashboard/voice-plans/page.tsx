@@ -932,6 +932,12 @@ function PlansTab({ token, orgId }: PlansTabProps) {
 
   return (
     <div>
+      <div className="mb-6">
+        <h2 className="text-base font-bold text-slate-100">Planes de suscripción</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Planes recurrentes que aparecen en <code className="rounded bg-slate-800 px-1 text-slate-400">/voz-ia</code>.
+        </p>
+      </div>
       <div className="mb-6 flex items-center justify-between">
         <p className="text-sm text-slate-400">
           {plans.length} {plans.length === 1 ? "plan" : "planes"} configurados
@@ -1046,6 +1052,9 @@ function PlansTab({ token, orgId }: PlansTabProps) {
           apiError={apiError}
         />
       )}
+
+      {/* ── Setup tiers section ─────────────────────────────────────────────── */}
+      <SetupSection token={token} orgId={orgId} />
     </div>
   );
 }
@@ -1990,7 +1999,7 @@ function SetupModal({
   );
 }
 
-function SetupTab({ token, orgId }: { token: string; orgId: string }) {
+function SetupSection({ token, orgId }: { token: string; orgId: string }) {
   const [tiers, setTiers]         = useState<VoiceSetupPlanAdmin[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selected, setSelected]   = useState<Partial<VoiceSetupPlanAdmin> | null>(null);
@@ -2066,10 +2075,12 @@ function SetupTab({ token, orgId }: { token: string; orgId: string }) {
   const sorted = [...tiers].sort((a, b) => a.sort_order - b.sort_order);
 
   return (
-    <div>
-      <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/60 px-4 py-3 text-xs text-slate-400">
-        Gestiona los tiers del servicio de <strong className="text-slate-300">Setup Agente de Voz IA</strong> que aparecen en{" "}
-        <code className="rounded bg-slate-800 px-1 text-slate-300">/servicios/voz-ia</code>.
+    <div className="mt-12 border-t border-slate-800 pt-10">
+      <div className="mb-6">
+        <h2 className="text-base font-bold text-slate-100">Servicios de implementación</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Tiers de setup único que aparecen en <code className="rounded bg-slate-800 px-1 text-slate-400">/servicios/voz-ia</code>.
+        </p>
       </div>
 
       <div className="mb-6 flex items-center justify-between">
@@ -2602,16 +2613,15 @@ function CallsTab({ token, orgId }: { token: string; orgId: string }) {
   );
 }
 
-type Tab = "agents" | "myplan" | "plans" | "faqs" | "stats" | "setup" | "calls";
+type Tab = "agents" | "myplan" | "plans" | "faqs" | "stats" | "calls";
 
 const ALL_TABS: { id: Tab; label: string; icon: React.ElementType; staffOnly: boolean }[] = [
   { id: "agents", label: "Mis Agentes", icon: Mic,        staffOnly: false },
   { id: "calls",  label: "Llamadas",    icon: PhoneCall,  staffOnly: false },
   { id: "myplan", label: "Mi Plan",     icon: Crown,      staffOnly: false },
-  { id: "plans",  label: "Planes",      icon: BarChart3,  staffOnly: true  },
+  { id: "plans",  label: "Precios",     icon: BarChart3,  staffOnly: true  },
   { id: "faqs",   label: "FAQs",        icon: HelpCircle, staffOnly: true  },
   { id: "stats",  label: "Estadísticas",icon: Zap,        staffOnly: true  },
-  { id: "setup",  label: "Setup",       icon: Wrench,     staffOnly: true  },
 ];
 
 export default function VoicePlansPage() {
@@ -2709,7 +2719,6 @@ export default function VoicePlansPage() {
           {activeTab === "plans"  && isStaff && <PlansTab    token={token} orgId={String(orgId)} />}
           {activeTab === "faqs"   && isStaff && <FaqsTab     token={token} orgId={String(orgId)} />}
           {activeTab === "stats"  && isStaff && <StatsTab    token={token} orgId={String(orgId)} />}
-          {activeTab === "setup"  && isStaff && <SetupTab    token={token} orgId={String(orgId)} />}
         </div>
       </div>
     </div>
