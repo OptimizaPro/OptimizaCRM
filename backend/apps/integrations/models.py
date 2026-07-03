@@ -184,7 +184,8 @@ class VoiceWidget(TenantModel):
         VoiceKnowledgeBase, on_delete=models.SET_NULL,
         null=True, blank=True, related_name="widget", verbose_name="Base de conocimiento",
     )
-    llm_model  = models.CharField(max_length=100, choices=LLM_CHOICES, default="groq/llama-3.3-70b-versatile", verbose_name="Modelo LLM")
+    llm_model     = models.CharField(max_length=100, choices=LLM_CHOICES, default="groq/llama-3.3-70b-versatile", verbose_name="Modelo LLM")
+    system_prompt = models.TextField(blank=True, verbose_name="System prompt personalizado", help_text="Deja vacío para usar el prompt generado automáticamente desde la base de conocimiento.")
     is_active  = models.BooleanField(default=True, verbose_name="Activo")
     lead_count = models.PositiveIntegerField(default=0, verbose_name="Leads captados")
     call_count = models.PositiveIntegerField(default=0, verbose_name="Llamadas totales")
@@ -220,6 +221,7 @@ class VoiceCall(TenantModel):
     appointment        = models.ForeignKey("crm.CalendarEvent", on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Cita")
     escalated_to_human = models.BooleanField(default=False, verbose_name="Escalado a humano")
     qualification_data = models.JSONField(default=dict, blank=True, verbose_name="Datos de calificación")
+    structured_output  = models.JSONField(default=dict, blank=True, verbose_name="Salida estructurada")
     ended_at           = models.DateTimeField(null=True, blank=True, verbose_name="Fin de llamada")
 
     class Meta:

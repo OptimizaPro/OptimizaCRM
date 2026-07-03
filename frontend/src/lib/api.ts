@@ -847,6 +847,7 @@ export interface VoiceWidget {
   name:              string;
   vapi_assistant_id: string;
   llm_model:         string;
+  system_prompt:     string;
   is_active:         boolean;
   lead_count:        number;
   call_count:        number;
@@ -891,13 +892,20 @@ export const voiceWidgetApi = {
     ),
 
   save: (token: string, orgId: string, data: {
-    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config" | "name">>;
+    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config" | "name" | "system_prompt">>;
     knowledge_base?: Partial<VoiceKnowledgeBase>;
     vapi_private_key?: string;
     vapi_public_key?: string;
     agent_id?: string;
   }) =>
     api.post<{ widget: VoiceWidget; vapi_warning?: string }>("/voice-widget/manage/", data, { token, orgId }),
+
+  generatePrompt: (token: string, orgId: string, agentId?: string) =>
+    api.post<{ system_prompt: string }>(
+      "/voice-widget/generate-prompt/",
+      agentId ? { agent_id: agentId } : {},
+      { token, orgId },
+    ),
 
   listAgents: (token: string, orgId: string) =>
     api.get<{ agents: VoiceAgentSummary[]; plan: VoiceAgentPlan; agent_count: number }>(

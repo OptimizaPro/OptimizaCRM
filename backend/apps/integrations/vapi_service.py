@@ -49,10 +49,38 @@ Cuando corresponda, realiza estas preguntas de forma conversacional (nunca todas
 """
 
 VOICE_MAP = {
-    "es-MX-NuriaNeural":  {"provider": "azure", "voiceId": "es-MX-NuriaNeural"},
-    "es-MX-JorgeNeural":  {"provider": "azure", "voiceId": "es-MX-JorgeNeural"},
-    "es-MX-DaliaNeural":  {"provider": "azure", "voiceId": "es-MX-DaliaNeural"},
-    "es-ES-ElviraNeural": {"provider": "azure", "voiceId": "es-ES-ElviraNeural"},
+    # México
+    "es-MX-NuriaNeural":    {"provider": "azure", "voiceId": "es-MX-NuriaNeural"},
+    "es-MX-DaliaNeural":    {"provider": "azure", "voiceId": "es-MX-DaliaNeural"},
+    "es-MX-CarlotaNeural":  {"provider": "azure", "voiceId": "es-MX-CarlotaNeural"},
+    "es-MX-BeatrizNeural":  {"provider": "azure", "voiceId": "es-MX-BeatrizNeural"},
+    "es-MX-LarissaNeural":  {"provider": "azure", "voiceId": "es-MX-LarissaNeural"},
+    "es-MX-RenataNeural":   {"provider": "azure", "voiceId": "es-MX-RenataNeural"},
+    "es-MX-MarinaNeural":   {"provider": "azure", "voiceId": "es-MX-MarinaNeural"},
+    "es-MX-JorgeNeural":    {"provider": "azure", "voiceId": "es-MX-JorgeNeural"},
+    "es-MX-GerardoNeural":  {"provider": "azure", "voiceId": "es-MX-GerardoNeural"},
+    "es-MX-YagoNeural":     {"provider": "azure", "voiceId": "es-MX-YagoNeural"},
+    # Guatemala
+    "es-GT-MartaNeural":    {"provider": "azure", "voiceId": "es-GT-MartaNeural"},
+    "es-GT-AndresNeural":   {"provider": "azure", "voiceId": "es-GT-AndresNeural"},
+    # Colombia
+    "es-CO-SalomeNeural":   {"provider": "azure", "voiceId": "es-CO-SalomeNeural"},
+    "es-CO-GonzaloNeural":  {"provider": "azure", "voiceId": "es-CO-GonzaloNeural"},
+    # Argentina
+    "es-AR-ElenaNeural":    {"provider": "azure", "voiceId": "es-AR-ElenaNeural"},
+    "es-AR-TomasNeural":    {"provider": "azure", "voiceId": "es-AR-TomasNeural"},
+    # Chile
+    "es-CL-CatalinaNeural": {"provider": "azure", "voiceId": "es-CL-CatalinaNeural"},
+    "es-CL-LorenzoNeural":  {"provider": "azure", "voiceId": "es-CL-LorenzoNeural"},
+    # España
+    "es-ES-ElviraNeural":   {"provider": "azure", "voiceId": "es-ES-ElviraNeural"},
+    "es-ES-AbrilNeural":    {"provider": "azure", "voiceId": "es-ES-AbrilNeural"},
+    "es-ES-IreneNeural":    {"provider": "azure", "voiceId": "es-ES-IreneNeural"},
+    "es-ES-AlvaroNeural":   {"provider": "azure", "voiceId": "es-ES-AlvaroNeural"},
+    "es-ES-TeoNeural":      {"provider": "azure", "voiceId": "es-ES-TeoNeural"},
+    # US Spanish
+    "es-US-PalomaNeural":   {"provider": "azure", "voiceId": "es-US-PalomaNeural"},
+    "es-US-AlonsoNeural":   {"provider": "azure", "voiceId": "es-US-AlonsoNeural"},
 }
 
 
@@ -148,7 +176,7 @@ def _build_tools(widget) -> list:
     ]
 
 
-def _build_model_config(llm_model: str, system_prompt: str) -> dict:
+def _build_model_config(llm_model: str, system_prompt: str, tools: list) -> dict:
     """Returns Vapi model config dict based on llm_model string 'provider/model-name'."""
     parts    = llm_model.split("/", 1)
     provider = parts[0] if len(parts) == 2 else "groq"
@@ -156,8 +184,9 @@ def _build_model_config(llm_model: str, system_prompt: str) -> dict:
     return {
         "provider":     provider,
         "model":        model,
-        "systemPrompt": system_prompt,
+        "messages": [{"role": "system", "content": system_prompt}],
         "temperature":  0.6,
+        "tools":        tools,
     }
 
 
@@ -169,7 +198,7 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
     cfg          = widget.config or {}
     voice_key    = cfg.get("voice", "es-MX-NuriaNeural")
     voice_config = VOICE_MAP.get(voice_key, {"provider": "azure", "voiceId": "es-MX-NuriaNeural"})
-    system_prompt = _build_system_prompt(widget, kb)
+    system_prompt = widget.system_prompt.strip() if widget.system_prompt and widget.system_prompt.strip() else _build_system_prompt(widget, kb)
     tools         = _build_tools(widget)
 
     payload = {
@@ -179,9 +208,8 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
             f"Hola, soy {cfg.get('agent_name', 'el asistente')} de {widget.organization.name}. ¿En qué puedo ayudarte hoy?",
         ),
         "endCallMessage": cfg.get("farewell", "¡Hasta luego! Que tenga un excelente día."),
-        "model":          _build_model_config(widget.llm_model, system_prompt),
+        "model":          _build_model_config(widget.llm_model, system_prompt, tools),
         "voice":          voice_config,
-        "tools":          tools,
         "transcriber": {
             "provider": "deepgram",
             "language": "es",
@@ -191,16 +219,63 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
         "backgroundSound":            "off",
         "backchannelingEnabled":      False,
         "backgroundDenoisingEnabled": True,
+        "analysisPlan": {
+            "summaryPrompt": (
+                "Eres un asistente de CRM. Resume la llamada en español en 2-3 oraciones: "
+                "qué quería el cliente, qué se resolvió y cuál es el siguiente paso."
+            ),
+            "structuredDataPrompt": (
+                "Extrae los datos de la conversación en el formato JSON indicado. "
+                "Si un dato no fue mencionado, usa null. "
+                "qualification_score va de 1 (mínimo interés) a 10 (listo para comprar)."
+            ),
+            "structuredDataSchema": {
+                "type": "object",
+                "properties": {
+                    "lead_name":           {"type": "string",  "description": "Nombre completo del cliente"},
+                    "lead_email":          {"type": "string",  "description": "Email del cliente"},
+                    "lead_phone":          {"type": "string",  "description": "Teléfono del cliente"},
+                    "company":             {"type": "string",  "description": "Empresa u organización del cliente"},
+                    "intent":              {"type": "string",  "description": "Intención principal del cliente en la llamada"},
+                    "is_interested":       {"type": "boolean", "description": "¿El cliente mostró interés real?"},
+                    "qualification_score": {"type": "integer", "description": "Puntuación de calificación del lead (1-10)"},
+                    "budget_mentioned":    {"type": "string",  "description": "Presupuesto o rango de precio mencionado"},
+                    "timeline":            {"type": "string",  "description": "Urgencia o plazo mencionado por el cliente"},
+                    "objections":          {
+                        "type": "array", "items": {"type": "string"},
+                        "description": "Objeciones o dudas planteadas por el cliente",
+                    },
+                    "follow_up_action":    {"type": "string",  "description": "Próximo paso acordado o recomendado"},
+                    "appointment_date":    {"type": "string",  "description": "Fecha/hora de cita agendada, si aplica"},
+                    "summary_es":          {"type": "string",  "description": "Resumen de la llamada en español (2-3 oraciones)"},
+                },
+                "required": ["is_interested", "qualification_score", "summary_es"],
+            },
+            "successEvaluationPrompt": (
+                "La llamada fue exitosa si el cliente mostró interés, proporcionó datos de contacto "
+                "o agendó una cita. Responde solo 'true' o 'false'."
+            ),
+            "successEvaluationRubric": "PassFail",
+        },
     }
 
     if widget.vapi_assistant_id:
-        # Update existing assistant
+        # Try to update the existing assistant
         r = requests.patch(
             f"{VAPI_API_BASE}/assistant/{widget.vapi_assistant_id}",
             headers=_headers(api_key),
             json=payload,
             timeout=15,
         )
+        if r.status_code in (403, 404):
+            # The assistant belongs to a different Vapi account (e.g. key was rotated).
+            # Fall back to creating a fresh assistant under the current key.
+            r = requests.post(
+                f"{VAPI_API_BASE}/assistant",
+                headers=_headers(api_key),
+                json=payload,
+                timeout=15,
+            )
     else:
         # Create new assistant
         r = requests.post(
@@ -210,7 +285,13 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
             timeout=15,
         )
 
-    r.raise_for_status()
+    if not r.ok:
+        try:
+            detail = r.json()
+        except Exception:
+            detail = r.text
+        raise Exception(f"Vapi {r.status_code}: {detail}")
+
     data = r.json()
     return data["id"]
 

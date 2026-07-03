@@ -175,6 +175,7 @@ def voice_widget_manage(request):
                 "token":            str(widget.token),
                 "vapi_assistant_id": widget.vapi_assistant_id,
                 "llm_model":        widget.llm_model,
+                "system_prompt":    widget.system_prompt,
                 "is_active":        widget.is_active,
                 "lead_count":       widget.lead_count,
                 "call_count":       widget.call_count,
@@ -224,7 +225,7 @@ def voice_widget_manage(request):
 
         # Update widget fields — support both nested {"widget":{...}} and flat body
         widget_data = body.get("widget") or {
-            k: body[k] for k in ("llm_model", "is_active", "config") if k in body
+            k: body[k] for k in ("llm_model", "is_active", "config", "system_prompt") if k in body
         }
         if "llm_model" in widget_data:
             widget.llm_model = widget_data["llm_model"]
@@ -232,6 +233,8 @@ def voice_widget_manage(request):
             widget.is_active = widget_data["is_active"]
         if "config" in widget_data:
             widget.config = widget_data["config"]
+        if "system_prompt" in widget_data:
+            widget.system_prompt = widget_data["system_prompt"]
 
         # Update or create knowledge base
         kb_data = body.get("knowledge_base")
@@ -281,6 +284,7 @@ def voice_widget_manage(request):
                 "token":             str(widget.token),
                 "vapi_assistant_id": widget.vapi_assistant_id,
                 "llm_model":         widget.llm_model,
+                "system_prompt":     widget.system_prompt,
                 "is_active":         widget.is_active,
                 "lead_count":        widget.lead_count,
                 "call_count":        widget.call_count,
@@ -606,9 +610,14 @@ def voice_call_ended(request):
     call_data       = message.get("call", {})
     vapi_call_id    = call_data.get("id", "")
     transcript      = message.get("transcript", "")
-    summary         = message.get("summary", "")
     duration_secs   = int(message.get("durationSeconds", 0))
     ended_reason    = message.get("endedReason", "")
+
+    # Vapi analysis block — available when analysisPlan is configured
+    analysis         = message.get("analysis", {})
+    vapi_summary     = analysis.get("summary") or message.get("summary", "")
+    vapi_structured  = analysis.get("structuredData") or {}
+    vapi_success     = analysis.get("successEvaluation")  # "true"/"false" string
 
     # Determine status from endedReason
     if ended_reason in ("assistant-ended-call", "customer-ended-call", "silence-timed-out"):
@@ -618,17 +627,36 @@ def voice_call_ended(request):
     else:
         call_status = "completed"
 
+    call_obj = None
     if vapi_call_id:
         try:
             from .models import VoiceCall
-            updated = VoiceCall.objects.filter(vapi_call_id=vapi_call_id).update(
+            update_fields = dict(
                 status           = call_status,
                 transcript       = transcript,
-                summary          = summary,
+                summary          = vapi_summary,
                 duration_seconds = duration_secs,
                 ended_at         = timezone.now(),
             )
-            # Increment widget call_count
+            # Store Vapi structured data immediately if available
+            if vapi_structured:
+                update_fields["structured_output"] = vapi_structured
+                # Derive sentiment from qualification_score if present
+                score = vapi_structured.get("qualification_score")
+                if score is not None:
+                    try:
+                        s = int(score)
+                        if s >= 7:
+                            update_fields["sentiment"] = "positive"
+                        elif s >= 4:
+                            update_fields["sentiment"] = "neutral"
+                        else:
+                            update_fields["sentiment"] = "negative"
+                    except (ValueError, TypeError):
+                        pass
+
+            updated = VoiceCall.objects.filter(vapi_call_id=vapi_call_id).update(**update_fields)
+
             if updated:
                 call_obj = VoiceCall.objects.filter(vapi_call_id=vapi_call_id).select_related("widget").first()
                 if call_obj:
@@ -636,6 +664,16 @@ def voice_call_ended(request):
                     VoiceWidget.objects.filter(pk=call_obj.widget_id).update(
                         call_count=call_obj.widget.call_count + 1
                     )
+        except Exception:
+            pass
+
+    # ── Post-call LLM enrichment (Celery) ────────────────────────────────────
+    # Always enrich: if Vapi already extracted structured data the task will
+    # still run to fill gaps and potentially create/update the linked lead.
+    if call_obj and transcript and call_status == "completed":
+        try:
+            from .tasks import enrich_voice_call  # noqa: PLC0415
+            enrich_voice_call.delay(call_obj.pk)
         except Exception:
             pass
 
@@ -1242,3 +1280,95 @@ def voice_widget_agent_delete(request, agent_id):
     widget.delete()
 
     return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+def voice_generate_prompt(request):
+    """
+    POST /api/v1/voice-widget/generate-prompt/
+    Generates a system prompt for the voice agent using AI, based on the
+    current widget config and knowledge base. Returns {"system_prompt": "..."}.
+    Requires JWT + X-Organization-ID.
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+    if request.method != "POST":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    org = _get_org(request)
+    if isinstance(org, JsonResponse):
+        return _cors(org, request)
+
+    try:
+        body = json.loads(request.body or "{}")
+    except Exception:
+        body = {}
+
+    agent_id = (body.get("agent_id") or "").strip()
+
+    from .models import VoiceWidget
+    if agent_id:
+        widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base").first()
+    else:
+        widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base").first()
+
+    if not widget:
+        return _cors(JsonResponse({"error": "Widget not found"}, status=404), request)
+
+    kb  = widget.knowledge_base
+    cfg = widget.config or {}
+
+    # Build context from KB and config
+    context_parts = [
+        f"Nombre del agente: {cfg.get('agent_name', 'Asistente')}",
+        f"Empresa: {org.name}",
+    ]
+    if kb:
+        if kb.company_info:
+            context_parts.append(f"Información de la empresa:\n{kb.company_info}")
+        if kb.products_services:
+            context_parts.append(f"Productos y servicios:\n{kb.products_services}")
+        if kb.pricing:
+            context_parts.append(f"Precios:\n{kb.pricing}")
+        if kb.working_hours:
+            context_parts.append(f"Horario de atención: {kb.working_hours}")
+        if kb.contact_info:
+            context_parts.append(f"Contacto: {kb.contact_info}")
+        if kb.appointment_rules:
+            context_parts.append(f"Proceso de citas:\n{kb.appointment_rules}")
+        if kb.qualification_questions:
+            qs = kb.qualification_questions if isinstance(kb.qualification_questions, list) else []
+            if qs:
+                context_parts.append("Preguntas de calificación:\n" + "\n".join(f"- {q}" for q in qs))
+        if kb.whatsapp_number:
+            context_parts.append(f"WhatsApp para escalado: {kb.whatsapp_number}")
+
+    context_text = "\n\n".join(context_parts)
+
+    meta_system = (
+        "Eres un experto en diseño de agentes de voz con IA para empresas LATAM. "
+        "Tu tarea es escribir un system prompt claro, profesional y efectivo para un agente de voz. "
+        "El prompt debe estar en español, ser conciso y cubrir: identidad del agente, objetivo principal, "
+        "tono y restricciones clave (no inventar datos, escalar a humano cuando corresponda). "
+        "Devuelve SOLO el system prompt, sin explicaciones ni encabezados adicionales."
+    )
+
+    user_text = (
+        f"Escribe el system prompt para este agente de voz basándote en la siguiente información:\n\n"
+        f"{context_text}\n\n"
+        f"El prompt debe ser directo, usar primera persona del agente, y tener secciones claramente "
+        f"delimitadas para: identidad, objetivo, tono, restricciones y despedida."
+    )
+
+    from apps.ai_integration.views import _get_ai_config, _call_llm  # noqa: PLC0415
+    api_key, api_url, model = _get_ai_config()
+
+    if not api_key:
+        return _cors(JsonResponse({"error": "No hay proveedor de IA configurado. Añade una clave de Groq u OpenAI en Integraciones."}, status=400), request)
+
+    result, error = _call_llm(api_key, api_url, model, meta_system, user_text, temperature=0.7, max_tokens=1200)
+
+    if error:
+        return _cors(JsonResponse({"error": error}, status=502), request)
+
+    return _cors(JsonResponse({"system_prompt": result}), request)

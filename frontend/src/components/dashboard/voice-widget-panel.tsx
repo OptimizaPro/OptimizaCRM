@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
   ExternalLink, Maximize2, Rocket, Globe2, Loader2, FileUp, Eye, EyeOff, Camera,
-  Link2, FileText, Trash2, AlertCircle,
+  Link2, FileText, Trash2, AlertCircle, Sparkles, RotateCcw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -170,10 +170,36 @@ function VoiceSnippetBox({ token }: { token: string }) {
   );
 }
 
+// ─── Default system prompt template ──────────────────────────────────────────
+
+function buildDefaultPrompt(agentName: string, companyName: string): string {
+  return `Eres ${agentName}, asistente de voz de ${companyName}.
+
+━━━ IDENTIDAD ━━━
+Tu nombre es ${agentName}. Representas a ${companyName} con profesionalismo y cercanía.
+
+━━━ OBJETIVO ━━━
+Atender a los clientes de forma natural, responder sus preguntas y calificar leads de manera conversacional. Cuando corresponda, agenda citas o escala a un humano.
+
+━━━ TONO Y ESTILO ━━━
+- Habla siempre en español latinoamericano, de forma amable y concisa.
+- Evita respuestas largas. Ve al punto.
+- Usa el nombre del cliente cuando lo conozcas.
+
+━━━ RESTRICCIONES ━━━
+- NUNCA inventes información. Si no sabes algo, di: "Lo consultaré con mi equipo y te informamos a la brevedad."
+- Si el cliente pide hablar con una persona, usa escalateToHuman de inmediato.
+- No menciones que eres una IA a menos que te lo pregunten directamente.
+
+━━━ CIERRE ━━━
+Al finalizar, agradece la llamada y despídete con calidez.`;
+}
+
 // ─── Default values ───────────────────────────────────────────────────────────
 
 const DEFAULT_WIDGET: VoiceWidget = {
   id: "", token: "", name: "Agente de Voz", vapi_assistant_id: "", llm_model: "groq/llama-3.3-70b-versatile",
+  system_prompt: "",
   is_active: true, lead_count: 0, call_count: 0,
   config: { agent_name: "Sofía", voice: "es-MX-NuriaNeural", color: "#EA580C", greeting: "", farewell: "", avatar_url: "" },
   knowledge_base: null,
@@ -206,8 +232,9 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
   const widget = data?.widget ?? null;
   const [form,   setForm]   = useState<Partial<VoiceWidget>>({});
   const [kbForm, setKbForm] = useState<Partial<VoiceKnowledgeBase>>({});
-  const [dirty,   setDirty]   = useState(false);
-  const [saveMsg, setSaveMsg] = useState("");
+  const [dirty,           setDirty]           = useState(false);
+  const [saveMsg,         setSaveMsg]         = useState("");
+  const [generatingPrompt, setGeneratingPrompt] = useState(false);
 
   const current: VoiceWidget = widget ?? DEFAULT_WIDGET;
   const merged: VoiceWidget  = {
@@ -220,6 +247,15 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
     ...kbForm,
   };
 
+  // Pre-populate system_prompt with generic template when widget loads without one
+  useEffect(() => {
+    if (widget && !widget.system_prompt) {
+      const agentName   = widget.config?.agent_name || "Asistente";
+      const companyName = organization?.name || "la empresa";
+      setForm((f) => ({ ...f, system_prompt: buildDefaultPrompt(agentName, companyName) }));
+    }
+  }, [widget?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const patch    = (key: keyof VoiceWidget, value: unknown) => { setForm((f) => ({ ...f, [key]: value })); setDirty(true); };
   const patchCfg = (key: string, value: string)              => { setForm((f) => ({ ...f, config: { ...(f.config ?? {}), [key]: value } })); setDirty(true); };
   const patchKb  = (key: keyof VoiceKnowledgeBase, value: string | string[]) => { setKbForm((f) => ({ ...f, [key]: value })); setDirty(true); };
@@ -228,10 +264,11 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
     mutationFn: () =>
       voiceWidgetApi.save(auth.token, auth.orgId, {
         widget: {
-          llm_model: merged.llm_model,
-          is_active: merged.is_active,
-          config:    merged.config,
-          name:      merged.name,
+          llm_model:     merged.llm_model,
+          system_prompt: merged.system_prompt,
+          is_active:     merged.is_active,
+          config:        merged.config,
+          name:          merged.name,
         },
         knowledge_base: mergedKb,
         ...(vapiPrivateKey ? { vapi_private_key: vapiPrivateKey } : {}),
@@ -660,7 +697,63 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
           </div>
         </div>
 
-        {/* ── C. Base de Conocimiento ──────────────────────────────────────── */}
+        {/* ── C. System Prompt ─────────────────────────────────────────────── */}
+        <div className="border-t border-slate-800 pt-5">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">System Prompt</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Instrucciones base del agente. Personaliza el template o genera uno con IA a partir de tu base de conocimiento.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                title="Restablecer template genérico"
+                onClick={() => {
+                  const agentName   = merged.config?.agent_name || "Asistente";
+                  const companyName = organization?.name || "la empresa";
+                  patch("system_prompt", buildDefaultPrompt(agentName, companyName));
+                }}
+                className="flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-400 hover:border-slate-500 hover:text-slate-200 transition-colors"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Template
+              </button>
+              <button
+                type="button"
+                disabled={generatingPrompt}
+                onClick={async () => {
+                  setGeneratingPrompt(true);
+                  try {
+                    const res = await voiceWidgetApi.generatePrompt(auth.token, auth.orgId, agentId);
+                    patch("system_prompt", res.system_prompt);
+                    toast.success("Prompt generado con IA");
+                  } catch {
+                    toast.error("Error al generar el prompt. Verifica que tienes un proveedor de IA configurado.");
+                  } finally {
+                    setGeneratingPrompt(false);
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-lg bg-orange-600/20 border border-orange-600/40 px-2.5 py-1.5 text-xs font-medium text-orange-400 hover:bg-orange-600/30 hover:border-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingPrompt
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Sparkles className="h-3 w-3" />
+                }
+                {generatingPrompt ? "Generando…" : "Generar con IA"}
+              </button>
+            </div>
+          </div>
+          <textarea
+            className={cn(inputCls, "min-h-[200px] resize-y font-mono text-xs leading-relaxed")}
+            value={merged.system_prompt ?? ""}
+            onChange={(e) => patch("system_prompt", e.target.value)}
+            spellCheck={false}
+          />
+        </div>
+
+        {/* ── D. Base de Conocimiento ──────────────────────────────────────── */}
         <div className="border-t border-slate-800 pt-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Base de Conocimiento</p>

@@ -29,6 +29,7 @@ from .voice_views import (
     voice_widget_agent_delete,
     voice_kb_sources,
     voice_kb_source_delete,
+    voice_generate_prompt,
 )
 
 router = DefaultRouter()
@@ -77,6 +78,9 @@ urlpatterns = [
     # ── Voice KB Sources — list & delete (authenticated) ─────────────────────
     path("voice-widget/kb-sources/",              voice_kb_sources,          name="voice-kb-sources"),
     path("voice-widget/kb-sources/<int:source_id>/", voice_kb_source_delete, name="voice-kb-source-delete"),
+
+    # ── Voice AI — Generate system prompt (authenticated) ─────────────────────
+    path("voice-widget/generate-prompt/",         voice_generate_prompt,     name="voice-generate-prompt"),
 
     # ── Google Drive — OAuth + documents (authenticated) ─────────────────────
     path("drive/status/",                    drive_status,          name="drive-status"),
