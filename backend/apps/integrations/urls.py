@@ -30,6 +30,8 @@ from .voice_views import (
     voice_kb_sources,
     voice_kb_source_delete,
     voice_generate_prompt,
+    voice_calls_list,
+    voice_call_detail,
 )
 
 router = DefaultRouter()
@@ -81,6 +83,10 @@ urlpatterns = [
 
     # ── Voice AI — Generate system prompt (authenticated) ─────────────────────
     path("voice-widget/generate-prompt/",         voice_generate_prompt,     name="voice-generate-prompt"),
+
+    # ── Voice AI — Calls list & detail (authenticated) ────────────────────────
+    path("voice-widget/calls/",                   voice_calls_list,          name="voice-calls-list"),
+    path("voice-widget/calls/<int:call_id>/",     voice_call_detail,         name="voice-call-detail"),
 
     # ── Google Drive — OAuth + documents (authenticated) ─────────────────────
     path("drive/status/",                    drive_status,          name="drive-status"),

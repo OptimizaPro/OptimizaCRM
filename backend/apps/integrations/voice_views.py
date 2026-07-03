@@ -1282,6 +1282,147 @@ def voice_widget_agent_delete(request, agent_id):
     return JsonResponse({"ok": True})
 
 
+# ─── 10. Calls list ──────────────────────────────────────────────────────────
+
+@csrf_exempt
+def voice_calls_list(request):
+    """
+    GET /api/v1/voice-widget/calls/
+    Authenticated — requires JWT + X-Organization-ID.
+    Optional query params: agent_id, page (default 1), page_size (default 20, max 100).
+    Returns paginated calls for the org ordered by -created_at.
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "GET":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return _cors(JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400), request)
+
+    from .models import VoiceCall
+
+    qs = VoiceCall.objects.filter(organization=org).select_related("widget", "lead").order_by("-created_at")
+
+    agent_id = (request.GET.get("agent_id") or "").strip()
+    if agent_id:
+        qs = qs.filter(widget__id=agent_id)
+
+    try:
+        page = max(1, int(request.GET.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+
+    try:
+        page_size = min(100, max(1, int(request.GET.get("page_size", 20))))
+    except (ValueError, TypeError):
+        page_size = 20
+
+    count       = qs.count()
+    total_pages = max(1, (count + page_size - 1) // page_size)
+    offset      = (page - 1) * page_size
+    calls       = qs[offset: offset + page_size]
+
+    def _serialize(call):
+        so = call.structured_output or {}
+        return {
+            "id":               call.id,
+            "vapi_call_id":     call.vapi_call_id,
+            "agent_id":         str(call.widget.id) if call.widget else None,
+            "agent_name":       (call.widget.config or {}).get("agent_name", "") if call.widget else "",
+            "caller_name":      call.caller_name,
+            "caller_phone":     call.caller_phone,
+            "status":           call.status,
+            "duration_seconds": call.duration_seconds,
+            "sentiment":        call.sentiment,
+            "ended_at":         call.ended_at.isoformat() if call.ended_at else None,
+            "created_at":       call.created_at.isoformat(),
+            "lead_id":          call.lead_id,
+            "structured_output": {
+                "lead_name":           so.get("lead_name"),
+                "qualification_score": so.get("qualification_score"),
+                "is_interested":       so.get("is_interested"),
+                "intent":              so.get("intent"),
+                "summary_es":          so.get("summary_es"),
+                "follow_up_action":    so.get("follow_up_action"),
+                "budget_mentioned":    so.get("budget_mentioned"),
+                "timeline":            so.get("timeline"),
+                "objections":          so.get("objections"),
+            },
+        }
+
+    return _cors(JsonResponse({
+        "results":     [_serialize(c) for c in calls],
+        "count":       count,
+        "page":        page,
+        "page_size":   page_size,
+        "total_pages": total_pages,
+    }), request)
+
+
+# ─── 11. Call detail ──────────────────────────────────────────────────────────
+
+@csrf_exempt
+def voice_call_detail(request, call_id):
+    """
+    GET /api/v1/voice-widget/calls/<int:call_id>/
+    Authenticated — requires JWT + X-Organization-ID.
+    Returns full call record including transcript and summary.
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "GET":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return _cors(JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400), request)
+
+    from .models import VoiceCall
+
+    try:
+        call = VoiceCall.objects.select_related("widget", "lead").get(id=call_id, organization=org)
+    except VoiceCall.DoesNotExist:
+        return _cors(JsonResponse({"error": "not found"}, status=404), request)
+
+    so = call.structured_output or {}
+    data = {
+        "id":               call.id,
+        "vapi_call_id":     call.vapi_call_id,
+        "agent_id":         str(call.widget.id) if call.widget else None,
+        "agent_name":       (call.widget.config or {}).get("agent_name", "") if call.widget else "",
+        "caller_name":      call.caller_name,
+        "caller_phone":     call.caller_phone,
+        "status":           call.status,
+        "duration_seconds": call.duration_seconds,
+        "sentiment":        call.sentiment,
+        "ended_at":         call.ended_at.isoformat() if call.ended_at else None,
+        "created_at":       call.created_at.isoformat(),
+        "lead_id":          call.lead_id,
+        "transcript":       call.transcript,
+        "summary":          call.summary,
+        "structured_output": {
+            "lead_name":           so.get("lead_name"),
+            "qualification_score": so.get("qualification_score"),
+            "is_interested":       so.get("is_interested"),
+            "intent":              so.get("intent"),
+            "summary_es":          so.get("summary_es"),
+            "follow_up_action":    so.get("follow_up_action"),
+            "budget_mentioned":    so.get("budget_mentioned"),
+            "timeline":            so.get("timeline"),
+            "objections":          so.get("objections"),
+        },
+    }
+    return _cors(JsonResponse(data), request)
+
+
 @csrf_exempt
 def voice_generate_prompt(request):
     """

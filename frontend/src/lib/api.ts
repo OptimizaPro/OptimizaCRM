@@ -862,6 +862,48 @@ export interface VoiceWidget {
   knowledge_base: VoiceKnowledgeBase | null;
 }
 
+export interface VoiceCallStructuredOutput {
+  lead_name?:           string | null;
+  lead_email?:          string | null;
+  lead_phone?:          string | null;
+  company?:             string | null;
+  intent?:              string | null;
+  is_interested?:       boolean | null;
+  qualification_score?: number | null;
+  budget_mentioned?:    string | null;
+  timeline?:            string | null;
+  objections?:          string[] | null;
+  follow_up_action?:    string | null;
+  appointment_date?:    string | null;
+  summary_es?:          string | null;
+}
+
+export interface VoiceCallRecord {
+  id:               number;
+  vapi_call_id:     string;
+  agent_id:         string | null;
+  agent_name:       string;
+  caller_name:      string;
+  caller_phone:     string;
+  status:           "completed" | "failed" | "in_progress";
+  duration_seconds: number;
+  sentiment:        "positive" | "neutral" | "negative" | "";
+  ended_at:         string | null;
+  created_at:       string;
+  lead_id:          number | null;
+  transcript?:      string;
+  summary?:         string;
+  structured_output: VoiceCallStructuredOutput;
+}
+
+export interface VoiceCallsPage {
+  results:     VoiceCallRecord[];
+  count:       number;
+  page:        number;
+  page_size:   number;
+  total_pages: number;
+}
+
 export interface VoiceAgentSummary {
   id:                string;
   name:              string;
@@ -1271,6 +1313,20 @@ export const voicePlansPublicApi = {
   /** GET /voice/plans/ — no auth required */
   list: (): Promise<VoicePlanPublic[]> =>
     fetch(`${API_URL}/voice/plans/`).then((r) => r.json()),
+};
+
+export const voiceCallsApi = {
+  list: (token: string, orgId: string, params?: { agentId?: string; page?: number; pageSize?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.agentId)  qs.set("agent_id",  params.agentId);
+    if (params?.page)     qs.set("page",       String(params.page));
+    if (params?.pageSize) qs.set("page_size",  String(params.pageSize));
+    const q = qs.toString();
+    return api.get<VoiceCallsPage>(`/voice-widget/calls/${q ? `?${q}` : ""}`, { token, orgId });
+  },
+
+  detail: (token: string, orgId: string, callId: number) =>
+    api.get<VoiceCallRecord>(`/voice-widget/calls/${callId}/`, { token, orgId }),
 };
 
 export const voicePlansApi = {
