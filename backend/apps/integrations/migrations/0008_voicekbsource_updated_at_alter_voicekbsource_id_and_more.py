@@ -21,13 +21,14 @@ class Migration(migrations.Migration):
         # PostgreSQL cannot cast bigint → uuid directly.
         # Since the table is empty on a fresh database, we drop and recreate the PK column.
         migrations.RunSQL(
+            # voice_kb_sources is the custom db_table set in VoiceKBSource.Meta
             sql=[
-                "ALTER TABLE integrations_voicekbsource DROP COLUMN id;",
-                "ALTER TABLE integrations_voicekbsource ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
+                "ALTER TABLE voice_kb_sources DROP COLUMN id;",
+                "ALTER TABLE voice_kb_sources ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
             ],
             reverse_sql=[
-                "ALTER TABLE integrations_voicekbsource DROP COLUMN id;",
-                "ALTER TABLE integrations_voicekbsource ADD COLUMN id bigserial PRIMARY KEY;",
+                "ALTER TABLE voice_kb_sources DROP COLUMN id;",
+                "ALTER TABLE voice_kb_sources ADD COLUMN id bigserial PRIMARY KEY;",
             ],
         ),
         migrations.AlterField(

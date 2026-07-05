@@ -32,13 +32,14 @@ class Migration(migrations.Migration):
         # PostgreSQL cannot cast bigint → uuid directly.
         # Since these tables are empty on a fresh database, we drop and recreate the PK columns.
         migrations.RunSQL(
+            # drive_documents is the custom db_table set in DriveDocument.Meta
             sql=[
-                "ALTER TABLE integrations_drivedocument DROP COLUMN id;",
-                "ALTER TABLE integrations_drivedocument ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
+                "ALTER TABLE drive_documents DROP COLUMN id;",
+                "ALTER TABLE drive_documents ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
             ],
             reverse_sql=[
-                "ALTER TABLE integrations_drivedocument DROP COLUMN id;",
-                "ALTER TABLE integrations_drivedocument ADD COLUMN id bigserial PRIMARY KEY;",
+                "ALTER TABLE drive_documents DROP COLUMN id;",
+                "ALTER TABLE drive_documents ADD COLUMN id bigserial PRIMARY KEY;",
             ],
         ),
         migrations.AlterField(
@@ -47,13 +48,14 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='accounts.organization'),
         ),
         migrations.RunSQL(
+            # google_drive_tokens is the custom db_table set in GoogleDriveToken.Meta
             sql=[
-                "ALTER TABLE integrations_googledrivetoken DROP COLUMN id;",
-                "ALTER TABLE integrations_googledrivetoken ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
+                "ALTER TABLE google_drive_tokens DROP COLUMN id;",
+                "ALTER TABLE google_drive_tokens ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
             ],
             reverse_sql=[
-                "ALTER TABLE integrations_googledrivetoken DROP COLUMN id;",
-                "ALTER TABLE integrations_googledrivetoken ADD COLUMN id bigserial PRIMARY KEY;",
+                "ALTER TABLE google_drive_tokens DROP COLUMN id;",
+                "ALTER TABLE google_drive_tokens ADD COLUMN id bigserial PRIMARY KEY;",
             ],
         ),
         migrations.AlterField(
