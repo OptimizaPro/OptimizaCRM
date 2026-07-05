@@ -29,20 +29,32 @@ class Migration(migrations.Migration):
             field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now),
             preserve_default=False,
         ),
-        migrations.AlterField(
-            model_name='drivedocument',
-            name='id',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+        # PostgreSQL cannot cast bigint → uuid directly.
+        # Since these tables are empty on a fresh database, we drop and recreate the PK columns.
+        migrations.RunSQL(
+            sql=[
+                "ALTER TABLE integrations_drivedocument DROP COLUMN id;",
+                "ALTER TABLE integrations_drivedocument ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
+            ],
+            reverse_sql=[
+                "ALTER TABLE integrations_drivedocument DROP COLUMN id;",
+                "ALTER TABLE integrations_drivedocument ADD COLUMN id bigserial PRIMARY KEY;",
+            ],
         ),
         migrations.AlterField(
             model_name='drivedocument',
             name='organization',
             field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='accounts.organization'),
         ),
-        migrations.AlterField(
-            model_name='googledrivetoken',
-            name='id',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+        migrations.RunSQL(
+            sql=[
+                "ALTER TABLE integrations_googledrivetoken DROP COLUMN id;",
+                "ALTER TABLE integrations_googledrivetoken ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
+            ],
+            reverse_sql=[
+                "ALTER TABLE integrations_googledrivetoken DROP COLUMN id;",
+                "ALTER TABLE integrations_googledrivetoken ADD COLUMN id bigserial PRIMARY KEY;",
+            ],
         ),
         migrations.AlterField(
             model_name='googledrivetoken',

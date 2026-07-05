@@ -18,10 +18,17 @@ class Migration(migrations.Migration):
             name='updated_at',
             field=models.DateTimeField(auto_now=True),
         ),
-        migrations.AlterField(
-            model_name='voicekbsource',
-            name='id',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False),
+        # PostgreSQL cannot cast bigint → uuid directly.
+        # Since the table is empty on a fresh database, we drop and recreate the PK column.
+        migrations.RunSQL(
+            sql=[
+                "ALTER TABLE integrations_voicekbsource DROP COLUMN id;",
+                "ALTER TABLE integrations_voicekbsource ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid();",
+            ],
+            reverse_sql=[
+                "ALTER TABLE integrations_voicekbsource DROP COLUMN id;",
+                "ALTER TABLE integrations_voicekbsource ADD COLUMN id bigserial PRIMARY KEY;",
+            ],
         ),
         migrations.AlterField(
             model_name='voicekbsource',
