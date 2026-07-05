@@ -10,6 +10,7 @@ import {
   voicePlansApi,
   voiceWidgetApi,
   voiceCallsApi,
+  outboundApi,
   authApi,
   type VoicePlanAdmin,
   type VoiceFAQAdmin,
@@ -19,7 +20,9 @@ import {
   type VoiceAgentPlan,
   type VoiceCallRecord,
   type VoiceCallStructuredOutput,
+  type OutboundPhoneStatus,
 } from "@/lib/api";
+import { Input } from "@/components/ui/input";
 import {
   Plus,Pencil,Trash2,Check,X,RefreshCw,ExternalLink,Mic,HelpCircle,BarChart3,
   Phone, Zap, Settings2, Loader2, TrendingUp, Crown, Wrench,
@@ -591,7 +594,7 @@ function AgentsTab({ token, orgId }: { token: string; orgId: string }) {
       // Auto-open sheet for the new agent
       setSheetAgentId(agent.id);
       setSheetAgentName(agent.name);
-      toast.success("Agente creado", { description: "Configura las claves Vapi y guarda para activarlo." });
+      toast.success("Agente creado", { description: "Configura las claves de conexión y guarda para activarlo." });
     },
     onError: (e: Error) => {
       toast.error("No se pudo crear el agente", { description: e.message });
@@ -600,7 +603,7 @@ function AgentsTab({ token, orgId }: { token: string; orgId: string }) {
 
   const handleDelete = async (agent: VoiceAgentSummary) => {
     toast(`¿Eliminar "${agent.name}"?`, {
-      description: "Se eliminará el asistente Vapi asociado. Esta acción no se puede deshacer.",
+      description: "Se eliminará el asistente de voz asociado. Esta acción no se puede deshacer.",
       action: {
         label: "Sí, eliminar",
         onClick: async () => {
@@ -833,6 +836,121 @@ function AgentsTab({ token, orgId }: { token: string; orgId: string }) {
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Outbound — Twilio BYOC ──────────────────────────────────────────── */}
+      <OutboundPhoneCard token={token} orgId={orgId} planSlug={plan.slug} />
+    </div>
+  );
+}
+
+// ─── Outbound phone card (Twilio BYOC) ───────────────────────────────────────
+
+function OutboundPhoneCard({ token, orgId, planSlug }: { token: string; orgId: string; planSlug: string }) {
+  const qc = useQueryClient();
+  const isAllowed = planSlug === "voz-business";
+
+  const [number,    setNumber]    = useState("");
+  const [sid,       setSid]       = useState("");
+  const [authToken, setAuthToken] = useState("");
+
+  const { data: phone, isLoading } = useQuery<OutboundPhoneStatus>({
+    queryKey: ["outbound-phone", orgId],
+    queryFn:  () => outboundApi.getPhone(token, orgId),
+    enabled:  !!token && !!orgId,
+    staleTime: 60_000,
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: () => outboundApi.connectPhone(token, orgId, { phone_number: number, account_sid: sid, auth_token: authToken }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["outbound-phone", orgId] });
+      setNumber(""); setSid(""); setAuthToken("");
+      toast.success("Número Twilio conectado");
+    },
+    onError: (e: Error) => toast.error("Error al conectar", { description: e.message }),
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: () => outboundApi.disconnectPhone(token, orgId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["outbound-phone", orgId] });
+      toast.success("Número Twilio desconectado");
+    },
+  });
+
+  return (
+    <div className="relative rounded-2xl border border-slate-800 bg-slate-950 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <PhoneCall className="h-5 w-5 text-orange-400" />
+          <div>
+            <p className="text-sm font-semibold text-slate-100">Outbound — Twilio (BYOC)</p>
+            <p className="text-xs text-slate-500">Conecta tu número Twilio para llamadas salientes del agente de voz</p>
+          </div>
+        </div>
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+        ) : phone?.connected ? (
+          <span className="rounded-full border border-green-700 bg-green-950/60 px-2.5 py-0.5 text-xs font-semibold text-green-400">Conectado</span>
+        ) : (
+          <span className="rounded-full border border-slate-700 bg-slate-800/60 px-2.5 py-0.5 text-xs font-semibold text-slate-500">Desconectado</span>
+        )}
+      </div>
+
+      {phone?.connected ? (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+            <p className="text-xs text-slate-500 mb-0.5">Número activo</p>
+            <p className="font-mono text-sm text-slate-200">{phone.phone_number}</p>
+          </div>
+          <button
+            onClick={() => disconnectMutation.mutate()}
+            disabled={disconnectMutation.isPending}
+            className="flex items-center gap-2 text-xs text-red-500 hover:text-red-400 transition-colors disabled:opacity-50"
+          >
+            {disconnectMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PhoneOff className="h-3.5 w-3.5" />}
+            Desconectar número
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Número de teléfono (E.164)</label>
+            <Input placeholder="+15017122661" value={number} onChange={e => setNumber(e.target.value)} className="h-8 text-sm bg-slate-900 border-slate-700" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Twilio Account SID</label>
+            <Input placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value={sid} onChange={e => setSid(e.target.value)} className="h-8 text-sm bg-slate-900 border-slate-700" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Twilio Auth Token</label>
+            <Input type="password" placeholder="••••••••••••••••" value={authToken} onChange={e => setAuthToken(e.target.value)} className="h-8 text-sm bg-slate-900 border-slate-700" />
+          </div>
+          <Button
+            size="sm"
+            className="w-full bg-orange-600 hover:bg-orange-500 text-white gap-2"
+            disabled={!number || !sid || !authToken || connectMutation.isPending}
+            onClick={() => connectMutation.mutate()}
+          >
+            {connectMutation.isPending
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Conectando…</>
+              : <><PhoneCall className="h-3.5 w-3.5" /> Conectar número</>
+            }
+          </Button>
+        </div>
+      )}
+
+      {/* Upgrade overlay */}
+      {!isAllowed && (
+        <div className="absolute inset-0 rounded-2xl bg-slate-950/85 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 p-6">
+          <PhoneCall className="h-8 w-8 text-orange-400" />
+          <p className="text-sm font-semibold text-slate-200 text-center">Outbound disponible en Voz Business</p>
+          <p className="text-xs text-slate-400 text-center">Incluye setup de Twilio sin costo adicional.</p>
+          <Link href="/precios" className="inline-flex items-center gap-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors">
+            Ver plan Business →
+          </Link>
+        </div>
       )}
     </div>
   );
@@ -2540,6 +2658,7 @@ function CallsTab({ token, orgId }: { token: string; orgId: string }) {
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-900/60">
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Fecha</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 hidden sm:table-cell">Tipo</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 hidden sm:table-cell">Intención</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Score</th>
@@ -2559,6 +2678,12 @@ function CallsTab({ token, orgId }: { token: string; orgId: string }) {
                       className={`cursor-pointer border-b border-slate-800/50 transition-colors hover:bg-slate-800/40 ${i % 2 === 0 ? "bg-slate-900/20" : ""}`}
                     >
                       <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">{fmtDate(call.ended_at || call.created_at)}</td>
+                      <td className="px-4 py-3 text-center hidden sm:table-cell">
+                        {call.direction === "outbound"
+                          ? <span className="inline-flex items-center gap-1 rounded-full border border-blue-700 bg-blue-950/60 px-2 py-0.5 text-[10px] font-semibold text-blue-400">↗ Saliente</span>
+                          : <span className="inline-flex items-center gap-1 rounded-full border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[10px] font-semibold text-slate-400">↙ Entrante</span>
+                        }
+                      </td>
                       <td className="px-4 py-3">
                         <p className="font-medium text-slate-200 truncate max-w-[140px]">{name}</p>
                         {call.caller_phone && <p className="text-xs text-slate-500">{call.caller_phone}</p>}

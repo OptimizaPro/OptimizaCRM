@@ -40,6 +40,8 @@ class Lead(TenantModel):
     source        = models.CharField(max_length=50, choices=SOURCE_CHOICES, default="web")
     status        = models.CharField(max_length=50, choices=STATUS_CHOICES, default="new")
     score         = models.IntegerField(default=0)
+    outbound_consent = models.BooleanField(default=False, verbose_name="Consentimiento outbound")
+    consent_date     = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de consentimiento")
     notes         = models.TextField(blank=True)
     custom_fields = models.JSONField(default=dict, blank=True)
 
@@ -291,3 +293,36 @@ class PipelineStage(models.Model):
 
     def __str__(self):
         return f"{self.pipeline.name} → {self.name}"
+
+
+# ─── Teams ────────────────────────────────────────────────────────────────────
+
+class Team(TenantModel):
+    name        = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    color       = models.CharField(max_length=7, default="#f97316")
+
+    class Meta:
+        db_table = "teams"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class TeamMembership(models.Model):
+    ROLE_CHOICES = [
+        ("leader", "Líder"),
+        ("member", "Miembro"),
+    ]
+    team      = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="memberships")
+    user      = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_memberships")
+    role      = models.CharField(max_length=20, choices=ROLE_CHOICES, default="member")
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table        = "team_memberships"
+        unique_together = [["team", "user"]]
+
+    def __str__(self):
+        return f"{self.user} → {self.team}"

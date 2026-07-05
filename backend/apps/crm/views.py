@@ -5,6 +5,7 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 
 import csv
 import io
+from datetime import timedelta
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -20,12 +21,14 @@ from core.middleware import get_current_organization
 from .models import (
     Lead, Customer, Opportunity, Task, Activity,
     CalendarEvent, PipelineTemplate, PipelineStage,
+    Team, TeamMembership,
 )
 from .serializers import (
     LeadSerializer, CustomerSerializer, OpportunitySerializer,
     TaskSerializer, ActivitySerializer, CalendarEventSerializer,
     BulkLeadActionSerializer, CSVImportSerializer,
     PipelineTemplateSerializer, PipelineStageSerializer,
+    TeamSerializer, TeamMembershipSerializer,
 )
 
 
@@ -67,6 +70,27 @@ class LeadViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         if self.action in ["create", "update", "partial_update", "destroy", "bulk", "import_csv"]:
             return [CanWriteCRM()]
         return super().get_permissions()
+
+    def perform_create(self, serializer):
+        org  = get_current_organization()
+        lead = serializer.save(organization=org)
+
+        # Auto-create a follow-up task for every new lead
+        Task.objects.create(
+            organization = org,
+            created_by   = self.request.user,
+            assigned_to  = lead.assigned_to,
+            title        = f"Seguimiento — {lead.full_name}",
+            description  = (
+                f"Tarea de seguimiento generada automáticamente para el lead "
+                f"{lead.full_name} ({lead.email or 'sin email'})."
+            ),
+            priority     = "medium",
+            status       = "pending",
+            related_type = "lead",
+            related_id   = lead.id,
+            due_date     = timezone.now() + timedelta(days=1),
+        )
 
     @action(detail=False, methods=["post"])
     def bulk(self, request):
@@ -309,16 +333,52 @@ class TaskViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset           = Task.objects.all()
     serializer_class   = TaskSerializer
     permission_classes = [IsReadOnlyOrAbove]
-    search_fields      = ["title"]
-    ordering_fields    = ["due_date", "priority", "created_at"]
+    search_fields      = ["title", "description"]
+    ordering_fields    = ["due_date", "priority", "created_at", "status"]
+    filterset_fields   = ["status", "priority", "assigned_to"]
 
     def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
+        if self.action in ["create", "update", "partial_update", "destroy",
+                           "complete", "reopen", "update_status"]:
             return [CanWriteCRM()]
         return super().get_permissions()
 
     def perform_create(self, serializer):
         serializer.save(organization=get_current_organization(), created_by=self.request.user)
+
+    @action(detail=True, methods=["patch"], url_path="complete")
+    def complete(self, request, pk=None):
+        task              = self.get_object()
+        task.status       = "completed"
+        task.completed_at = timezone.now()
+        task.save(update_fields=["status", "completed_at"])
+        return Response(TaskSerializer(task).data)
+
+    @action(detail=True, methods=["patch"], url_path="reopen")
+    def reopen(self, request, pk=None):
+        task              = self.get_object()
+        task.status       = "pending"
+        task.completed_at = None
+        task.save(update_fields=["status", "completed_at"])
+        return Response(TaskSerializer(task).data)
+
+    @action(detail=True, methods=["patch"], url_path="status")
+    def update_status(self, request, pk=None):
+        task       = self.get_object()
+        new_status = request.data.get("status")
+        valid      = dict(Task.STATUS_CHOICES)
+        if new_status not in valid:
+            return Response(
+                {"error": f"Estado inválido. Opciones: {list(valid.keys())}"},
+                status=400,
+            )
+        task.status = new_status
+        if new_status == "completed":
+            task.completed_at = timezone.now()
+        elif task.completed_at and new_status != "completed":
+            task.completed_at = None
+        task.save(update_fields=["status", "completed_at"])
+        return Response(TaskSerializer(task).data)
 
 
 # ─── Activities ───────────────────────────────────────────────────────────────
@@ -339,6 +399,16 @@ class CalendarViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset           = CalendarEvent.objects.all()
     serializer_class   = CalendarEventSerializer
     permission_classes = [IsReadOnlyOrAbove]
+
+    def get_queryset(self):
+        qs    = super().get_queryset()
+        start = self.request.query_params.get("start")
+        end   = self.request.query_params.get("end")
+        if start:
+            qs = qs.filter(end_time__gte=start)
+        if end:
+            qs = qs.filter(start_time__lte=end)
+        return qs
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
@@ -390,6 +460,69 @@ class PipelineTemplateViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+# ─── Teams ────────────────────────────────────────────────────────────────────
+
+class TeamViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
+    queryset           = Team.objects.prefetch_related("memberships__user")
+    serializer_class   = TeamSerializer
+    permission_classes = [IsReadOnlyOrAbove]
+    pagination_class   = None
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy", "add_member", "remove_member"]:
+            return [CanWriteCRM()]
+        return super().get_permissions()
+
+    @action(detail=True, methods=["post"], url_path="members")
+    def add_member(self, request, pk=None):
+        team    = self.get_object()
+        user_id = request.data.get("user_id")
+        role    = request.data.get("role", "member")
+
+        from apps.accounts.models import Membership  # noqa: PLC0415
+        if not Membership.objects.filter(
+            organization=team.organization, user_id=user_id, is_active=True,
+        ).exists():
+            return Response({"error": "El usuario no pertenece a esta organización."}, status=400)
+
+        # ── Plan limit validation ──────────────────────────────────────────────
+        PLAN_MEMBER_LIMITS = {"basico": 2, "pro": 6, "equipo": 12}
+        try:
+            from apps.billing.models import Subscription  # noqa: PLC0415
+            sub = Subscription.objects.get(organization=team.organization)
+            plan_slug = sub.plan
+        except Exception:
+            plan_slug = "basico"
+
+        limit = PLAN_MEMBER_LIMITS.get(plan_slug, 2)
+        current_count = TeamMembership.objects.filter(team=team).count()
+        already_member = TeamMembership.objects.filter(team=team, user_id=user_id).exists()
+        if not already_member and current_count >= limit:
+            return Response(
+                {
+                    "error": f"Tu plan «{plan_slug}» permite un máximo de {limit} miembro{'s' if limit != 1 else ''} por equipo. "
+                             f"Actualiza tu plan para agregar más colaboradores."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        # ──────────────────────────────────────────────────────────────────────
+
+        membership, created = TeamMembership.objects.get_or_create(
+            team=team, user_id=user_id,
+            defaults={"role": role},
+        )
+        if not created:
+            membership.role = role
+            membership.save()
+        return Response(TeamMembershipSerializer(membership).data, status=201 if created else 200)
+
+    @action(detail=True, methods=["delete"], url_path=r"members/(?P<user_id>[^/.]+)")
+    def remove_member(self, request, pk=None, user_id=None):
+        team = self.get_object()
+        TeamMembership.objects.filter(team=team, user_id=user_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["delete"], url_path=r"stages/(?P<stage_id>[^/.]+)")
     def remove_stage(self, request, pk=None, stage_id=None):

@@ -1513,3 +1513,275 @@ def voice_generate_prompt(request):
         return _cors(JsonResponse({"error": error}, status=502), request)
 
     return _cors(JsonResponse({"system_prompt": result}), request)
+
+
+# ─── 12. Outbound — manage Twilio phone number linked to Vapi ─────────────────
+
+@csrf_exempt
+def voice_outbound_phone(request):
+    """
+    GET    /api/v1/voice-widget/outbound/phone/  — return connected phone info
+    POST   /api/v1/voice-widget/outbound/phone/  — link Twilio number via Vapi
+    DELETE /api/v1/voice-widget/outbound/phone/  — unlink number from Vapi + clear settings
+    Requires JWT + X-Organization-ID. Exclusive to voz-business plan.
+    """
+    import requests as http_requests
+
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return _cors(JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400), request)
+
+    org_settings = org.settings or {}
+
+    # ── GET ───────────────────────────────────────────────────────────────────
+    if request.method == "GET":
+        phone_number_id = org_settings.get("vapi_phone_number_id", "")
+        phone_number    = org_settings.get("vapi_phone_number", "")
+        return _cors(JsonResponse({
+            "phone_number_id": phone_number_id,
+            "phone_number":    phone_number,
+            "connected":       bool(phone_number_id),
+        }), request)
+
+    # ── POST ──────────────────────────────────────────────────────────────────
+    if request.method == "POST":
+        # Plan check
+        if org_settings.get("voice_plan_slug", "starter") != "voz-business":
+            return _cors(JsonResponse(
+                {"error": "plan_required", "required_plan": "voz-business"},
+                status=403,
+            ), request)
+
+        try:
+            body = json.loads(request.body)
+        except Exception:
+            return _cors(JsonResponse({"error": "invalid JSON"}, status=400), request)
+
+        account_sid   = (body.get("account_sid")   or "").strip()
+        auth_token    = (body.get("auth_token")    or "").strip()
+        phone_number  = (body.get("phone_number")  or "").strip()
+        friendly_name = (body.get("friendly_name") or "OptimizaCRM Outbound").strip()
+
+        if not account_sid or not auth_token or not phone_number:
+            return _cors(JsonResponse(
+                {"error": "account_sid, auth_token and phone_number are required"},
+                status=400,
+            ), request)
+
+        vapi_private_key = org_settings.get("vapi_private_key", "")
+        if not vapi_private_key:
+            return _cors(JsonResponse({"error": "vapi_private_key not configured"}, status=400), request)
+
+        # Call Vapi to register the phone number
+        try:
+            resp = http_requests.post(
+                "https://api.vapi.ai/phone-number",
+                headers={
+                    "Authorization": f"Bearer {vapi_private_key}",
+                    "Content-Type":  "application/json",
+                },
+                json={
+                    "provider":          "twilio",
+                    "number":            phone_number,
+                    "twilioAccountSid":  account_sid,
+                    "twilioAuthToken":   auth_token,
+                    "name":              friendly_name,
+                },
+                timeout=15,
+            )
+        except Exception as exc:
+            return _cors(JsonResponse({"error": f"Error connecting to Vapi: {exc}"}, status=502), request)
+
+        if not resp.ok:
+            try:
+                err_msg = resp.json().get("message", resp.text)
+            except Exception:
+                err_msg = resp.text
+            return _cors(JsonResponse({"error": err_msg}, status=502), request)
+
+        vapi_data       = resp.json()
+        phone_number_id = vapi_data.get("id", "")
+
+        # Persist in org.settings
+        org_settings["vapi_phone_number_id"] = phone_number_id
+        org_settings["vapi_phone_number"]    = phone_number
+        org.settings = org_settings
+        org.save(update_fields=["settings"])
+
+        return _cors(JsonResponse({
+            "phone_number_id": phone_number_id,
+            "phone_number":    phone_number,
+            "connected":       True,
+        }), request)
+
+    # ── DELETE ────────────────────────────────────────────────────────────────
+    if request.method == "DELETE":
+        phone_number_id  = org_settings.get("vapi_phone_number_id", "")
+        vapi_private_key = org_settings.get("vapi_private_key", "")
+
+        if phone_number_id and vapi_private_key:
+            try:
+                http_requests.delete(
+                    f"https://api.vapi.ai/phone-number/{phone_number_id}",
+                    headers={"Authorization": f"Bearer {vapi_private_key}"},
+                    timeout=15,
+                )
+            except Exception:
+                pass  # best-effort — clear settings regardless
+
+        # Clear phone settings
+        org_settings.pop("vapi_phone_number_id", None)
+        org_settings.pop("vapi_phone_number", None)
+        org.settings = org_settings
+        org.save(update_fields=["settings"])
+
+        return _cors(JsonResponse({"ok": True, "connected": False}), request)
+
+    return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+
+# ─── 13. Outbound — initiate a single outbound call ──────────────────────────
+
+@csrf_exempt
+def voice_outbound_call(request):
+    """
+    POST /api/v1/voice-widget/outbound/call/
+    Body: { "lead_id": 123, "agent_id": "<uuid-optional>" }
+    Initiates an outbound call via Vapi for a consented lead.
+    Requires JWT + X-Organization-ID. Exclusive to voz-business plan.
+    """
+    import requests as http_requests
+
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+
+    if request.method != "POST":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return _cors(JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400), request)
+
+    org_settings = org.settings or {}
+
+    # Plan check
+    if org_settings.get("voice_plan_slug", "starter") != "voz-business":
+        return _cors(JsonResponse(
+            {"error": "plan_required", "required_plan": "voz-business"},
+            status=403,
+        ), request)
+
+    # Vapi phone number check
+    vapi_phone_number_id = org_settings.get("vapi_phone_number_id", "")
+    if not vapi_phone_number_id:
+        return _cors(JsonResponse(
+            {"error": "no_phone_number", "detail": "No outbound phone number configured. Connect a Twilio number first."},
+            status=400,
+        ), request)
+
+    # Vapi private key check
+    vapi_private_key = org_settings.get("vapi_private_key", "")
+    if not vapi_private_key:
+        return _cors(JsonResponse(
+            {"error": "no_vapi_key", "detail": "Vapi private key not configured."},
+            status=400,
+        ), request)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return _cors(JsonResponse({"error": "invalid JSON"}, status=400), request)
+
+    lead_id  = body.get("lead_id")
+    agent_id = (body.get("agent_id") or "").strip()
+
+    if not lead_id:
+        return _cors(JsonResponse({"error": "lead_id is required"}, status=400), request)
+
+    # Load lead
+    from apps.crm.models import Lead
+    try:
+        lead = Lead.objects.get(organization=org, id=lead_id)
+    except Lead.DoesNotExist:
+        return _cors(JsonResponse({"error": "lead not found"}, status=404), request)
+
+    # Consent check
+    if not lead.outbound_consent:
+        return _cors(JsonResponse({"error": "no_consent"}, status=403), request)
+
+    # Phone check
+    if not lead.phone:
+        return _cors(JsonResponse({"error": "no_phone"}, status=400), request)
+
+    # Load widget — by agent_id or first org widget
+    from .models import VoiceWidget
+    if agent_id:
+        widget = VoiceWidget.objects.filter(organization=org, id=agent_id).first()
+    else:
+        widget = VoiceWidget.objects.filter(organization=org).first()
+
+    if not widget:
+        return _cors(JsonResponse({"error": "no voice agent configured"}, status=400), request)
+
+    if not widget.vapi_assistant_id:
+        return _cors(JsonResponse(
+            {"error": "no_assistant", "detail": "Voice agent has no Vapi assistant ID. Save the agent configuration first."},
+            status=400,
+        ), request)
+
+    # Initiate call via Vapi
+    try:
+        resp = http_requests.post(
+            "https://api.vapi.ai/call",
+            headers={
+                "Authorization": f"Bearer {vapi_private_key}",
+                "Content-Type":  "application/json",
+            },
+            json={
+                "phoneNumberId": vapi_phone_number_id,
+                "assistantId":   widget.vapi_assistant_id,
+                "customer": {
+                    "number": lead.phone,
+                    "name":   lead.full_name,
+                },
+            },
+            timeout=15,
+        )
+    except Exception as exc:
+        return _cors(JsonResponse({"error": f"Error connecting to Vapi: {exc}"}, status=502), request)
+
+    if not resp.ok:
+        try:
+            err_body = resp.json()
+            err_msg  = err_body.get("message", resp.text)
+        except Exception:
+            err_body = {}
+            err_msg  = resp.text
+        import logging
+        logging.getLogger(__name__).error("Vapi outbound call error %s: %s", resp.status_code, err_body or err_msg)
+        return _cors(JsonResponse({"error": err_msg, "vapi_status": resp.status_code}, status=502), request)
+
+    vapi_response = resp.json()
+    vapi_call_id  = vapi_response.get("id", "")
+
+    # Create VoiceCall record
+    from .models import VoiceCall
+    VoiceCall.objects.create(
+        organization=org,
+        widget=widget,
+        vapi_call_id=vapi_call_id,
+        caller_name=lead.full_name,
+        caller_phone=lead.phone,
+        direction="outbound",
+        status="in_progress",
+        lead=lead,
+    )
+
+    return _cors(JsonResponse({"call_id": vapi_call_id, "status": "initiated"}), request)

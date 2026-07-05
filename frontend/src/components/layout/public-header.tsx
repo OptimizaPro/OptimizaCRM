@@ -9,10 +9,11 @@ import { cn } from "@/lib/utils";
 import { PublicWidgetLoader } from "@/components/layout/public-widget-loader";
 
 const navLinks = [
-  { href: "/caracteristicas", label: "Características" },
-  { href: "/precios",         label: "Precios" },
-  { href: "/nosotros",        label: "Nosotros" },
-  { href: "/contacto",        label: "Contacto" },
+  { href: "/caracteristicas", label: "Características", badge: false },
+  { href: "/precios",         label: "Precios",          badge: false },
+  { href: "/voz-ia",          label: "Voz IA",           badge: true  },
+  { href: "/nosotros",        label: "Nosotros",          badge: false },
+  { href: "/contacto",        label: "Contacto",          badge: false },
 ];
 
 export function PublicHeader() {
@@ -31,16 +32,21 @@ export function PublicHeader() {
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-8 md:flex">
-          {navLinks.map(({ href, label }) => (
+          {navLinks.map(({ href, label, badge }) => (
             <Link
               key={href}
               href={href}
               className={cn(
-                "text-sm font-medium transition-colors hover:text-orange-400",
+                "flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-orange-400",
                 pathname === href ? "text-orange-400" : "text-slate-200"
               )}
             >
               {label}
+              {badge && (
+                <span className="rounded-full bg-orange-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white">
+                  NUEVO
+                </span>
+              )}
             </Link>
           ))}
         </nav>
@@ -66,14 +72,19 @@ export function PublicHeader() {
       {/* Mobile nav */}
       {open && (
         <div className="border-t border-slate-800 bg-slate-950 px-4 py-4 md:hidden">
-          {navLinks.map(({ href, label }) => (
+          {navLinks.map(({ href, label, badge }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="block py-2.5 text-sm font-medium text-slate-300 hover:text-orange-400"
+              className="flex items-center gap-2 py-2.5 text-sm font-medium text-slate-300 hover:text-orange-400"
             >
               {label}
+              {badge && (
+                <span className="rounded-full bg-orange-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white">
+                  NUEVO
+                </span>
+              )}
             </Link>
           ))}
           <Link href="/login" onClick={() => setOpen(false)} className="block py-2.5 text-sm font-medium text-slate-300 hover:text-orange-400">
@@ -89,7 +100,7 @@ export function PublicFooter() {
   return (
     <footer className="border-t border-slate-800 bg-black">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
           <div className="col-span-2">
             <div className="max-w-[420px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -104,10 +115,17 @@ export function PublicFooter() {
             <ul className="mt-4 space-y-3 text-sm text-slate-400">
               <li><Link href="/caracteristicas" className="hover:text-orange-400 transition-colors">Características</Link></li>
               <li><Link href="/precios"         className="hover:text-orange-400 transition-colors">Precios</Link></li>
+              <li><Link href="/voz-ia"          className="hover:text-orange-400 transition-colors">Agente de Voz IA</Link></li>
               <li><Link href="/nosotros"        className="hover:text-orange-400 transition-colors">Nosotros</Link></li>
               <li><Link href="/contacto"        className="hover:text-orange-400 transition-colors">Contacto</Link></li>
-              <li><Link href="/servicios/implementacion"    className="hover:text-orange-400 transition-colors">Implementación CRM</Link></li>
-              <li><Link href="/servicios/whatsapp-business" className="hover:text-orange-400 transition-colors">Setup WhatsApp Business</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-slate-300">Servicios</h4>
+            <ul className="mt-4 space-y-3 text-sm text-slate-400">
+              <li><Link href="/servicios/implementacion"       className="hover:text-orange-400 transition-colors">Implementación CRM</Link></li>
+              <li><Link href="/servicios/whatsapp-business"    className="hover:text-orange-400 transition-colors">Setup WhatsApp Business</Link></li>
+              <li><Link href="/servicios/voz-ia"               className="hover:text-orange-400 transition-colors">Setup Agente de Voz IA</Link></li>
             </ul>
           </div>
           <div>

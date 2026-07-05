@@ -197,6 +197,8 @@ export interface Lead {
   link_clicks: number;
   page_visits: number;
   engagement_score: number;
+  outbound_consent: boolean;
+  consent_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -584,11 +586,17 @@ export const crmApi = {
       { token, orgId }
     ),
 
-  getTeamPerformance: (token: string, orgId: string, year?: number, month?: number) =>
-    api.get<{ team: TeamMember[]; year: number; month: number }>(
-      `/analytics/team/${year && month ? `?year=${year}&month=${month}` : ""}`,
-      { token, orgId }
-    ),
+  getTeamPerformance: (token: string, orgId: string, year?: number, month?: number, teamId?: string) => {
+    const qs = new URLSearchParams();
+    if (year)   qs.set("year",    String(year));
+    if (month)  qs.set("month",   String(month));
+    if (teamId) qs.set("team_id", teamId);
+    const q = qs.toString();
+    return api.get<{ team: TeamMember[]; team_goal: TeamGoal_ | null; year: number; month: number }>(
+      `/analytics/team/${q ? `?${q}` : ""}`,
+      { token, orgId },
+    );
+  },
 
   getStagesSummary: (token: string, orgId: string) =>
     api.get<{ stages: StageData[]; win_rate: number; close_rates: CloseRateData[] }>(
@@ -847,61 +855,20 @@ export interface VoiceWidget {
   name:              string;
   vapi_assistant_id: string;
   llm_model:         string;
-  system_prompt:     string;
   is_active:         boolean;
   lead_count:        number;
   call_count:        number;
   config: {
-    agent_name?:  string;
-    voice?:       string;
-    color?:       string;
-    greeting?:    string;
-    farewell?:    string;
-    avatar_url?:  string;
+    agent_name?:       string;
+    voice?:            string;
+    color?:            string;
+    greeting?:         string;
+    farewell?:         string;
+    avatar_url?:       string;
+    escalation_mode?:  "whatsapp" | "transfer" | "both";
+    transfer_number?:  string;
   };
   knowledge_base: VoiceKnowledgeBase | null;
-}
-
-export interface VoiceCallStructuredOutput {
-  lead_name?:           string | null;
-  lead_email?:          string | null;
-  lead_phone?:          string | null;
-  company?:             string | null;
-  intent?:              string | null;
-  is_interested?:       boolean | null;
-  qualification_score?: number | null;
-  budget_mentioned?:    string | null;
-  timeline?:            string | null;
-  objections?:          string[] | null;
-  follow_up_action?:    string | null;
-  appointment_date?:    string | null;
-  summary_es?:          string | null;
-}
-
-export interface VoiceCallRecord {
-  id:               number;
-  vapi_call_id:     string;
-  agent_id:         string | null;
-  agent_name:       string;
-  caller_name:      string;
-  caller_phone:     string;
-  status:           "completed" | "failed" | "in_progress";
-  duration_seconds: number;
-  sentiment:        "positive" | "neutral" | "negative" | "";
-  ended_at:         string | null;
-  created_at:       string;
-  lead_id:          number | null;
-  transcript?:      string;
-  summary?:         string;
-  structured_output: VoiceCallStructuredOutput;
-}
-
-export interface VoiceCallsPage {
-  results:     VoiceCallRecord[];
-  count:       number;
-  page:        number;
-  page_size:   number;
-  total_pages: number;
 }
 
 export interface VoiceAgentSummary {
@@ -934,20 +901,13 @@ export const voiceWidgetApi = {
     ),
 
   save: (token: string, orgId: string, data: {
-    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config" | "name" | "system_prompt">>;
+    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config" | "name">>;
     knowledge_base?: Partial<VoiceKnowledgeBase>;
     vapi_private_key?: string;
     vapi_public_key?: string;
     agent_id?: string;
   }) =>
     api.post<{ widget: VoiceWidget; vapi_warning?: string }>("/voice-widget/manage/", data, { token, orgId }),
-
-  generatePrompt: (token: string, orgId: string, agentId?: string) =>
-    api.post<{ system_prompt: string }>(
-      "/voice-widget/generate-prompt/",
-      agentId ? { agent_id: agentId } : {},
-      { token, orgId },
-    ),
 
   listAgents: (token: string, orgId: string) =>
     api.get<{ agents: VoiceAgentSummary[]; plan: VoiceAgentPlan; agent_count: number }>(
@@ -1315,20 +1275,6 @@ export const voicePlansPublicApi = {
     fetch(`${API_URL}/voice/plans/`).then((r) => r.json()),
 };
 
-export const voiceCallsApi = {
-  list: (token: string, orgId: string, params?: { agentId?: string; page?: number; pageSize?: number }) => {
-    const qs = new URLSearchParams();
-    if (params?.agentId)  qs.set("agent_id",  params.agentId);
-    if (params?.page)     qs.set("page",       String(params.page));
-    if (params?.pageSize) qs.set("page_size",  String(params.pageSize));
-    const q = qs.toString();
-    return api.get<VoiceCallsPage>(`/voice-widget/calls/${q ? `?${q}` : ""}`, { token, orgId });
-  },
-
-  detail: (token: string, orgId: string, callId: number) =>
-    api.get<VoiceCallRecord>(`/voice-widget/calls/${callId}/`, { token, orgId }),
-};
-
 export const voicePlansApi = {
   // Plans
   listPlans: (token: string, orgId: string) =>
@@ -1495,13 +1441,150 @@ export const adminApi = {
   createUser: (token: string, orgId: string, data: {
     email: string; first_name: string; last_name: string;
     phone?: string; password?: string; is_staff?: boolean; is_active?: boolean;
+    org_id?: string; role?: string;
   }) => api.post<AdminUser>("/admin/users/", data, { token, orgId }),
 
-  updateUser: (token: string, orgId: string, userId: string, data: Partial<Pick<AdminUser, "is_active" | "is_staff" | "first_name" | "last_name" | "phone">>) =>
+  updateUser: (token: string, orgId: string, userId: string, data: Partial<Pick<AdminUser, "is_active" | "is_staff" | "first_name" | "last_name" | "phone">> & { org_id?: string; role?: string }) =>
     api.patch<AdminUser>(`/admin/users/${userId}/`, data, { token, orgId }),
 
   deleteUser: (token: string, orgId: string, userId: string) =>
     api.delete(`/admin/users/${userId}/`, { token, orgId }),
+
+  listAdminOrgs: (token: string, orgId: string) =>
+    api.get<{ id: string; name: string; plan: string; slug: string }[]>("/admin/organizations/", { token, orgId }),
 };
 
+// ─── Calendar ─────────────────────────────────────────────────────────────────
 
+export type CalendarEventType   = "meeting" | "call" | "follow_up" | "task";
+export type CalendarEventStatus = "confirmed" | "pending_confirmation" | "cancelled";
+
+export interface CalendarEvent {
+  id:           string;
+  title:        string;
+  description:  string;
+  event_type:   CalendarEventType;
+  status:       CalendarEventStatus;
+  start_time:   string;
+  end_time:     string;
+  location:     string;
+  related_type: string;
+  related_id:   string | null;
+  is_all_day:   boolean;
+  user:         string;
+  created_at:   string;
+  updated_at:   string;
+}
+
+export const calendarApi = {
+  list: (token: string, orgId: string, start?: string, end?: string) => {
+    const qs = new URLSearchParams();
+    if (start) qs.set("start", start);
+    if (end)   qs.set("end",   end);
+    const q = qs.toString();
+    return api.get<PaginatedResponse<CalendarEvent>>(`/calendar/${q ? `?${q}` : ""}`, { token, orgId });
+  },
+
+  create: (token: string, orgId: string, data: Partial<CalendarEvent>) =>
+    api.post<CalendarEvent>("/calendar/", data, { token, orgId }),
+
+  update: (token: string, orgId: string, id: string, data: Partial<CalendarEvent>) =>
+    api.patch<CalendarEvent>(`/calendar/${id}/`, data, { token, orgId }),
+
+  delete: (token: string, orgId: string, id: string) =>
+    api.delete(`/calendar/${id}/`, { token, orgId }),
+};
+
+// ─── Outbound Voice Calls ─────────────────────────────────────────────────────
+
+export interface OutboundPhoneStatus {
+  phone_number_id: string;
+  phone_number: string;
+  connected: boolean;
+}
+
+export const outboundApi = {
+  /** GET /voice-widget/outbound/phone/ — estado del número conectado */
+  getPhone: (token: string, orgId: string) =>
+    api.get<OutboundPhoneStatus>("/voice-widget/outbound/phone/", { token, orgId }),
+
+  /** POST /voice-widget/outbound/phone/ — conectar número Twilio vía carrier */
+  connectPhone: (
+    token: string,
+    orgId: string,
+    data: { phone_number: string; account_sid: string; auth_token: string; friendly_name?: string },
+  ) => api.post<OutboundPhoneStatus>("/voice-widget/outbound/phone/", data, { token, orgId }),
+
+  /** DELETE /voice-widget/outbound/phone/ — desconectar número */
+  disconnectPhone: (token: string, orgId: string) =>
+    api.delete<{ disconnected: boolean }>("/voice-widget/outbound/phone/", { token, orgId }),
+
+  /** POST /voice-widget/outbound/call/ — iniciar llamada saliente a un lead */
+  call: (token: string, orgId: string, leadId: string) =>
+    api.post<{ call_id: string; status: string }>(
+      "/voice-widget/outbound/call/",
+      { lead_id: leadId },
+      { token, orgId },
+    ),
+};
+
+// ─── Teams ────────────────────────────────────────────────────────────────────
+
+export type TeamRole = "leader" | "member";
+
+export interface TeamMember_ {
+  id:          number;
+  user:        string;
+  user_detail: User;
+  role:        TeamRole;
+  joined_at:   string;
+}
+
+export interface Team {
+  id:           string;
+  name:         string;
+  description:  string;
+  color:        string;
+  memberships:  TeamMember_[];
+  member_count: number;
+  created_at:   string;
+}
+
+export interface TeamGoal_ {
+  id:             number;
+  team:           string;
+  team_name:      string;
+  year:           number;
+  month:          number;
+  target_revenue: number;
+  target_deals:   number;
+}
+
+export const teamGoalApi = {
+  get: (token: string, orgId: string, teamId: string, year: number, month: number) => {
+    const qs = new URLSearchParams({ team_id: teamId, year: String(year), month: String(month) });
+    return api.get<TeamGoal_ | null>(`/analytics/team-goal/?${qs}`, { token, orgId });
+  },
+  upsert: (token: string, orgId: string, data: { team_id: string; year: number; month: number; target_revenue: number; target_deals: number }) =>
+    api.put<TeamGoal_>("/analytics/team-goal/", data, { token, orgId }),
+};
+
+export const teamsApi = {
+  list: (token: string, orgId: string) =>
+    api.get<Team[]>("/teams/", { token, orgId }),
+
+  create: (token: string, orgId: string, data: Pick<Team, "name" | "description" | "color">) =>
+    api.post<Team>("/teams/", data, { token, orgId }),
+
+  update: (token: string, orgId: string, id: string, data: Partial<Pick<Team, "name" | "description" | "color">>) =>
+    api.patch<Team>(`/teams/${id}/`, data, { token, orgId }),
+
+  delete: (token: string, orgId: string, id: string) =>
+    api.delete(`/teams/${id}/`, { token, orgId }),
+
+  addMember: (token: string, orgId: string, teamId: string, userId: string, role: TeamRole = "member") =>
+    api.post<TeamMember_>(`/teams/${teamId}/members/`, { user_id: userId, role }, { token, orgId }),
+
+  removeMember: (token: string, orgId: string, teamId: string, userId: string) =>
+    api.delete(`/teams/${teamId}/members/${userId}/`, { token, orgId }),
+};

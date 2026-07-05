@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Code2, Copy, Check, Zap, Globe, MessageCircle,
+  Code2, Copy, Check, Zap, MessageCircle,
   ToggleLeft, ToggleRight, ExternalLink, Users, Rocket,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,14 +13,6 @@ import { cn } from "@/lib/utils";
 import { widgetApi, cmsApi, type WebWidget } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const MODE_OPTIONS = [
-  { value: "form",      label: "Formulario de contacto", icon: Users },
-  { value: "whatsapp",  label: "Botón de WhatsApp",      icon: MessageCircle },
-  { value: "both",      label: "Formulario + WhatsApp",  icon: Globe },
-] as const;
-
 const inputCls =
   "w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500";
 
@@ -28,12 +20,8 @@ const inputCls =
 
 function SnippetBox({ token }: { token: string }) {
   const [copied, setCopied] = useState(false);
-
-  // Use window.location.origin so it works in any environment
   const origin = typeof window !== "undefined" ? window.location.origin : "https://yourdomain.com";
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-
-  // hub-widget.js unifies all channels (form, WhatsApp, Voice AI) in one FAB
   const snippet = `<script\n  src="${origin}/hub-widget.js"\n  data-token="${token}"\n  data-api="${apiUrl}"\n  async\n></script>`;
 
   const copy = () => {
@@ -57,6 +45,61 @@ function SnippetBox({ token }: { token: string }) {
   );
 }
 
+// ─── Channel section wrapper ──────────────────────────────────────────────────
+
+function ChannelSection({
+  icon: Icon,
+  title,
+  description,
+  active,
+  onToggle,
+  children,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  active: boolean;
+  onToggle: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn(
+      "rounded-xl border transition-colors",
+      active ? "border-slate-700 bg-slate-900/60" : "border-slate-800 bg-slate-900/20",
+    )}>
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-lg",
+            active ? "bg-orange-950/50 text-orange-400" : "bg-slate-800 text-slate-500",
+          )}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <div>
+            <p className={cn("text-sm font-semibold", active ? "text-slate-200" : "text-slate-400")}>{title}</p>
+            <p className="text-[11px] text-slate-500">{description}</p>
+          </div>
+        </div>
+        <button
+          onClick={onToggle}
+          className="text-slate-400 hover:text-orange-400 transition-colors"
+          title={active ? `Desactivar ${title}` : `Activar ${title}`}
+        >
+          {active
+            ? <ToggleRight className="h-6 w-6 text-orange-500" />
+            : <ToggleLeft className="h-6 w-6" />}
+        </button>
+      </div>
+
+      {active && children && (
+        <div className="border-t border-slate-800 px-4 pb-4 pt-3">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
 export function WebWidgetPanel() {
@@ -72,22 +115,37 @@ export function WebWidgetPanel() {
 
   const widget = data?.widget ?? null;
 
-  // Local form state (initialised from widget or defaults)
   const [form, setForm] = useState<Partial<WebWidget>>({});
   const [dirty, setDirty] = useState(false);
 
-  const current: WebWidget = widget ?? {
-    id: "", token: "", mode: "form", is_active: true, lead_count: 0,
-    config: { color: "#EA580C", title: "¿Podemos ayudarte?", subtitle: "Escríbenos y te contactamos pronto", button_text: "Enviar mensaje", success_message: "¡Gracias! Nos pondremos en contacto pronto.", whatsapp_number: "", whatsapp_message: "Hola, me gustaría más información" },
+  const defaultConfig = {
+    color:             "#EA580C",
+    title:             "¿Podemos ayudarte?",
+    subtitle:          "Escríbenos y te contactamos pronto",
+    button_text:       "Enviar mensaje",
+    success_message:   "¡Gracias! Nos pondremos en contacto pronto.",
+    contact_reasons:   [] as string[],
+    whatsapp_enabled:  false,
+    whatsapp_number:   "",
+    whatsapp_message:  "Hola, me gustaría más información",
   };
 
-  const merged: WebWidget = { ...current, ...form, config: { ...current.config, ...(form.config ?? {}) } };
+  const current: WebWidget = widget ?? {
+    id: "", token: "", mode: "form", is_active: true, lead_count: 0,
+    config: defaultConfig,
+  };
+
+  const merged: WebWidget = {
+    ...current,
+    ...form,
+    config: { ...defaultConfig, ...current.config, ...(form.config ?? {}) },
+  };
 
   const patch = (key: keyof WebWidget, value: unknown) => {
     setForm((f) => ({ ...f, [key]: value }));
     setDirty(true);
   };
-  const patchCfg = (key: string, value: string | string[]) => {
+  const patchCfg = (key: string, value: unknown) => {
     setForm((f) => ({ ...f, config: { ...(f.config ?? {}), [key]: value } }));
     setDirty(true);
   };
@@ -119,7 +177,9 @@ export function WebWidgetPanel() {
     return <div className="h-48 animate-pulse rounded-2xl bg-slate-800" />;
   }
 
-  const needsWA = merged.mode === "whatsapp" || merged.mode === "both";
+  const cfg = merged.config;
+  const whatsappEnabled = Boolean(cfg.whatsapp_enabled);
+  const formEnabled = Boolean(merged.is_active);
 
   return (
     <Card className="rounded-2xl border border-slate-700 bg-slate-950">
@@ -130,157 +190,139 @@ export function WebWidgetPanel() {
             <CardTitle className="text-base">Hub de Contacto</CardTitle>
           </div>
           {widget && (
-            <div className="flex items-center gap-3">
-              {/* Lead counter */}
-              <div className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-3 py-1">
-                <Zap className="h-3 w-3 text-orange-400" />
-                <span className="text-xs font-semibold text-slate-300">{widget.lead_count} leads captados</span>
-              </div>
-              {/* Active toggle */}
-              <button
-                onClick={() => { patch("is_active", !merged.is_active); }}
-                className="text-slate-400 hover:text-orange-400 transition-colors"
-                title={merged.is_active ? "Desactivar widget" : "Activar widget"}
-              >
-                {merged.is_active
-                  ? <ToggleRight className="h-6 w-6 text-orange-500" />
-                  : <ToggleLeft className="h-6 w-6" />}
-              </button>
+            <div className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-3 py-1">
+              <Zap className="h-3 w-3 text-orange-400" />
+              <span className="text-xs font-semibold text-slate-300">{widget.lead_count} leads captados</span>
             </div>
           )}
         </div>
         <p className="text-xs text-slate-400 mt-1">
-          Un solo botón flotante que agrupa todos los canales activos: formulario, WhatsApp y Agente de Voz IA.
+          Gestiona los canales del widget flotante de forma independiente. Cada canal tiene su propio toggle.
         </p>
       </CardHeader>
 
-      <CardContent className="space-y-5">
-        {/* Mode selector */}
-        <div>
-          <label className="mb-2 block text-xs font-medium text-slate-400">Modo del widget</label>
-          <div className="grid grid-cols-3 gap-2">
-            {MODE_OPTIONS.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => patch("mode", value)}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-xl border py-3 px-2 text-center text-xs font-medium transition-all",
-                  merged.mode === value
-                    ? "border-orange-600 bg-orange-950/30 text-orange-400"
-                    : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+      <CardContent className="space-y-3">
 
-        {/* Config fields */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Título del widget</label>
-            <Input
-              className={inputCls}
-              value={merged.config.title ?? ""}
-              onChange={(e) => patchCfg("title", e.target.value)}
-              placeholder="¿Podemos ayudarte?"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Subtítulo</label>
-            <Input
-              className={inputCls}
-              value={merged.config.subtitle ?? ""}
-              onChange={(e) => patchCfg("subtitle", e.target.value)}
-              placeholder="Escríbenos y te contactamos pronto"
-            />
-          </div>
-
-          {(merged.mode === "form" || merged.mode === "both") && (
-            <>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Texto del botón enviar</label>
-                <Input
-                  className={inputCls}
-                  value={merged.config.button_text ?? ""}
-                  onChange={(e) => patchCfg("button_text", e.target.value)}
-                  placeholder="Enviar mensaje"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Mensaje de éxito</label>
-                <Input
-                  className={inputCls}
-                  value={merged.config.success_message ?? ""}
-                  onChange={(e) => patchCfg("success_message", e.target.value)}
-                  placeholder="¡Gracias! Nos contactamos pronto."
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-slate-400">
-                  ¿En qué podemos ayudarte? — opciones
-                  <span className="ml-1 text-slate-500">(una por línea, dejar vacío para ocultar)</span>
-                </label>
-                <textarea
-                  rows={4}
-                  className={inputCls + " resize-none"}
-                  value={(merged.config.contact_reasons ?? []).join("\n")}
-                  onChange={(e) => {
-                    const lines = e.target.value.split("\n").map((l) => l.trimStart());
-                    patchCfg("contact_reasons", lines);
-                  }}
-                  placeholder={"Quiero una demo\nTengo dudas sobre precios\nSoy partner\nOtro"}
-                />
-              </div>
-            </>
-          )}
-
-          {needsWA && (
-            <>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Número de WhatsApp</label>
-                <Input
-                  className={inputCls}
-                  value={merged.config.whatsapp_number ?? ""}
-                  onChange={(e) => patchCfg("whatsapp_number", e.target.value)}
-                  placeholder="502XXXXXXXX (con código de país, sin +)"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-slate-400">Mensaje predefinido</label>
-                <Input
-                  className={inputCls}
-                  value={merged.config.whatsapp_message ?? ""}
-                  onChange={(e) => patchCfg("whatsapp_message", e.target.value)}
-                  placeholder="Hola, me gustaría más información"
-                />
-              </div>
-            </>
-          )}
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-400">Color principal</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={merged.config.color ?? "#EA580C"}
-                onChange={(e) => patchCfg("color", e.target.value)}
-                className="h-9 w-12 cursor-pointer rounded-lg border border-slate-700 bg-slate-800 p-0.5"
-              />
+        {/* ── Canal: Formulario de contacto ─────────────────────────────────── */}
+        <ChannelSection
+          icon={Users}
+          title="Formulario de contacto"
+          description="Captura leads directamente en tu CRM"
+          active={formEnabled}
+          onToggle={() => patch("is_active", !merged.is_active)}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Título del widget</label>
               <Input
-                className={cn(inputCls, "font-mono")}
-                value={merged.config.color ?? "#EA580C"}
-                onChange={(e) => patchCfg("color", e.target.value)}
-                placeholder="#EA580C"
-                maxLength={7}
+                className={inputCls}
+                value={cfg.title ?? ""}
+                onChange={(e) => patchCfg("title", e.target.value)}
+                placeholder="¿Podemos ayudarte?"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Subtítulo</label>
+              <Input
+                className={inputCls}
+                value={cfg.subtitle ?? ""}
+                onChange={(e) => patchCfg("subtitle", e.target.value)}
+                placeholder="Escríbenos y te contactamos pronto"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Texto del botón enviar</label>
+              <Input
+                className={inputCls}
+                value={cfg.button_text ?? ""}
+                onChange={(e) => patchCfg("button_text", e.target.value)}
+                placeholder="Enviar mensaje"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Mensaje de éxito</label>
+              <Input
+                className={inputCls}
+                value={cfg.success_message ?? ""}
+                onChange={(e) => patchCfg("success_message", e.target.value)}
+                placeholder="¡Gracias! Nos contactamos pronto."
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-slate-400">
+                Razones de contacto
+                <span className="ml-1 text-slate-500">(una por línea, dejar vacío para ocultar)</span>
+              </label>
+              <textarea
+                rows={4}
+                className={inputCls + " resize-none"}
+                value={(cfg.contact_reasons ?? []).join("\n")}
+                onChange={(e) => {
+                  const lines = e.target.value.split("\n").map((l) => l.trimStart());
+                  patchCfg("contact_reasons", lines);
+                }}
+                placeholder={"Quiero una demo\nTengo dudas sobre precios\nSoy partner\nOtro"}
               />
             </div>
           </div>
+        </ChannelSection>
+
+        {/* ── Canal: WhatsApp ───────────────────────────────────────────────── */}
+        <ChannelSection
+          icon={MessageCircle}
+          title="WhatsApp"
+          description="Redirige al visitante directamente a tu WhatsApp"
+          active={whatsappEnabled}
+          onToggle={() => patchCfg("whatsapp_enabled", !whatsappEnabled)}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Número de WhatsApp</label>
+              <Input
+                className={inputCls}
+                value={cfg.whatsapp_number ?? ""}
+                onChange={(e) => patchCfg("whatsapp_number", e.target.value)}
+                placeholder="502XXXXXXXX (con código de país, sin +)"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Mensaje predefinido</label>
+              <Input
+                className={inputCls}
+                value={cfg.whatsapp_message ?? ""}
+                onChange={(e) => patchCfg("whatsapp_message", e.target.value)}
+                placeholder="Hola, me gustaría más información"
+              />
+            </div>
+            {!cfg.whatsapp_number && (
+              <p className="sm:col-span-2 text-xs text-amber-400/80">
+                Ingresa un número para activar el botón de WhatsApp en el widget.
+              </p>
+            )}
+          </div>
+        </ChannelSection>
+
+        {/* ── Color general ─────────────────────────────────────────────────── */}
+        <div className="rounded-xl border border-slate-800 px-4 py-3">
+          <label className="mb-2 block text-xs font-medium text-slate-400">Color principal del widget</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={cfg.color ?? "#EA580C"}
+              onChange={(e) => patchCfg("color", e.target.value)}
+              className="h-9 w-12 cursor-pointer rounded-lg border border-slate-700 bg-slate-800 p-0.5"
+            />
+            <Input
+              className={cn(inputCls, "font-mono")}
+              value={cfg.color ?? "#EA580C"}
+              onChange={(e) => patchCfg("color", e.target.value)}
+              placeholder="#EA580C"
+              maxLength={7}
+            />
+          </div>
         </div>
 
-        {/* Save */}
+        {/* ── Guardar ───────────────────────────────────────────────────────── */}
         <Button
           onClick={() => saveMutation.mutate()}
           disabled={(!dirty && !!widget) || saveMutation.isPending}
@@ -289,11 +331,11 @@ export function WebWidgetPanel() {
           {saveMutation.isPending ? "Guardando…" : widget ? "Guardar cambios" : "Crear widget"}
         </Button>
 
-        {/* Snippet — only shown after widget exists */}
+        {/* ── Snippet y publicación ─────────────────────────────────────────── */}
         {widget && (
           <div className="space-y-2 border-t border-slate-800 pt-5">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-slate-400">Código para embeber el Hub de Contacto</p>
+              <p className="text-xs font-medium text-slate-400">Código para embeber el widget</p>
               <a
                 href={`/hub-preview?token=${widget.token}`}
                 target="_blank"
@@ -305,10 +347,9 @@ export function WebWidgetPanel() {
             </div>
             <SnippetBox token={widget.token} />
             <p className="text-[11px] text-slate-500">
-              Pega este script antes del cierre de <code className="text-slate-400">&lt;/body&gt;</code>. Muestra automáticamente todos los canales activos: WhatsApp, formulario y Agente de Voz IA.
+              Un solo script unifica todos los canales activos: Formulario, WhatsApp y Agente de Voz IA.
             </p>
 
-            {/* Publish on OptimizaCRM.com */}
             {publishError && (
               <p className="mt-3 text-xs text-red-400">{publishError}</p>
             )}

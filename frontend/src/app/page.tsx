@@ -8,7 +8,7 @@ import { cmsApi } from "@/lib/api";
 import {
   ArrowRight, CheckCircle, Brain, Target, BarChart3,
   Users, Zap, Shield, Mail, Smartphone,
-  TrendingUp, Send,
+  TrendingUp, Send, Phone,
 } from "lucide-react";
 
 // ─── Brand SVG icons ───────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ const CHANNELS = [
 
 function DashboardMockup() {
   return (
-    <div className="relative w-full max-w-lg lg:max-w-none">
+    <div className="relative w-full max-w-lg lg:max-w-none pb-6 pr-4 sm:pb-0 sm:pr-0">
       <div className="absolute -inset-4 rounded-3xl bg-orange-500/10 blur-2xl" />
       <div className="relative overflow-hidden rounded-2xl border border-slate-700 bg-slate-500 shadow-2xl shadow-black/40">
         {/* Browser chrome */}
@@ -243,6 +243,55 @@ function ChannelsHub() {
   );
 }
 
+// ─── Voice Agent Mockup ──────────────────────────────────────────────────────//
+
+function VoiceAgentMockup() {
+  return (
+    <div className="relative mx-auto w-[240px]">
+      <div className="absolute -inset-10 rounded-full bg-green-500/8 blur-3xl" />
+      {/* Phone frame */}
+      <div className="relative rounded-[2.5rem] border-[3px] border-slate-700 bg-slate-900 px-4 pb-6 pt-5 shadow-2xl shadow-black/60">
+        <div className="mx-auto mb-5 h-1.5 w-14 rounded-full bg-slate-700" />
+        {/* Call screen */}
+        <div className="rounded-2xl bg-slate-800 p-5 text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-green-900/50 ring-2 ring-green-500/30">
+            <Phone className="h-6 w-6 text-green-400" />
+          </div>
+          <p className="text-[11px] text-slate-500">Llamada entrante</p>
+          <p className="mt-0.5 text-base font-bold text-white">Carlos Méndez</p>
+          <p className="text-xs text-green-400">Calificando lead…</p>
+          {/* Waveform */}
+          <div className="mt-4 flex h-8 items-center justify-center gap-0.5">
+            {[2, 5, 8, 4, 9, 6, 8, 3, 7, 5, 4, 7].map((h, i) => (
+              <div
+                key={i}
+                className="w-1 rounded-full bg-green-400/70 animate-pulse"
+                style={{ height: `${h * 3}px`, animationDelay: `${i * 0.08}s` }}
+              />
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-slate-500">03:12 · En curso</p>
+        </div>
+        {/* CRM sync */}
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-800 px-3 py-2.5">
+          <div className="h-1.5 w-1.5 flex-shrink-0 animate-pulse rounded-full bg-green-400" />
+          <p className="text-[10px] text-slate-400">Guardando en CRM automáticamente</p>
+        </div>
+        <div className="mx-auto mt-4 h-1 w-20 rounded-full bg-slate-700" />
+      </div>
+      {/* Floating badges */}
+      <div className="absolute -left-12 top-10 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-center shadow-xl">
+        <p className="text-[10px] text-slate-500">Respuesta</p>
+        <p className="text-sm font-black text-green-400">&lt;1 seg</p>
+      </div>
+      <div className="absolute -right-12 bottom-14 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-center shadow-xl">
+        <p className="text-[10px] text-slate-500">Disponible</p>
+        <p className="text-sm font-black text-orange-400">24 / 7</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────//
 
 export default function HomePage() {
@@ -278,7 +327,7 @@ export default function HomePage() {
                   {data.badge}
                 </div>
 
-                <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-[3.75rem] xl:text-7xl">
+                <h1 className="text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-5xl sm:text-6xl lg:text-[3.75rem] xl:text-7xl">
                   Cierra más negocios<br />
                   <span className="text-orange-500">con Inteligencia Artificial</span>
                 </h1>
@@ -397,6 +446,71 @@ export default function HomePage() {
               </div>
               <div className="flex-1 w-full">
                 <ChannelsHub />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Voz IA ───────────────────────────────────────────────────── */}
+        <section className="px-4 py-24 sm:px-6 lg:px-8 bg-slate-950">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex flex-col items-center gap-14 lg:flex-row-reverse lg:items-center lg:gap-16">
+              {/* Visual */}
+              <div className="flex flex-1 justify-center">
+                <VoiceAgentMockup />
+              </div>
+              {/* Copy */}
+              <div className="flex-1 text-center lg:text-left">
+                <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-green-800/50 bg-green-950/40 px-3 py-1 text-xs font-semibold text-green-400">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
+                  Nuevo · Agente de Voz IA
+                </div>
+                <h2 className="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">
+                  Tu recepcionista con IA<br />
+                  <span className="text-orange-500">que nunca duerme</span>
+                </h2>
+                <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-400">
+                  Atiende llamadas, califica leads y agenda citas en automático las 24 h.
+                  En español perfecto, sin costes de personal adicional.
+                </p>
+                <div className="mt-8 grid grid-cols-3 gap-3">
+                  {[
+                    { value: "24/7",  label: "Siempre disponible" },
+                    { value: "<1 s",  label: "Tiempo de respuesta" },
+                    { value: "+40%",  label: "Más leads capturados" },
+                  ].map(({ value, label }) => (
+                    <div key={label} className="rounded-xl border border-slate-800 bg-slate-900 p-4 text-center">
+                      <p className="text-2xl font-black text-orange-500">{value}</p>
+                      <p className="mt-1 text-xs text-slate-500">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                <ul className="mt-8 space-y-2.5">
+                  {[
+                    "Atiende llamadas en español natural",
+                    "Califica y registra leads en el CRM",
+                    "Agenda citas directamente en tu calendario",
+                    "Escala a agente humano cuando es necesario",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-slate-400">
+                      <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-500" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
+                  <Link href="/voz-ia">
+                    <Button className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white font-bold">
+                      Conocer Agente de Voz <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </Link>
+                  <Link href="/voz-ia#pricing">
+                    <Button variant="outline" className="border-slate-700 text-slate-300 hover:border-orange-600 hover:text-orange-400 bg-transparent">
+                      Ver precios · Desde $49/mes
+                    </Button>
+                  </Link>
+                </div>
+                <p className="mt-4 text-xs text-slate-600">14 días gratis · Sin tarjeta de crédito</p>
               </div>
             </div>
           </div>

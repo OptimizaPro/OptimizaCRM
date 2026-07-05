@@ -6,12 +6,12 @@ import { PublicHeader, PublicFooter } from "@/components/layout/public-header";
 import { Button } from "@/components/ui/button";
 import {
   Brain, Users, BarChart3, Mail, BellRing,
-  ShieldCheck, ArrowRight, Check, Zap, Kanban, Globe,
+  ShieldCheck, ArrowRight, Check, Zap, Kanban, Globe, Phone,
 } from "lucide-react";
 import { cmsApi } from "@/lib/api";
 
 const ICON_MAP: Record<string, React.ElementType> = {
-  Users, Brain, BarChart3, Mail, BellRing, ShieldCheck, Kanban, Globe,
+  Users, Brain, BarChart3, Mail, BellRing, ShieldCheck, Kanban, Globe, Phone,
 };
 
 const DEFAULTS = {
@@ -100,6 +100,16 @@ const DEFAULTS = {
         "Protección contra accesos no autorizados",
       ],
     },
+    {
+      icon: "Phone",
+      title: "Agente de Voz IA",
+      items: [
+        "Atiende llamadas 24/7 en español natural",
+        "Califica y registra leads automáticamente",
+        "Agenda citas en el calendario del CRM",
+        "Escala a agente humano cuando es necesario",
+      ],
+    },
   ],
 };
 
@@ -182,6 +192,33 @@ export default function FeaturesPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+
+        {/* Voz IA CTA strip */}
+        <section className="border-y border-slate-800 bg-slate-900 px-4 py-14 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-green-900/40 text-green-400">
+              <Phone className="h-7 w-7" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-green-400">Complemento disponible</p>
+              <h3 className="mt-1 text-2xl font-black text-white">
+                ¿Tu CRM también debería atender llamadas?
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                El Agente de Voz IA atiende llamadas entrantes, califica leads y agenda citas en
+                automático las 24h — integrado directamente en tu CRM, sin personal adicional.
+              </p>
+            </div>
+            <div className="flex flex-shrink-0 flex-col items-center gap-2">
+              <Link href="/voz-ia">
+                <Button className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white font-bold whitespace-nowrap">
+                  Ver Agente de Voz <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
+              <p className="text-xs text-slate-500">Desde $49/mes · 14 días gratis</p>
             </div>
           </div>
         </section>

@@ -21,3 +21,12 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Hide scrollbar visually but keep scroll functional */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

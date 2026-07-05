@@ -4,7 +4,7 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 """
 
 from rest_framework import serializers
-from .models import Report, SalesGoal
+from .models import Report, SalesGoal, TeamGoal
 
 
 class SalesGoalSerializer(serializers.ModelSerializer):
@@ -20,6 +20,15 @@ class SalesGoalSerializer(serializers.ModelSerializer):
 
     def get_user_name(self, obj):
         return obj.user.full_name
+
+
+class TeamGoalSerializer(serializers.ModelSerializer):
+    team_name = serializers.CharField(source="team.name", read_only=True)
+
+    class Meta:
+        model  = TeamGoal
+        fields = ["id", "team", "team_name", "year", "month", "target_revenue", "target_deals", "updated_at"]
+        read_only_fields = ["id", "team_name", "updated_at"]
 
 
 class ReportSerializer(serializers.ModelSerializer):

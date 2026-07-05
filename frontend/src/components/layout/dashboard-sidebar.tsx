@@ -8,7 +8,7 @@ import {
   Calendar, BarChart3, Brain, Settings, LogOut, Menu,
   Plug, Inbox, MessageCircle, ChevronDown, MessagesSquare,
   TrendingUp, ListTodo, LineChart, ShieldCheck, FileText,
-  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail,
+  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, useSidebarStore } from "@/store/auth";
@@ -104,8 +104,13 @@ const NAV: NavEntry[] = [
       label: "Administración",
       icon: ShieldCheck,
       items: [
-        { href: "/dashboard/automation",   label: "Automatizaciones", icon: Zap },
-        { href: "/dashboard/cms",          label: "Contenido Web",    icon: FileText },
+        { href: "/dashboard/users",        label: "Usuarios",          icon: Users },
+        { href: "/dashboard/teams",        label: "Equipos",           icon: UsersRound },
+        { href: "/dashboard/automation",    label: "Automatizaciones",  icon: Zap },
+        { href: "/dashboard/voice-plans",  label: "Agente de Voz IA", icon: Mic },
+        { href: "/dashboard/hub",          label: "Hub de Contacto",      icon: LayoutGrid  },
+        { href: "/dashboard/forms",        label: "Formularios",          icon: FormInput   },
+        { href: "/dashboard/cms",          label: "Contenido Web",        icon: FileText    },
         { href: "/dashboard/integrations", label: "Integraciones",    icon: Plug },
         { href: "/dashboard/settings",     label: "Ajustes",          icon: Settings },
       ],
@@ -209,7 +214,7 @@ export function DashboardSidebar() {
         </div>
 
         {/* Nav */}
-        <nav className={cn("flex-1 overflow-y-auto p-2 space-y-0.5", isCollapsed && "overflow-x-hidden")}>
+        <nav className={cn("flex-1 overflow-y-auto scrollbar-hide p-2 space-y-0.5", isCollapsed && "overflow-x-hidden")}>
           {isCollapsed ? (
             /* ── Collapsed: icon-only list ── */
             ALL_ITEMS.map(({ href, label, icon: Icon }) => {

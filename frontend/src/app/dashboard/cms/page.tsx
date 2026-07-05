@@ -11,7 +11,7 @@ import {
   FileText, DollarSign, Zap, Settings2,
   ExternalLink, Upload, X, ImageIcon,
   Users, Mail, Shield, ScrollText, Plus, GripVertical,
-  MessageCircle, Rocket,
+  MessageCircle, Rocket, Mic, Wrench,
 } from "lucide-react";
 
 // ─── Default content (mirrors backend apps/content/models.py DEFAULT_CONTENT) ──
@@ -188,6 +188,50 @@ const DEFAULT_CONTENT = {
     faqs: [],
     cta: {},
   },
+  servicios_implementacion_voz: {
+    hero: {
+      badge: "Servicio de configuración profesional",
+      headline: "Tu Agente de Voz IA",
+      headline_highlight: "listo en 48 horas",
+      subheadline: "Configuramos tu agente desde cero — base de conocimiento, flujos de calificación, voz personalizada e integración con tu CRM. Tú solo tienes que encenderlo.",
+      cta_primary:        "Ver planes",
+      cta_primary_href:   "#planes",
+      cta_secondary:      "Hablar con el equipo",
+      cta_secondary_href: "/contacto",
+    },
+    tiers: [],
+    includes: [],
+    trust_strip: [],
+    faqs: [],
+    cta: {
+      headline:       "Tu agente de voz operativo esta misma semana.",
+      subheadline:    "Configúralo hoy y empieza a capturar leads desde el primer día — sin que tu equipo intervenga.",
+      primary_label:  "Contratar Setup Pro",
+      primary_href:   "/contacto?servicio=voz-pro",
+      secondary_label: "Tengo dudas, hablemos",
+      secondary_href:  "/contacto",
+    },
+  },
+  voz_ia: {
+    hero_badge:          "Nuevo · Agente de Voz IA",
+    hero_headline:       "Tu recepcionista con IA que nunca duerme",
+    hero_subheadline:    "Atiende llamadas, califica leads y agenda citas en automático las 24 horas, los 7 días de la semana. Integrado directo a tu CRM.",
+    cta_primary_text:    "Comenzar gratis",
+    cta_primary_href:    "/register",
+    cta_secondary_text:  "Ver planes",
+    cta_secondary_href:  "/voz-ia#pricing",
+    trial_note:          "14 días gratis · Sin tarjeta de crédito",
+    pricing_badge:       "Sin permanencia · Cancela cuando quieras",
+    pricing_headline:    "Planes de Agente de Voz IA",
+    pricing_subheadline: "Agrega un agente de voz a tu CRM. Paga solo los minutos que usas. Escala cuando lo necesites.",
+    annual_discount_pct: 20,
+    roi_human_salary:    "$519/mes",
+    roi_human_benefits:  "$200/mes",
+    roi_human_vacation:  "$100/mes",
+    roi_human_total:     "~$820/mes",
+    roi_multiplier:      "16×",
+  },
+
   terminos: {
     headline:     "Términos y Condiciones",
     last_updated: "23 de junio de 2026",
@@ -236,7 +280,9 @@ type SectionKey =
   | "terminos"
   | "general"
   | "servicios_whatsapp"
-  | "servicios_implementacion";
+  | "servicios_implementacion"
+  | "servicios_implementacion_voz"
+  | "voz_ia";
 
 interface SectionMeta {
   key: SectionKey;
@@ -305,6 +351,18 @@ const SECTIONS: SectionMeta[] = [
     label: "Implementación CRM",
     description: "Landing /servicios/implementacion",
     icon: Rocket,
+  },
+  {
+    key: "servicios_implementacion_voz",
+    label: "Setup Agente de Voz IA",
+    description: "Landing /servicios/voz-ia",
+    icon: Wrench,
+  },
+  {
+    key: "voz_ia",
+    label: "Agente de Voz IA",
+    description: "Landing /voz-ia — hero, precios y ROI",
+    icon: Mic,
   },
 ];
 
@@ -1091,6 +1149,153 @@ function ServiciosImplementacionEditor({ data, onChange }: { data: Record<string
   );
 }
 
+function VozIaEditor({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const set = (key: string, val: unknown) => onChange({ ...data, [key]: val });
+  return (
+    <div className="space-y-5">
+      {/* Info card — plans/FAQs/stats are managed in Django admin */}
+      <div className="flex items-start gap-3 rounded-xl border border-blue-800/50 bg-blue-950/20 px-4 py-3 text-xs text-blue-300">
+        <Mic className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
+        <div>
+          <p className="font-medium text-blue-200">Datos estructurados en Django Admin</p>
+          <p className="mt-0.5 text-blue-300/80">
+            Los <span className="font-medium">planes de voz</span>, <span className="font-medium">FAQs</span> y{" "}
+            <span className="font-medium">estadísticas</span> se gestionan en el Admin de Django bajo{" "}
+            <span className="font-mono">Agente de Voz IA</span>. Este editor cubre únicamente los textos editoriales de la landing.
+          </p>
+        </div>
+      </div>
+
+      <Divider label="Hero" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Badge" hint='Ej. "Nuevo · Agente de Voz IA"'>
+          <TextInput value={String(data.hero_badge ?? "")} onChange={(v) => set("hero_badge", v)} placeholder="Nuevo · Agente de Voz IA" />
+        </Field>
+        <Field label="Nota de prueba gratuita" hint='Ej. "14 días gratis · Sin tarjeta de crédito"'>
+          <TextInput value={String(data.trial_note ?? "")} onChange={(v) => set("trial_note", v)} placeholder="14 días gratis · Sin tarjeta de crédito" />
+        </Field>
+      </div>
+      <Field label="Titular (H1)">
+        <TextInput value={String(data.hero_headline ?? "")} onChange={(v) => set("hero_headline", v)} placeholder="Tu recepcionista con IA que nunca duerme" />
+      </Field>
+      <Field label="Subtítulo">
+        <TextArea value={String(data.hero_subheadline ?? "")} onChange={(v) => set("hero_subheadline", v)} rows={3} placeholder="Atiende llamadas, califica leads y agenda citas en automático…" />
+      </Field>
+
+      <Divider label="CTAs del hero" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="CTA principal — texto"><TextInput value={String(data.cta_primary_text ?? "")} onChange={(v) => set("cta_primary_text", v)} placeholder="Comenzar gratis" /></Field>
+        <Field label="CTA principal — enlace"><TextInput value={String(data.cta_primary_href ?? "")} onChange={(v) => set("cta_primary_href", v)} placeholder="/register" /></Field>
+        <Field label="CTA secundario — texto"><TextInput value={String(data.cta_secondary_text ?? "")} onChange={(v) => set("cta_secondary_text", v)} placeholder="Ver planes" /></Field>
+        <Field label="CTA secundario — enlace"><TextInput value={String(data.cta_secondary_href ?? "")} onChange={(v) => set("cta_secondary_href", v)} placeholder="/voz-ia#pricing" /></Field>
+      </div>
+
+      <Divider label="Sección de precios" />
+      <Field label="Badge">
+        <TextInput value={String(data.pricing_badge ?? "")} onChange={(v) => set("pricing_badge", v)} placeholder="Sin permanencia · Cancela cuando quieras" />
+      </Field>
+      <Field label="Titular">
+        <TextInput value={String(data.pricing_headline ?? "")} onChange={(v) => set("pricing_headline", v)} placeholder="Planes de Agente de Voz IA" />
+      </Field>
+      <Field label="Subtítulo">
+        <TextArea value={String(data.pricing_subheadline ?? "")} onChange={(v) => set("pricing_subheadline", v)} rows={2} />
+      </Field>
+      <Field label="Descuento anual (%)" hint="Solo el número — ej. 20 para 20 % de descuento">
+        <TextInput value={String(data.annual_discount_pct ?? "20")} onChange={(v) => set("annual_discount_pct", Number(v) || v)} placeholder="20" />
+      </Field>
+
+      <Divider label="ROI — Comparativa de costes" />
+      <p className="text-xs text-slate-400">Estos valores aparecen en la tabla &quot;Sin agente vs Con agente de voz&quot;. Ajusta si cambian el salario mínimo o los valores de referencia.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Salario mensual recepcionista" hint='Ej. "$519/mes"'>
+          <TextInput value={String(data.roi_human_salary ?? "")} onChange={(v) => set("roi_human_salary", v)} placeholder="$519/mes" />
+        </Field>
+        <Field label="Prestaciones y seguros" hint='Ej. "$200/mes"'>
+          <TextInput value={String(data.roi_human_benefits ?? "")} onChange={(v) => set("roi_human_benefits", v)} placeholder="$200/mes" />
+        </Field>
+        <Field label="Vacaciones y ausentismo" hint='Ej. "$100/mes"'>
+          <TextInput value={String(data.roi_human_vacation ?? "")} onChange={(v) => set("roi_human_vacation", v)} placeholder="$100/mes" />
+        </Field>
+        <Field label="Total coste humano" hint='Ej. "~$820/mes"'>
+          <TextInput value={String(data.roi_human_total ?? "")} onChange={(v) => set("roi_human_total", v)} placeholder="~$820/mes" />
+        </Field>
+      </div>
+      <Field label="Multiplicador de ROI" hint='Número de veces más económico — ej. "16×"'>
+        <TextInput value={String(data.roi_multiplier ?? "")} onChange={(v) => set("roi_multiplier", v)} placeholder="16×" />
+      </Field>
+    </div>
+  );
+}
+
+function ServiciosImplementacionVozEditor({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  const hero = (data.hero as Record<string, unknown>) ?? {};
+  const cta  = (data.cta  as Record<string, unknown>) ?? {};
+
+  const setHero = (k: string, v: unknown) => onChange({ ...data, hero: { ...hero, [k]: v } });
+  const setCta  = (k: string, v: unknown) => onChange({ ...data, cta:  { ...cta,  [k]: v } });
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start gap-3 rounded-xl border border-blue-800/50 bg-blue-950/20 px-4 py-3 text-xs text-blue-300">
+        <Wrench className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
+        <div>
+          <p className="font-medium text-blue-200">Página pública</p>
+          <p className="mt-0.5 text-blue-300/80">
+            Este editor gestiona los textos de <span className="font-mono">/servicios/voz-ia</span>.
+            Los pasos del proceso están definidos en código (estructurales). Los tiers, includes y FAQs
+            se editan en los campos JSON de abajo y se reflejan en la web al guardar.
+          </p>
+        </div>
+      </div>
+
+      <Divider label="Hero" />
+      <Field label="Badge"><TextInput value={String(hero.badge ?? "")} onChange={(v) => setHero("badge", v)} placeholder="Servicio de configuración profesional" /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Titular H1 — primera línea"><TextInput value={String(hero.headline ?? "")} onChange={(v) => setHero("headline", v)} placeholder="Tu Agente de Voz IA" /></Field>
+        <Field label="Titular — parte naranja (highlight)"><TextInput value={String(hero.headline_highlight ?? "")} onChange={(v) => setHero("headline_highlight", v)} placeholder="listo en 48 horas" /></Field>
+      </div>
+      <Field label="Subtítulo"><TextArea value={String(hero.subheadline ?? "")} onChange={(v) => setHero("subheadline", v)} rows={3} /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="CTA principal — texto"><TextInput value={String(hero.cta_primary ?? "")} onChange={(v) => setHero("cta_primary", v)} placeholder="Ver planes" /></Field>
+        <Field label="CTA principal — enlace"><TextInput value={String(hero.cta_primary_href ?? "")} onChange={(v) => setHero("cta_primary_href", v)} placeholder="#planes" /></Field>
+        <Field label="CTA secundario — texto"><TextInput value={String(hero.cta_secondary ?? "")} onChange={(v) => setHero("cta_secondary", v)} placeholder="Hablar con el equipo" /></Field>
+        <Field label="CTA secundario — enlace"><TextInput value={String(hero.cta_secondary_href ?? "")} onChange={(v) => setHero("cta_secondary_href", v)} placeholder="/contacto" /></Field>
+      </div>
+      <Field label="Trust strip del hero" hint='Array JSON — [{icon, text}] — iconos: Shield, Clock, MessageCircle'>
+        <JsonArea value={(hero.trust_strip ?? [])} onChange={(v) => setHero("trust_strip", v)} />
+      </Field>
+
+      <Divider label="¿Qué incluye?" />
+      <Field label="Cards de includes" hint='Array JSON — [{icon, title, desc}] — iconos: Mic, Brain, Target, Plug, Calendar, TestTube'>
+        <JsonArea value={(data.includes ?? [])} onChange={(v) => onChange({ ...data, includes: v })} />
+      </Field>
+
+      <Divider label="Planes (tiers)" />
+      <Field label="Tiers" hint='Array JSON — [{key, name, tagline, price, days, popular, cta, features:[{text, highlight}]}]'>
+        <JsonArea value={(data.tiers ?? [])} onChange={(v) => onChange({ ...data, tiers: v })} />
+      </Field>
+      <Field label="Trust strip de planes" hint='Array JSON — [{icon, text}] — iconos: Shield, MessageCircle, Globe, Zap'>
+        <JsonArea value={(data.trust_strip ?? [])} onChange={(v) => onChange({ ...data, trust_strip: v })} />
+      </Field>
+
+      <Divider label="Preguntas frecuentes" />
+      <Field label="FAQs" hint='Array JSON — [{q, a}]'>
+        <JsonArea value={(data.faqs ?? [])} onChange={(v) => onChange({ ...data, faqs: v })} />
+      </Field>
+
+      <Divider label="Banner CTA final" />
+      <Field label="Titular"><TextInput value={String(cta.headline ?? "")} onChange={(v) => setCta("headline", v)} /></Field>
+      <Field label="Subtítulo"><TextInput value={String(cta.subheadline ?? "")} onChange={(v) => setCta("subheadline", v)} /></Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Botón primario — texto"><TextInput value={String(cta.primary_label ?? "")} onChange={(v) => setCta("primary_label", v)} placeholder="Contratar Setup Pro" /></Field>
+        <Field label="Botón primario — enlace"><TextInput value={String(cta.primary_href ?? "")} onChange={(v) => setCta("primary_href", v)} placeholder="/contacto?servicio=voz-pro" /></Field>
+        <Field label="Botón secundario — texto"><TextInput value={String(cta.secondary_label ?? "")} onChange={(v) => setCta("secondary_label", v)} placeholder="Tengo dudas, hablemos" /></Field>
+        <Field label="Botón secundario — enlace"><TextInput value={String(cta.secondary_href ?? "")} onChange={(v) => setCta("secondary_href", v)} placeholder="/contacto" /></Field>
+      </div>
+    </div>
+  );
+}
+
 const EDITORS: Record<SectionKey, React.ComponentType<{ data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }>> = {
   hero:                      HeroEditor,
   pricing:                   PricingEditor,
@@ -1100,8 +1305,10 @@ const EDITORS: Record<SectionKey, React.ComponentType<{ data: Record<string, unk
   privacidad:                PrivacidadEditor,
   terminos:                  TerminosEditor,
   general:                   GeneralEditor,
-  servicios_whatsapp:        ServiciosWhatsappEditor,
-  servicios_implementacion:  ServiciosImplementacionEditor,
+  servicios_whatsapp:           ServiciosWhatsappEditor,
+  servicios_implementacion:     ServiciosImplementacionEditor,
+  servicios_implementacion_voz: ServiciosImplementacionVozEditor,
+  voz_ia:                       VozIaEditor,
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────

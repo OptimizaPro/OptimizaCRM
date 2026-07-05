@@ -16,6 +16,18 @@
 
   if (!TOKEN) { console.warn('[OptimizaCRM Voice] data-token is required'); return; }
 
+  // ── Vapi error → human-readable string ────────────────────────────────────
+  function _vapiErrMsg(e) {
+    if (!e) return 'Error de conexión con el agente de voz.';
+    // Vapi v2 wraps errors as { error: { message, statusCode, ... } }
+    var inner = e.error || e;
+    var msg = inner.message || inner.errorMessage || inner.msg || inner.statusCode
+           || e.message || e.errorMessage || e.msg;
+    if (msg && typeof msg === 'string') return msg;
+    // Last resort: stringify for debugging
+    try { return JSON.stringify(inner); } catch(_) { return 'Error desconocido de Vapi.'; }
+  }
+
   // ── Fetch config then boot ──────────────────────────────────────────────────
   fetch(API_URL + '/voice-widget/config/?token=' + TOKEN)
     .then(function (r) { return r.json(); })
@@ -23,35 +35,34 @@
     .catch(function (e) { console.warn('[OptimizaCRM Voice] Config error', e); });
 
   function loadVapiAndBoot(cfg) {
-    // Create the widget UI immediately so the button is always visible.
-    // Vapi SDK is loaded in the background; until it's ready the button
-    // shows a loading state when clicked.
-    var vapiClass = null;
+    var vapiClass    = null;
     var pendingStart = false;
+    var widgetAPI    = boot(cfg, function () { return vapiClass; });
 
-    var widgetAPI = boot(cfg, function getVapi() { return vapiClass; });
-
-    var vapiScript = document.createElement('script');
-    vapiScript.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/dist/index.js';
-    vapiScript.onload = function () {
-      vapiClass = window.Vapi || (window.vapiSdk && window.vapiSdk.Vapi) || null;
+    function onSdkReady(Vapi) {
+      vapiClass = Vapi || null;
       if (!vapiClass) {
-        console.warn('[OptimizaCRM Voice] Vapi SDK not found after script load');
+        if (widgetAPI) widgetAPI.showSdkError();
+        return;
       }
-      // If user clicked the button while SDK was loading, start now
-      if (pendingStart && vapiClass && widgetAPI) {
+      if (pendingStart && widgetAPI) {
         widgetAPI.startCall();
         pendingStart = false;
       }
-    };
-    vapiScript.onerror = function () {
-      console.warn('[OptimizaCRM Voice] Failed to load Vapi SDK from CDN');
-      if (widgetAPI) widgetAPI.showSdkError();
-    };
-    document.head.appendChild(vapiScript);
+    }
 
-    // Expose pendingStart setter so boot() can signal SDK-not-ready clicks
-    if (widgetAPI) widgetAPI.setPendingStart = function(v) { pendingStart = v; };
+    // Dynamic ESM import — works in all modern browsers without exposing window.Vapi
+    // esm.sh is the primary source (always serves correct ESM for any npm package).
+    // jsDelivr +esm is the fallback.
+    import('https://esm.sh/@vapi-ai/web@2')
+      .then(function (m) { onSdkReady(m && (m.default || m.Vapi)); })
+      .catch(function () {
+        import('https://cdn.jsdelivr.net/npm/@vapi-ai/web@2/+esm')
+          .then(function (m) { onSdkReady(m && (m.default || m.Vapi)); })
+          .catch(function ()  { onSdkReady(null); });
+      });
+
+    if (widgetAPI) widgetAPI.setPendingStart = function (v) { pendingStart = v; };
   }
 
   // boot() now receives a getter function for VapiClass (loaded async)
@@ -221,13 +232,31 @@
       try {
         vapi = new VapiClass(cfg.vapi_public_key);
 
-        vapi.on('call-start', function () { setState('active'); });
-        vapi.on('call-end',   function () { setState('ended'); });
+        var callStartedAt = 0;
+
+        vapi.on('call-start', function () {
+          callStartedAt = Date.now();
+          setState('active');
+        });
+        vapi.on('call-end', function (call) {
+          var reason = (call && call.endedReason) || '';
+          console.info('[OptimizaCRM Voice] call-end reason:', reason);
+          var quickEnd = callStartedAt && (Date.now() - callStartedAt) < 4000;
+          if (quickEnd && reason && reason !== 'customer-ended-call') {
+            setState('idle');
+            showError('La llamada no pudo establecerse (' + reason + '). Verifica tu micrófono e inténtalo de nuevo.');
+          } else {
+            setState('ended');
+          }
+          callStartedAt = 0;
+        });
         vapi.on('speech-start', function () { waveform.classList.add('agent-speaking'); });
         vapi.on('speech-end',   function () { waveform.classList.remove('agent-speaking'); });
         vapi.on('error', function (e) {
-          showError((e && e.message) || 'Error de conexión');
+          console.error('[OptimizaCRM Voice] Vapi error object:', JSON.stringify(e, null, 2));
           setState('idle');
+          var msg = _vapiErrMsg(e);
+          showError(msg);
         });
 
         setState('connecting');

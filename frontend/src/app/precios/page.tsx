@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   CheckCircle, XCircle, ArrowRight, Zap, Shield,
   Users, Brain, MessageCircle, BarChart3,
-  UserPlus, GraduationCap, Workflow, Plug, LucideIcon, MapPin, Target,
+  UserPlus, GraduationCap, Workflow, Plug, LucideIcon, MapPin, Target, Phone, Headset,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,6 +57,7 @@ const ADDON_ICONS: Record<string, LucideIcon> = {
   "bar-chart-3":    BarChart3,
   "plug":           Plug,
   "target":         Target,
+  "headset":        Headset,
 };
 
 // ─── Users per plan (matches comparison table) ────────────────────────────────
@@ -99,7 +100,7 @@ const COMPARISON: {
   { feature: "Reportes avanzados",    basico: false,       pro: true,        equipo: true,       enterprise: true },
   { feature: "Previsión de ingresos", basico: false,       pro: true,        equipo: true,       enterprise: true },
   { feature: "Predicción de churn",   basico: false,       pro: false,       equipo: true,       enterprise: true },
-  { feature: "Soporte",               basico: "Email",     pro: "Prioritario", equipo: "Prioritario", enterprise: "Dedicado + SLA" },
+  { feature: "Soporte",               basico: "Email",     pro: "Email",       equipo: "Prioritario", enterprise: "Dedicado + SLA" },
   { feature: "Onboarding",            basico: "Self-service", pro: "Self-service", equipo: "Self-service", enterprise: "Asistido" },
   { feature: "Facturación local",     basico: false,       pro: false,       equipo: false,      enterprise: true },
 ];
@@ -170,6 +171,8 @@ export default function PricingPage() {
   const [addons, setAddons]         = useState<ApiAddOn[]>([]);
   const [loading, setLoading]       = useState(true);
   const [addonLoading, setAddonLoading] = useState<string | null>(null);
+  const [voiceStarterPrice, setVoiceStarterPrice] = useState<string | null>(null);
+  const [implStarterPrice, setImplStarterPrice]   = useState<number | null>(null);
   const [cms, setCms]         = useState({
     badge:                    "Sin permanencia · Cancela cuando quieras",
     headline:                 "Precios pensados para LATAM",
@@ -193,6 +196,23 @@ export default function PricingPage() {
     fetch(`${API_URL}/billing/addons/`)
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data: ApiAddOn[]) => setAddons(data))
+      .catch(() => {});
+
+    fetch(`${API_URL}/voice/plans/`)
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data: { price_monthly: string; sort_order: number }[]) => {
+        const sorted = [...data].sort((a, b) => a.sort_order - b.sort_order);
+        if (sorted.length > 0) setVoiceStarterPrice(sorted[0].price_monthly);
+      })
+      .catch(() => {});
+
+    fetch(`${API_URL}/content/servicios_implementacion/`)
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then(({ data }) => {
+        const tiers = (data?.tiers ?? []) as { price: number | null }[];
+        const prices = tiers.map((t) => t.price).filter((p): p is number => p !== null);
+        if (prices.length > 0) setImplStarterPrice(Math.min(...prices));
+      })
       .catch(() => {});
   }, []);
 
@@ -239,7 +259,7 @@ export default function PricingPage() {
               <Zap className="h-3.5 w-3.5" />
               {cms.badge}
             </div>
-            <h1 className="text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl">
+            <h1 className="text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-5xl sm:text-6xl">
               {cms.headline_highlight && cms.headline.includes(cms.headline_highlight)
                 ? <>
                     {cms.headline.split(cms.headline_highlight)[0]}
@@ -343,8 +363,8 @@ export default function PricingPage() {
                               <p className="mt-1 text-sm text-slate-400">
                                 {users} usuario{users !== 1 ? "s" : ""} incluido{users !== 1 ? "s" : ""}
                               </p>
-                              <p className="mt-0.5 text-xs font-bold text-orange-400">
-                                ${pricePerUser % 1 === 0 ? pricePerUser.toFixed(0) : pricePerUser.toFixed(2)} × {users} usuarios = ${total} · {billing}
+                              <p className="mt-0.5 text-sm text-slate-400">
+                                ${total}/mes · {billing}
                               </p>
                               <p className="mt-0.5 text-xs text-slate-500">+ impuestos según aplique</p>
                               {annual && saving > 0 && (
@@ -543,6 +563,49 @@ export default function PricingPage() {
           </div>
         </section>
 
+        {/* ── Voz IA upsell ────────────────────────────────────────────── */}
+        <section className="px-6 pb-12 sm:px-12 lg:px-20">
+          <div className="mx-auto max-w-7xl">
+            <div className="relative overflow-hidden rounded-2xl border border-green-700/30 bg-gradient-to-br from-green-950/40 via-slate-900 to-slate-900 px-8 py-10 shadow-xl shadow-green-900/10">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-green-600/8 blur-3xl" />
+              <div className="relative flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-green-900/40 text-green-400 ring-1 ring-green-700/40">
+                  <Phone className="h-7 w-7" />
+                </div>
+                <div className="flex-1">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-green-700/50 bg-green-950/60 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-green-400">
+                    Complemento · No incluido en el plan
+                  </span>
+                  <h3 className="mt-3 text-2xl font-black text-white">
+                    Agrega un Agente de Voz IA a tu CRM
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                    Atiende llamadas, califica leads y agenda citas en automático las 24h.
+                    Compatible con todos los planes — se activa en 24 h, sin cambiar tu suscripción actual.
+                  </p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-4 text-xs text-slate-500 sm:justify-start">
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> 1 agente incluido en prueba</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> 100 minutos gratis</span>
+                    <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-500" /> Integración CRM directa</span>
+                  </div>
+                </div>
+                <div className="flex flex-shrink-0 flex-col items-center gap-2 sm:items-end">
+                  <Link href="/voz-ia">
+                    <Button size="lg" className="gap-2 bg-orange-600 hover:bg-orange-500 text-white font-bold whitespace-nowrap shadow-lg shadow-orange-900/30">
+                      Ver planes de Voz <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-slate-500">
+                    Desde <span className="font-semibold text-slate-300">
+                      {voiceStarterPrice ? `$${voiceStarterPrice}/mes` : "…"}
+                    </span> · prueba gratis
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Comparison table ─────────────────────────────────────────── */}
         <section className="bg-slate-900 px-6 py-20 sm:px-12 lg:px-20">
           <div className="mx-auto max-w-6xl">
@@ -701,7 +764,7 @@ export default function PricingPage() {
                       Ver planes <ArrowRight className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <p className="text-xs text-slate-500">Desde <span className="font-semibold text-slate-300">$499</span> · pago único</p>
+                  <p className="text-xs text-slate-500">Desde <span className="font-semibold text-slate-300">{implStarterPrice ? `$${implStarterPrice}` : "…"}</span> · pago único</p>
                 </div>
               </div>
             </div>

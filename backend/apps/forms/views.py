@@ -29,6 +29,25 @@ def _cors(response, request):
     return response
 
 
+# ─── Plan limits ──────────────────────────────────────────────────────────────
+
+FORM_LIMIT_BY_PLAN = {
+    # Current slugs in Organization.plan choices
+    "free":       1,
+    "pro":        6,
+    "enterprise": 12,
+    # Pricing page slugs (basico / equipo)
+    "basico":     2,
+    "equipo":     12,
+}
+DEFAULT_FORM_LIMIT = 2
+
+
+def _form_limit(org) -> int:
+    plan = getattr(org, "plan", "free") or "free"
+    return FORM_LIMIT_BY_PLAN.get(plan, DEFAULT_FORM_LIMIT)
+
+
 # ─── Authenticated CRUD ───────────────────────────────────────────────────────
 
 class EmbedFormViewSet(viewsets.ModelViewSet):
@@ -46,8 +65,29 @@ class EmbedFormViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsOrgAdmin()]
         return [IsAuthenticated()]
 
+    def list(self, request, *args, **kwargs):
+        """Override list to include plan limit metadata."""
+        org        = get_current_organization()
+        limit      = _form_limit(org) if org else DEFAULT_FORM_LIMIT
+        queryset   = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            "results":     serializer.data,
+            "form_count":  queryset.count(),
+            "form_limit":  limit,
+            "plan":        getattr(org, "plan", "free") if org else "free",
+        })
+
     def perform_create(self, serializer):
-        org = get_current_organization()
+        org   = get_current_organization()
+        limit = _form_limit(org)
+        count = EmbedForm.objects.filter(organization=org).count()
+        if count >= limit:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError(
+                {"detail": f"Has alcanzado el límite de {limit} formulario(s) de tu plan. Actualiza tu plan para crear más."},
+                code="form_limit_exceeded",
+            )
         serializer.save(organization=org)
 
     @action(detail=True, methods=["get"], url_path="submissions")

@@ -8,7 +8,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     LeadViewSet, CustomerViewSet, OpportunityViewSet,
     TaskViewSet, ActivityViewSet, CalendarViewSet,
-    PipelineTemplateViewSet,
+    PipelineTemplateViewSet, TeamViewSet,
 )
 
 router = DefaultRouter()
@@ -19,5 +19,6 @@ router.register("tasks",         TaskViewSet,             basename="task")
 router.register("activities",    ActivityViewSet,         basename="activity")
 router.register("calendar",      CalendarViewSet,         basename="calendar")
 router.register("pipelines",     PipelineTemplateViewSet, basename="pipeline")
+router.register("teams",         TeamViewSet,             basename="team")
 
 urlpatterns = [path("", include(router.urls))]

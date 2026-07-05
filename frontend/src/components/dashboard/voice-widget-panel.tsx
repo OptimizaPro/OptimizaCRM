@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
   ExternalLink, Maximize2, Rocket, Globe2, Loader2, FileUp, Eye, EyeOff, Camera,
-  Link2, FileText, Trash2, AlertCircle, Sparkles, RotateCcw,
+  Link2, FileText, Trash2, AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -170,38 +170,12 @@ function VoiceSnippetBox({ token }: { token: string }) {
   );
 }
 
-// ─── Default system prompt template ──────────────────────────────────────────
-
-function buildDefaultPrompt(agentName: string, companyName: string): string {
-  return `Eres ${agentName}, asistente de voz de ${companyName}.
-
-━━━ IDENTIDAD ━━━
-Tu nombre es ${agentName}. Representas a ${companyName} con profesionalismo y cercanía.
-
-━━━ OBJETIVO ━━━
-Atender a los clientes de forma natural, responder sus preguntas y calificar leads de manera conversacional. Cuando corresponda, agenda citas o escala a un humano.
-
-━━━ TONO Y ESTILO ━━━
-- Habla siempre en español latinoamericano, de forma amable y concisa.
-- Evita respuestas largas. Ve al punto.
-- Usa el nombre del cliente cuando lo conozcas.
-
-━━━ RESTRICCIONES ━━━
-- NUNCA inventes información. Si no sabes algo, di: "Lo consultaré con mi equipo y te informamos a la brevedad."
-- Si el cliente pide hablar con una persona, usa escalateToHuman de inmediato.
-- No menciones que eres una IA a menos que te lo pregunten directamente.
-
-━━━ CIERRE ━━━
-Al finalizar, agradece la llamada y despídete con calidez.`;
-}
-
 // ─── Default values ───────────────────────────────────────────────────────────
 
 const DEFAULT_WIDGET: VoiceWidget = {
   id: "", token: "", name: "Agente de Voz", vapi_assistant_id: "", llm_model: "groq/llama-3.3-70b-versatile",
-  system_prompt: "",
   is_active: true, lead_count: 0, call_count: 0,
-  config: { agent_name: "Sofía", voice: "es-MX-NuriaNeural", color: "#EA580C", greeting: "", farewell: "", avatar_url: "" },
+  config: { agent_name: "Sofía", voice: "es-MX-NuriaNeural", color: "#EA580C", greeting: "", farewell: "", avatar_url: "", escalation_mode: "whatsapp", transfer_number: "" },
   knowledge_base: null,
 };
 
@@ -232,9 +206,8 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
   const widget = data?.widget ?? null;
   const [form,   setForm]   = useState<Partial<VoiceWidget>>({});
   const [kbForm, setKbForm] = useState<Partial<VoiceKnowledgeBase>>({});
-  const [dirty,           setDirty]           = useState(false);
-  const [saveMsg,         setSaveMsg]         = useState("");
-  const [generatingPrompt, setGeneratingPrompt] = useState(false);
+  const [dirty,   setDirty]   = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
 
   const current: VoiceWidget = widget ?? DEFAULT_WIDGET;
   const merged: VoiceWidget  = {
@@ -247,15 +220,6 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
     ...kbForm,
   };
 
-  // Pre-populate system_prompt with generic template when widget loads without one
-  useEffect(() => {
-    if (widget && !widget.system_prompt) {
-      const agentName   = widget.config?.agent_name || "Asistente";
-      const companyName = organization?.name || "la empresa";
-      setForm((f) => ({ ...f, system_prompt: buildDefaultPrompt(agentName, companyName) }));
-    }
-  }, [widget?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const patch    = (key: keyof VoiceWidget, value: unknown) => { setForm((f) => ({ ...f, [key]: value })); setDirty(true); };
   const patchCfg = (key: string, value: string)              => { setForm((f) => ({ ...f, config: { ...(f.config ?? {}), [key]: value } })); setDirty(true); };
   const patchKb  = (key: keyof VoiceKnowledgeBase, value: string | string[]) => { setKbForm((f) => ({ ...f, [key]: value })); setDirty(true); };
@@ -264,11 +228,10 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
     mutationFn: () =>
       voiceWidgetApi.save(auth.token, auth.orgId, {
         widget: {
-          llm_model:     merged.llm_model,
-          system_prompt: merged.system_prompt,
-          is_active:     merged.is_active,
-          config:        merged.config,
-          name:          merged.name,
+          llm_model: merged.llm_model,
+          is_active: merged.is_active,
+          config:    merged.config,
+          name:      merged.name,
         },
         knowledge_base: mergedKb,
         ...(vapiPrivateKey ? { vapi_private_key: vapiPrivateKey } : {}),
@@ -282,7 +245,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
       setKbForm({});
       setDirty(false);
       const warning = (data as Record<string, unknown>).vapi_warning as string | undefined;
-      setSaveMsg(warning ? `Guardado. Error Vapi: ${warning}` : "Asistente sincronizado con Vapi ✓");
+      setSaveMsg(warning ? `Guardado con advertencia: ${warning}` : "Asistente sincronizado ✓");
       setTimeout(() => setSaveMsg(""), 8000);
     },
   });
@@ -457,9 +420,6 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
           <div className="flex items-center gap-2">
             <Mic className="h-4 w-4 text-orange-500" />
             <CardTitle className="text-base">Agente de Voz IA</CardTitle>
-            <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-slate-400">
-              Powered by Vapi
-            </span>
           </div>
           {widget && (
             <div className="flex items-center gap-3">
@@ -484,16 +444,15 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
           )}
         </div>
         <p className="mt-1 text-xs text-slate-400">
-          Añade un asistente de voz flotante a tu web. Cada organización conecta su propia cuenta de Vapi.
-          Los costes de voz se facturan directamente por Vapi a tu tarjeta.
+          Añade un asistente de voz flotante a tu web. Conecta tus claves de voz para activar el agente.
         </p>
       </CardHeader>
 
       <CardContent className="space-y-6">
 
-        {/* ── A. Vapi API Keys ─────────────────────────────────────────────── */}
+        {/* ── A. Claves de conexión ────────────────────────────────────────── */}
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Claves API de Vapi</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Claves de conexión</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className={labelCls + " mb-1 block"}>Private API Key</label>
@@ -540,17 +499,9 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
               </div>
             </div>
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-500">
-            Obtén tus keys en{" "}
-            <a href="https://dashboard.vapi.ai" target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-0.5 text-orange-400 hover:text-orange-300">
-              dashboard.vapi.ai <ExternalLink className="h-2.5 w-2.5" />
-            </a>{" "}
-            → Account → API Keys
-          </p>
           {widget?.vapi_assistant_id && !vapiPrivateKey && (
             <p className="mt-2 rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-300">
-              Si rotaste tus claves Vapi, re-ingresa la nueva <strong>Private API Key</strong> antes de guardar para que el asistente se sincronice correctamente.
+              Si rotaste tus claves de voz, re-ingresa la nueva <strong>Private Key</strong> antes de guardar para que el asistente se sincronice correctamente.
             </p>
           )}
         </div>
@@ -697,63 +648,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
           </div>
         </div>
 
-        {/* ── C. System Prompt ─────────────────────────────────────────────── */}
-        <div className="border-t border-slate-800 pt-5">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">System Prompt</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Instrucciones base del agente. Personaliza el template o genera uno con IA a partir de tu base de conocimiento.
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                title="Restablecer template genérico"
-                onClick={() => {
-                  const agentName   = merged.config?.agent_name || "Asistente";
-                  const companyName = organization?.name || "la empresa";
-                  patch("system_prompt", buildDefaultPrompt(agentName, companyName));
-                }}
-                className="flex items-center gap-1 rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-400 hover:border-slate-500 hover:text-slate-200 transition-colors"
-              >
-                <RotateCcw className="h-3 w-3" />
-                Template
-              </button>
-              <button
-                type="button"
-                disabled={generatingPrompt}
-                onClick={async () => {
-                  setGeneratingPrompt(true);
-                  try {
-                    const res = await voiceWidgetApi.generatePrompt(auth.token, auth.orgId, agentId);
-                    patch("system_prompt", res.system_prompt);
-                    toast.success("Prompt generado con IA");
-                  } catch {
-                    toast.error("Error al generar el prompt. Verifica que tienes un proveedor de IA configurado.");
-                  } finally {
-                    setGeneratingPrompt(false);
-                  }
-                }}
-                className="flex items-center gap-1.5 rounded-lg bg-orange-600/20 border border-orange-600/40 px-2.5 py-1.5 text-xs font-medium text-orange-400 hover:bg-orange-600/30 hover:border-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {generatingPrompt
-                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                  : <Sparkles className="h-3 w-3" />
-                }
-                {generatingPrompt ? "Generando…" : "Generar con IA"}
-              </button>
-            </div>
-          </div>
-          <textarea
-            className={cn(inputCls, "min-h-[200px] resize-y font-mono text-xs leading-relaxed")}
-            value={merged.system_prompt ?? ""}
-            onChange={(e) => patch("system_prompt", e.target.value)}
-            spellCheck={false}
-          />
-        </div>
-
-        {/* ── D. Base de Conocimiento ──────────────────────────────────────── */}
+        {/* ── C. Base de Conocimiento ──────────────────────────────────────── */}
         <div className="border-t border-slate-800 pt-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Base de Conocimiento</p>
@@ -1034,6 +929,55 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
                 placeholder="Con código país: 50212345678"
               />
             </div>
+
+            {/* Escalado a humano */}
+            <div className="col-span-2 rounded-xl border border-slate-700 bg-slate-800/40 p-4 space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Escalado a humano</p>
+
+              {/* Mode selector — 3 radio-style buttons */}
+              <div>
+                <label className={labelCls + " mb-2 block"}>Modo de escalado</label>
+                <div className="flex gap-2">
+                  {[
+                    { value: "whatsapp", label: "WhatsApp", desc: "Notificación al equipo" },
+                    { value: "transfer", label: "Transferencia", desc: "Llamada en vivo" },
+                    { value: "both",     label: "Ambos", desc: "Notifica + transfiere" },
+                  ].map(({ value, label, desc }) => {
+                    const active = (merged.config.escalation_mode ?? "whatsapp") === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => patchCfg("escalation_mode", value)}
+                        className={`flex-1 rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                          active
+                            ? "border-orange-500 bg-orange-950/40 text-orange-300"
+                            : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold">{label}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Transfer number — shown when mode is transfer or both */}
+              {(merged.config.escalation_mode === "transfer" || merged.config.escalation_mode === "both") && (
+                <div>
+                  <label className={labelCls + " mb-1 block"}>Número de transferencia (E.164)</label>
+                  <Input
+                    className={inputCls}
+                    value={merged.config.transfer_number ?? ""}
+                    onChange={(e) => patchCfg("transfer_number", e.target.value)}
+                    placeholder="+50212345678"
+                  />
+                  <p className="mt-1 text-[10px] text-slate-500">Con código de país. Puede ser móvil, fijo u otro número Twilio.</p>
+                </div>
+              )}
+            </div>
+
             <ExpandableTextarea
               label="Información de contacto"
               value={mergedKb.contact_info}
@@ -1071,7 +1015,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
               className="bg-orange-600 hover:bg-orange-500 text-white"
             >
               {saveMutation.isPending
-                ? "Sincronizando con Vapi…"
+                ? "Sincronizando…"
                 : widget ? "Guardar cambios" : "Crear asistente"}
             </Button>
             {widget?.vapi_assistant_id && (
@@ -1079,7 +1023,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  toast("¿Resetear el asistente Vapi?", {
+                  toast("¿Resetear el asistente de voz?", {
                     description: "Necesitarás re-ingresar tu Private API Key y guardar para crear uno nuevo.",
                     action: {
                       label: "Sí, resetear",
@@ -1127,7 +1071,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
             </div>
             {!widget.vapi_assistant_id && (
               <p className="rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
-                El asistente aún no está sincronizado con Vapi. Configura tus API Keys y guarda para activar el widget.
+                El asistente aún no está configurado. Ingresa tus claves de conexión y guarda para activar el widget.
               </p>
             )}
             <VoiceSnippetBox token={widget.token} />

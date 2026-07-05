@@ -14,47 +14,186 @@ from rest_framework.views import APIView
 from core.permissions import IsReadOnlyOrAbove, CanWriteCRM
 from core.middleware import get_current_organization
 from apps.crm.models import Lead, Customer, Opportunity, Task, Activity
-from .models import Report, SalesGoal
-from .serializers import ReportSerializer, SalesGoalSerializer
+from .models import Report, SalesGoal, TeamGoal
+from .serializers import ReportSerializer, SalesGoalSerializer, TeamGoalSerializer
 
 
 class DashboardView(APIView):
     permission_classes = [IsReadOnlyOrAbove]
+
+    PERIOD_OPTIONS  = ("month", "quarter", "year")
+    COMPARE_OPTIONS = ("previous", "yoy")
+
+    PERIOD_LABELS = {
+        "month":   "Este mes",
+        "quarter": "Este trimestre",
+        "year":    "Este año",
+    }
+
+    # Human-readable label for the comparison window shown in the frontend
+    COMPARE_LABELS = {
+        ("month",   "previous"): "mes anterior",
+        ("month",   "yoy"):      "jun. año anterior",   # overridden dynamically
+        ("quarter", "previous"): "trimestre anterior",
+        ("quarter", "yoy"):      "mismo trimestre año anterior",
+        ("year",    "previous"): "año anterior",
+        ("year",    "yoy"):      "año anterior",         # identical for "year"
+    }
+
+    def _period_bounds(self, period, compare, now):
+        """
+        Returns (cur_start, cur_end, prev_start, prev_end).
+
+        compare="previous" — rolling previous period (MoM / QoQ / YoY rolling)
+        compare="yoy"      — same calendar window exactly one year back
+                             Uses elapsed days so partial periods are fair.
+        """
+        zero = dict(hour=0, minute=0, second=0, microsecond=0)
+
+        # ── Current period start ──────────────────────────────────────────
+        if period == "quarter":
+            q_start_month = ((now.month - 1) // 3) * 3 + 1
+            cur_start     = now.replace(month=q_start_month, day=1, **zero)
+        elif period == "year":
+            cur_start = now.replace(month=1, day=1, **zero)
+        else:  # month
+            cur_start = now.replace(day=1, **zero)
+
+        cur_end = now  # always open-ended at "now"
+
+        # ── Previous period bounds ────────────────────────────────────────
+        if compare == "yoy":
+            # Same calendar window, exactly 1 year earlier.
+            # prev_end mirrors elapsed days so partial periods are comparable.
+            prev_start = cur_start.replace(year=cur_start.year - 1)
+            prev_end   = now.replace(year=now.year - 1)
+
+        else:  # previous
+            if period == "quarter":
+                pq_month = q_start_month - 3
+                pq_year  = now.year
+                if pq_month <= 0:
+                    pq_month += 12
+                    pq_year  -= 1
+                prev_start = now.replace(year=pq_year, month=pq_month, day=1, **zero)
+                prev_end   = cur_start
+
+            elif period == "year":
+                prev_start = cur_start.replace(year=now.year - 1)
+                prev_end   = cur_start
+
+            else:  # month
+                last_of_prev = cur_start - timedelta(days=1)
+                prev_start   = last_of_prev.replace(day=1, **zero)
+                prev_end     = cur_start
+
+        return cur_start, cur_end, prev_start, prev_end
+
+    def _compare_label(self, period, compare, now):
+        """Dynamic label e.g. 'jun. 2024' for month+yoy."""
+        if compare == "yoy":
+            if period == "month":
+                return now.replace(year=now.year - 1).strftime("%b. %Y")
+            if period == "quarter":
+                q = ((now.month - 1) // 3) + 1
+                return f"Q{q} {now.year - 1}"
+            return str(now.year - 1)
+        return self.COMPARE_LABELS.get((period, compare), "período anterior")
+
+    def _pct(self, current, previous):
+        """Percentage change; None when previous is 0 (undefined)."""
+        if not previous:
+            return None
+        return round((current - previous) / previous * 100, 1)
+
+    def _metric(self, current, previous):
+        change = self._pct(current, previous)
+        if change is None:
+            trend = "neutral"
+        elif change > 0:
+            trend = "up"
+        elif change < 0:
+            trend = "down"
+        else:
+            trend = "neutral"
+        return {
+            "value":    current,
+            "previous": previous,
+            "change":   change,
+            "trend":    trend,
+        }
 
     def get(self, request):
         org = get_current_organization()
         if not org:
             return Response({"error": "Sin contexto de organización."}, status=400)
 
-        now         = timezone.now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        period  = request.query_params.get("period",  "month")
+        compare = request.query_params.get("compare", "previous")
+        if period  not in self.PERIOD_OPTIONS:  period  = "month"
+        if compare not in self.COMPARE_OPTIONS: compare = "previous"
 
-        leads        = Lead.objects.filter(organization=org)
-        customers    = Customer.objects.filter(organization=org)
+        now = timezone.now()
+        cur_start, cur_end, prev_start, prev_end = self._period_bounds(period, compare, now)
+
+        leads         = Lead.objects.filter(organization=org)
+        customers     = Customer.objects.filter(organization=org)
         opportunities = Opportunity.objects.filter(organization=org)
-        tasks        = Task.objects.filter(organization=org)
+        tasks         = Task.objects.filter(organization=org)
 
         won_opps  = opportunities.filter(stage="won")
         lost_opps = opportunities.filter(stage="lost")
         open_opps = opportunities.exclude(stage__in=["won", "lost"])
 
+        # ── All-time totals (backward-compatible) ─────────────────────────
         total_revenue   = won_opps.aggregate(total=Sum("amount"))["total"] or 0
-        monthly_revenue = won_opps.filter(won_at__gte=month_start).aggregate(total=Sum("amount"))["total"] or 0
         pipeline_value  = open_opps.aggregate(total=Sum("amount"))["total"] or 0
-
         total_leads     = leads.count()
         converted_leads = leads.filter(status="converted").count()
         conversion_rate = (converted_leads / total_leads * 100) if total_leads else 0
-
         win_count  = won_opps.count()
         loss_count = lost_opps.count()
         win_rate   = (win_count / (win_count + loss_count) * 100) if (win_count + loss_count) else 0
 
+        # ── Period-scoped metrics ─────────────────────────────────────────
+
+        # Revenue won in period
+        cur_rev  = float(won_opps.filter(won_at__gte=cur_start,  won_at__lt=cur_end).aggregate(t=Sum("amount"))["t"] or 0)
+        prev_rev = float(won_opps.filter(won_at__gte=prev_start, won_at__lt=prev_end).aggregate(t=Sum("amount"))["t"] or 0)
+
+        # New leads created in period
+        cur_leads  = leads.filter(created_at__gte=cur_start,  created_at__lt=cur_end).count()
+        prev_leads = leads.filter(created_at__gte=prev_start, created_at__lt=prev_end).count()
+
+        # Deals won in period
+        cur_won  = won_opps.filter(won_at__gte=cur_start,  won_at__lt=cur_end).count()
+        prev_won = won_opps.filter(won_at__gte=prev_start, won_at__lt=prev_end).count()
+
+        # New customers in period
+        cur_cust  = customers.filter(created_at__gte=cur_start,  created_at__lt=cur_end).count()
+        prev_cust = customers.filter(created_at__gte=prev_start, created_at__lt=prev_end).count()
+
+        # Tasks completed in period
+        cur_tasks  = tasks.filter(status="completed", completed_at__gte=cur_start,  completed_at__lt=cur_end).count()
+        prev_tasks = tasks.filter(status="completed", completed_at__gte=prev_start, completed_at__lt=prev_end).count()
+
+        # Conversion rate in period (leads created in period that were converted)
+        cur_leads_conv  = leads.filter(created_at__gte=cur_start,  created_at__lt=cur_end,  status="converted").count()
+        prev_leads_conv = leads.filter(created_at__gte=prev_start, created_at__lt=prev_end, status="converted").count()
+        cur_conv_rate   = round((cur_leads_conv  / cur_leads  * 100), 2) if cur_leads  else 0
+        prev_conv_rate  = round((prev_leads_conv / prev_leads * 100), 2) if prev_leads else 0
+
         return Response({
+            "period":        period,
+            "period_label":  self.PERIOD_LABELS[period],
+            "compare":       compare,
+            "compare_label": self._compare_label(period, compare, now),
+            # ── All-time / aggregate (unchanged shape) ───────────────────
             "revenue": {
                 "total":          float(total_revenue),
-                "monthly":        float(monthly_revenue),
+                "monthly":        cur_rev,          # kept for backward compat; now = period revenue
                 "pipeline_value": float(pipeline_value),
+                "period":         self._metric(cur_rev, prev_rev),
             },
             "sales": {
                 "total_leads":        total_leads,
@@ -62,20 +201,25 @@ class DashboardView(APIView):
                 "open_opportunities": open_opps.count(),
                 "won_deals":          win_count,
                 "lost_deals":         loss_count,
+                "period_leads":       self._metric(cur_leads, prev_leads),
+                "period_won":         self._metric(cur_won,   prev_won),
             },
             "conversion": {
                 "lead_conversion_rate": round(conversion_rate, 2),
                 "win_rate":             round(win_rate, 2),
+                "period_conversion":    self._metric(cur_conv_rate, prev_conv_rate),
             },
             "customers": {
-                "total":   customers.count(),
-                "active":  customers.filter(status="active").count(),
-                "at_risk": customers.filter(churn_risk__gte=0.7).count(),
+                "total":      customers.count(),
+                "active":     customers.filter(status="active").count(),
+                "at_risk":    customers.filter(churn_risk__gte=0.7).count(),
+                "period_new": self._metric(cur_cust, prev_cust),
             },
             "tasks": {
-                "pending":               tasks.filter(status="pending").count(),
-                "overdue":               tasks.filter(status="pending", due_date__lt=now).count(),
-                "completed_this_month":  tasks.filter(status="completed", completed_at__gte=month_start).count(),
+                "pending":             tasks.filter(status="pending").count(),
+                "overdue":             tasks.filter(status="pending", due_date__lt=now).count(),
+                "completed_this_month": cur_tasks,   # kept for backward compat
+                "period_done":         self._metric(cur_tasks, prev_tasks),
             },
             "recent_activities": list(
                 Activity.objects.filter(organization=org)
@@ -143,11 +287,19 @@ class TeamPerformanceView(APIView):
         org = get_current_organization()
         from apps.accounts.models import Membership  # noqa: PLC0415
 
-        now   = timezone.now()
-        year  = int(request.query_params.get("year",  now.year))
-        month = int(request.query_params.get("month", now.month))
+        now     = timezone.now()
+        year    = int(request.query_params.get("year",    now.year))
+        month   = int(request.query_params.get("month",   now.month))
+        team_id = request.query_params.get("team_id")
 
-        members     = Membership.objects.filter(organization=org, is_active=True).select_related("user")
+        members = Membership.objects.filter(organization=org, is_active=True).select_related("user")
+
+        if team_id:
+            from apps.crm.models import TeamMembership  # noqa: PLC0415
+            team_user_ids = TeamMembership.objects.filter(
+                team_id=team_id, team__organization=org,
+            ).values_list("user_id", flat=True)
+            members = members.filter(user_id__in=team_user_ids)
         performance = []
         for m in members:
             user = m.user
@@ -182,7 +334,19 @@ class TeamPerformanceView(APIView):
                 "target_deals":     target_deals,
                 "attainment_pct":   attainment_pct,
             })
-        return Response({"team": performance, "year": year, "month": month})
+        # Team-level goal (independent of individual goals)
+        team_goal_data = None
+        if team_id:
+            tg = TeamGoal.objects.filter(
+                organization=org, team_id=team_id, year=year, month=month,
+            ).first()
+            if tg:
+                team_goal_data = {
+                    "target_revenue": float(tg.target_revenue),
+                    "target_deals":   tg.target_deals,
+                }
+
+        return Response({"team": performance, "team_goal": team_goal_data, "year": year, "month": month})
 
 
 class SalesGoalViewSet(viewsets.ModelViewSet):
@@ -203,6 +367,44 @@ class SalesGoalViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(organization=get_current_organization())
+
+
+class TeamGoalView(APIView):
+    """
+    GET  /analytics/team-goal/?team_id=&year=&month=  — fetch goal (or null)
+    PUT  /analytics/team-goal/                         — upsert goal
+    """
+    permission_classes = [IsReadOnlyOrAbove]
+
+    def get(self, request):
+        org     = get_current_organization()
+        team_id = request.query_params.get("team_id")
+        year    = request.query_params.get("year",  timezone.now().year)
+        month   = request.query_params.get("month", timezone.now().month)
+        if not team_id:
+            return Response({"error": "team_id requerido."}, status=400)
+        tg = TeamGoal.objects.filter(
+            organization=org, team_id=team_id, year=year, month=month,
+        ).first()
+        return Response(TeamGoalSerializer(tg).data if tg else None)
+
+    def put(self, request):
+        if not CanWriteCRM().has_permission(request, self):
+            return Response({"error": "Sin permisos."}, status=403)
+        org     = get_current_organization()
+        team_id = request.data.get("team_id")
+        year    = request.data.get("year")
+        month   = request.data.get("month")
+        if not all([team_id, year, month]):
+            return Response({"error": "team_id, year y month son requeridos."}, status=400)
+        tg, _ = TeamGoal.objects.update_or_create(
+            organization=org, team_id=team_id, year=int(year), month=int(month),
+            defaults={
+                "target_revenue": request.data.get("target_revenue", 0),
+                "target_deals":   request.data.get("target_deals", 0),
+            },
+        )
+        return Response(TeamGoalSerializer(tg).data)
 
 
 class StagesSummaryView(APIView):

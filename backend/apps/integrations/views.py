@@ -672,11 +672,11 @@ def hub_config(request):
     if not token:
         return _widget_cors_headers(JsonResponse({"error": "token required"}, status=400), request)
 
+    # Look up by token only — is_active is checked per-channel below so Voice AI
+    # and Hub de Contacto can be toggled independently without affecting each other.
     try:
         from .models import WebWidget
-        web = WebWidget.objects.select_related("organization").get(
-            token=token, is_active=True
-        )
+        web = WebWidget.objects.select_related("organization").get(token=token)
     except (WebWidget.DoesNotExist, Exception):
         return _widget_cors_headers(JsonResponse({"error": "widget not found"}, status=404), request)
 
@@ -686,7 +686,7 @@ def hub_config(request):
 
     channels = []
 
-    # ── Voice AI ──────────────────────────────────────────────────────────────
+    # ── Voice AI — independent toggle (VoiceWidget.is_active) ─────────────────
     try:
         from .models import VoiceWidget
         voice = VoiceWidget.objects.get(organization=org, is_active=True)
@@ -702,12 +702,13 @@ def hub_config(request):
             "assistant_id":     voice.vapi_assistant_id or "",
             "vapi_public_key":  vapi_public_key,
             "greeting":         vcfg.get("greeting", ""),
+            "avatar_url":       vcfg.get("avatar_url", ""),
         })
     except Exception:
-        pass  # Voice widget not configured — skip channel
+        pass  # Voice widget not configured or inactive — skip channel
 
-    # ── Form ─────────────────────────────────────────────────────────────────
-    if web.mode in ("form", "both"):
+    # ── Hub de Contacto (formulario) — toggle: WebWidget.is_active ────────────
+    if web.is_active:
         channels.append({
             "type":             "form",
             "label":            cfg.get("title", "Envíanos un mensaje"),
@@ -717,9 +718,9 @@ def hub_config(request):
             "contact_reasons":  cfg.get("contact_reasons", []),
         })
 
-    # ── WhatsApp ──────────────────────────────────────────────────────────────
+    # ── WhatsApp — toggle independiente: cfg.whatsapp_enabled ─────────────────
     wa_number = cfg.get("whatsapp_number", "")
-    if web.mode in ("whatsapp", "both") and wa_number:
+    if cfg.get("whatsapp_enabled") and wa_number:
         channels.append({
             "type":     "whatsapp",
             "label":    "WhatsApp",

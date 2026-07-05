@@ -2,18 +2,28 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Users, Target, DollarSign, CheckCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Users, Target, DollarSign, CheckCircle, UserPlus, Trophy } from "lucide-react";
+import type { DashboardData, PeriodMetric } from "@/lib/api";
+
+// ─── KPI Card base ────────────────────────────────────────────────────────────
 
 interface KPICardProps {
-  title: string;
-  value: string | number;
-  change?: number;
-  icon: React.ReactNode;
-  iconBg?: string;
-  iconColor?: string;
+  title:       string;
+  value:       string | number;
+  metric?:     PeriodMetric;
+  prevLabel?:  string;        // "mes anterior" | "trimestre anterior" | "año anterior"
+  icon:        React.ReactNode;
+  iconBg?:     string;
+  iconColor?:  string;
 }
 
-export function KPICard({ title, value, change, icon, iconBg = "bg-orange-500/20", iconColor = "text-orange-400" }: KPICardProps) {
+function KPICard({
+  title, value, metric, prevLabel = "período anterior",
+  icon, iconBg = "bg-orange-500/20", iconColor = "text-orange-400",
+}: KPICardProps) {
+  const change = metric?.change ?? null;
+  const trend  = metric?.trend  ?? "neutral";
+
   return (
     <Card className="bg-slate-950">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -24,10 +34,19 @@ export function KPICard({ title, value, change, icon, iconBg = "bg-orange-500/20
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-white">{value}</div>
-        {change !== undefined && (
-          <p className={`mt-1 flex items-center text-xs ${change >= 0 ? "text-green-400" : "text-red-400"}`}>
-            {change >= 0 ? <TrendingUp className="mr-1 h-3 w-3" /> : <TrendingDown className="mr-1 h-3 w-3" />}
-            {Math.abs(change)}% vs. mes anterior
+        {metric && (
+          <p className={`mt-1 flex items-center gap-1 text-xs ${
+            trend === "up"   ? "text-green-400" :
+            trend === "down" ? "text-red-400"   :
+                               "text-slate-500"
+          }`}>
+            {trend === "up"   ? <TrendingUp  className="h-3 w-3" /> :
+             trend === "down" ? <TrendingDown className="h-3 w-3" /> :
+                                <Minus        className="h-3 w-3" />}
+            {change !== null
+              ? <>{Math.abs(change)}% vs. {prevLabel}</>
+              : <>Sin datos del {prevLabel}</>
+            }
           </p>
         )}
       </CardContent>
@@ -35,29 +54,80 @@ export function KPICard({ title, value, change, icon, iconBg = "bg-orange-500/20
   );
 }
 
-export function DashboardKPIs({
-  revenue,
-  sales,
-  conversion,
-  customers,
-  tasks,
-}: {
-  revenue: { total: number; monthly: number; pipeline_value: number };
-  sales: { total_leads: number; open_opportunities: number; won_deals: number };
-  conversion: { lead_conversion_rate: number; win_rate: number };
-  customers: { total: number; active: number; at_risk: number };
-  tasks: { pending: number; overdue: number };
+// ─── Dashboard KPIs grid ──────────────────────────────────────────────────────
+
+export function DashboardKPIs({ revenue, sales, conversion, customers, tasks, compareLabel }: {
+  revenue:      DashboardData["revenue"];
+  sales:        DashboardData["sales"];
+  conversion:   DashboardData["conversion"];
+  customers:    DashboardData["customers"];
+  tasks:        DashboardData["tasks"];
+  compareLabel: string;
 }) {
+  const prevLabel = compareLabel;
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <KPICard title="Ingresos totales"   value={formatCurrency(revenue.total)}         change={12} icon={<DollarSign className="h-4 w-4" />} iconBg="bg-green-500/20"  iconColor="text-green-400" />
-      <KPICard title="Ingresos del mes"   value={formatCurrency(revenue.monthly)}        change={8}  icon={<TrendingUp className="h-4 w-4" />} iconBg="bg-blue-500/20"   iconColor="text-blue-400" />
-      <KPICard title="Valor del pipeline" value={formatCurrency(revenue.pipeline_value)}             icon={<Target className="h-4 w-4" />}     iconBg="bg-orange-500/20" iconColor="text-orange-400" />
-      <KPICard title="Total de leads"     value={sales.total_leads}                      change={5}  icon={<Users className="h-4 w-4" />}      iconBg="bg-purple-500/20" iconColor="text-purple-400" />
-      <KPICard title="Negocios abiertos"  value={sales.open_opportunities}                           icon={<Target className="h-4 w-4" />}     iconBg="bg-yellow-500/20" iconColor="text-yellow-400" />
-      <KPICard title="Tasa de cierre"     value={`${conversion.win_rate}%`}                          icon={<CheckCircle className="h-4 w-4" />} iconBg="bg-emerald-500/20" iconColor="text-emerald-400" />
-      <KPICard title="Clientes activos"   value={customers.active}                                   icon={<Users className="h-4 w-4" />}      iconBg="bg-cyan-500/20"   iconColor="text-cyan-400" />
-      <KPICard title="Tareas pendientes"  value={tasks.pending}                                      icon={<CheckCircle className="h-4 w-4" />} iconBg="bg-red-500/20"    iconColor="text-red-400" />
+      <KPICard
+        title="Ingresos totales"
+        value={formatCurrency(revenue.total)}
+        icon={<DollarSign className="h-4 w-4" />}
+        iconBg="bg-green-500/20" iconColor="text-green-400"
+      />
+      <KPICard
+        title="Ingresos del período"
+        value={formatCurrency(revenue.period.value)}
+        metric={revenue.period}
+        prevLabel={prevLabel}
+        icon={<TrendingUp className="h-4 w-4" />}
+        iconBg="bg-blue-500/20" iconColor="text-blue-400"
+      />
+      <KPICard
+        title="Valor del pipeline"
+        value={formatCurrency(revenue.pipeline_value)}
+        icon={<Target className="h-4 w-4" />}
+        iconBg="bg-orange-500/20" iconColor="text-orange-400"
+      />
+      <KPICard
+        title="Leads nuevos"
+        value={sales.period_leads.value}
+        metric={sales.period_leads}
+        prevLabel={prevLabel}
+        icon={<Users className="h-4 w-4" />}
+        iconBg="bg-purple-500/20" iconColor="text-purple-400"
+      />
+      <KPICard
+        title="Negocios ganados"
+        value={sales.period_won.value}
+        metric={sales.period_won}
+        prevLabel={prevLabel}
+        icon={<Trophy className="h-4 w-4" />}
+        iconBg="bg-yellow-500/20" iconColor="text-yellow-400"
+      />
+      <KPICard
+        title="Tasa de cierre"
+        value={`${conversion.period_conversion.value}%`}
+        metric={conversion.period_conversion}
+        prevLabel={prevLabel}
+        icon={<CheckCircle className="h-4 w-4" />}
+        iconBg="bg-emerald-500/20" iconColor="text-emerald-400"
+      />
+      <KPICard
+        title="Nuevos clientes"
+        value={customers.period_new.value}
+        metric={customers.period_new}
+        prevLabel={prevLabel}
+        icon={<UserPlus className="h-4 w-4" />}
+        iconBg="bg-cyan-500/20" iconColor="text-cyan-400"
+      />
+      <KPICard
+        title="Tareas completadas"
+        value={tasks.period_done.value}
+        metric={tasks.period_done}
+        prevLabel={prevLabel}
+        icon={<CheckCircle className="h-4 w-4" />}
+        iconBg="bg-red-500/20" iconColor="text-red-400"
+      />
     </div>
   );
 }

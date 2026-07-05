@@ -10,14 +10,16 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { useAuthStore } from "@/store/auth";
-import { crmApi, aiApi, csvApi, type Lead } from "@/lib/api";
+import { crmApi, aiApi, csvApi, outboundApi, voiceWidgetApi, type Lead } from "@/lib/api";
 import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import {
   Plus, Brain, Search, ChevronDown, ChevronUp, Loader2,
   Upload, Download, X, Pencil, Trash2, Phone, Mail,
   Building2, Tag, BarChart2, User, Clock, AlertTriangle, Info,
-  MousePointerClick, Eye, AtSign, Filter,
+  MousePointerClick, Eye, AtSign, Filter, PhoneCall, ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -212,6 +214,8 @@ function LeadPanel({
   isSaving: boolean;
   isDeleting: boolean;
 }) {
+  const { tokens, organization } = useAuthStore();
+  const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     first_name: lead.first_name ?? "",
@@ -225,6 +229,63 @@ function LeadPanel({
     notes:      lead.notes      ?? "",
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [calling, setCalling] = useState(false);
+  // Local optimistic state for consent (so toggle responds immediately)
+  const [consent, setConsent] = useState<boolean>(lead.outbound_consent ?? false);
+  const [consentDate, setConsentDate] = useState<string | null>(lead.consent_date ?? null);
+
+  const auth = { token: tokens!.access, orgId: String(organization!.id) };
+
+  // Check org voice plan for outbound access
+  const { data: agentsData } = useQuery({
+    queryKey: ["voice-agents"],
+    queryFn:  () => voiceWidgetApi.listAgents(auth.token, auth.orgId),
+    enabled:  !!tokens && !!organization,
+    staleTime: 5 * 60 * 1000,
+  });
+  const voicePlanSlug = (agentsData?.plan as { slug?: string })?.slug ?? "";
+  const hasOutbound   = voicePlanSlug === "voz-business";
+
+  const consentMutation = useMutation({
+    mutationFn: (newConsent: boolean) =>
+      crmApi.updateLead(auth.token, auth.orgId, lead.id, {
+        outbound_consent: newConsent,
+        ...(newConsent ? { consent_date: new Date().toISOString() } : { consent_date: null }),
+      } as Partial<Lead>),
+    onMutate: (newConsent) => {
+      // Optimistic update
+      setConsent(newConsent);
+      setConsentDate(newConsent ? new Date().toISOString() : null);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+    onError: () => {
+      // Revert on failure
+      setConsent(lead.outbound_consent ?? false);
+      setConsentDate(lead.consent_date ?? null);
+      toast.error("Error al actualizar el consentimiento");
+    },
+  });
+
+  async function handleCall() {
+    if (!lead.phone) { toast.error("Este lead no tiene teléfono registrado"); return; }
+    if (!consent) { toast.error("Activa el consentimiento antes de llamar"); return; }
+    setCalling(true);
+    try {
+      await outboundApi.call(auth.token, auth.orgId, lead.id);
+      toast.success(`Llamando a ${lead.full_name || lead.phone}…`);
+      queryClient.invalidateQueries({ queryKey: ["voice-calls"] });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error al iniciar llamada";
+      if (msg.includes("plan_required"))   toast.error("Outbound disponible solo en Voz Business");
+      else if (msg.includes("no_phone"))   toast.error("El lead no tiene teléfono registrado");
+      else if (msg.includes("no_consent")) toast.error("Activa el consentimiento antes de llamar");
+      else if (msg.includes("no_assistant")) toast.error("El agente de voz no está configurado. Guarda el agente primero.");
+      else if (msg.includes("phone_number")) toast.error("Conecta primero tu número de llamadas en Agente de Voz IA");
+      else toast.error(msg, { duration: 8000 });
+    } finally {
+      setCalling(false);
+    }
+  }
 
   const field = (key: keyof typeof form) => (
     <Input
@@ -398,6 +459,68 @@ function LeadPanel({
               rows={4}
               className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 disabled:opacity-70 disabled:cursor-default resize-none"
             />
+          </div>
+
+          {/* Outbound voice AI */}
+          <div className="relative rounded-xl border border-slate-700 bg-slate-900/60 p-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
+              <PhoneCall className="h-3.5 w-3.5 text-orange-400" /> Voz IA — Outbound
+            </p>
+
+            {/* Consent toggle */}
+            <button
+              onClick={() => consentMutation.mutate(!consent)}
+              disabled={consentMutation.isPending || !hasOutbound}
+              className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-700 bg-slate-800/60 px-3 py-2.5 text-left transition-colors hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <ShieldCheck className={`h-4 w-4 shrink-0 ${consent ? "text-green-400" : "text-slate-500"}`} />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-300">Consentimiento de contacto</p>
+                  <p className="text-[10px] text-slate-500 truncate">
+                    {consentMutation.isPending
+                      ? "Guardando…"
+                      : consent
+                        ? `Activo${consentDate ? ` · ${new Date(consentDate).toLocaleDateString("es-GT")}` : ""}`
+                        : "Toca para activar"}
+                  </p>
+                </div>
+              </div>
+              {/* Switch visual */}
+              <div className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${consent ? "bg-green-600" : "bg-slate-600"}`}>
+                <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ${consent ? "translate-x-5" : "translate-x-0"}`} />
+              </div>
+            </button>
+
+            {/* Call button */}
+            <Button
+              size="sm"
+              className="w-full gap-2 bg-orange-600 hover:bg-orange-500 text-white disabled:opacity-50"
+              disabled={calling || !lead.phone || !consent || consentMutation.isPending || !hasOutbound}
+              onClick={handleCall}
+            >
+              {calling
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Iniciando llamada…</>
+                : <><PhoneCall className="h-3.5 w-3.5" /> Llamar a {lead.full_name || lead.phone || "este lead"}</>
+              }
+            </Button>
+            {!lead.phone && hasOutbound && (
+              <p className="text-[10px] text-slate-500 text-center">Añade un teléfono para habilitar llamadas outbound</p>
+            )}
+
+            {/* Upgrade overlay — shown when not on Voz Business */}
+            {!hasOutbound && (
+              <div className="absolute inset-0 rounded-xl bg-slate-950/80 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 p-4">
+                <PhoneCall className="h-6 w-6 text-orange-400" />
+                <p className="text-xs font-semibold text-slate-200 text-center">Disponible en Voz Business</p>
+                <Link
+                  href="/dashboard/voice-plans"
+                  className="inline-flex items-center gap-1 rounded-lg bg-orange-600 hover:bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+                >
+                  Ver planes →
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Google Drive documents */}

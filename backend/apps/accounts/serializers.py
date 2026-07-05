@@ -16,8 +16,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = User
-        fields = ["id", "email", "first_name", "last_name", "full_name", "phone", "avatar", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        fields = ["id", "email", "first_name", "last_name", "full_name", "phone", "avatar", "created_at", "is_staff"]
+        read_only_fields = ["id", "created_at", "is_staff"]
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -73,6 +73,43 @@ class MembershipSerializer(serializers.ModelSerializer):
         model  = Membership
         fields = ["id", "user", "organization", "role", "is_active", "joined_at"]
         read_only_fields = ["id", "joined_at"]
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Staff-only serializer: includes primary membership/org/plan info."""
+
+    full_name    = serializers.ReadOnlyField()
+    organization = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = User
+        fields = [
+            "id", "email", "first_name", "last_name", "full_name",
+            "phone", "avatar", "created_at", "is_staff", "is_active",
+            "organization",
+        ]
+        read_only_fields = ["id", "created_at", "full_name"]
+
+    def get_organization(self, obj):
+        membership = (
+            obj.memberships.filter(is_active=True)
+            .select_related("organization")
+            .order_by("joined_at")
+            .first()
+        )
+        if not membership:
+            return None
+        org = membership.organization
+        return {
+            "id":            str(org.id),
+            "name":          org.name,
+            "plan":          org.plan,
+            "slug":          org.slug,
+            "is_active":     org.is_active,
+            "role":          membership.role,
+            "joined_at":     membership.joined_at,
+            "membership_id": str(membership.id),
+        }
 
 
 class AuditLogSerializer(serializers.ModelSerializer):

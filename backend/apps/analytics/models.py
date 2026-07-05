@@ -32,6 +32,26 @@ class SalesGoal(TenantModel):
         return f"{self.user} – {self.period} {self.year}/{self.month or self.quarter}"
 
 
+class TeamGoal(TenantModel):
+    """
+    Monthly sales target for a team — independent of individual member goals.
+    Follows Salesforce/HubSpot model: team quota ≠ sum of reps' quotas.
+    """
+    team           = models.ForeignKey("crm.Team", on_delete=models.CASCADE, related_name="goals")
+    year           = models.IntegerField()
+    month          = models.IntegerField(help_text="1-12")
+    target_revenue = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    target_deals   = models.IntegerField(default=0)
+
+    class Meta:
+        db_table        = "team_goals"
+        unique_together = [["organization", "team", "year", "month"]]
+        ordering        = ["-year", "-month"]
+
+    def __str__(self):
+        return f"{self.team.name} — {self.year}/{self.month:02d}"
+
+
 class Report(TenantModel):
     REPORT_TYPES = [
         ("leads",    "Reporte de Leads"),

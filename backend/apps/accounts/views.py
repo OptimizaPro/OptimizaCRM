@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, get_user_model
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from core.permissions import IsOrgAdmin, IsReadOnlyOrAbove
@@ -18,6 +19,7 @@ from .models import Organization, Membership, AuditLog
 from .serializers import (
     UserSerializer, RegisterSerializer, LoginSerializer,
     OrganizationSerializer, MembershipSerializer, AuditLogSerializer,
+    AdminUserSerializer,
 )
 
 User = get_user_model()
@@ -199,6 +201,165 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             membership.role = role
             membership.save()
         return Response(MembershipSerializer(membership).data)
+
+
+class AdminUsersView(APIView):
+    """
+    GET  /admin/users/         — list users (staff: all platform; org_admin: own org only)
+    PATCH /admin/users/<id>/   — update user fields (staff only)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        search        = request.GET.get("search", "").strip()
+        plan_filter   = request.GET.get("plan", "").strip()
+        status_filter = request.GET.get("status", "").strip()
+
+        if request.user.is_staff:
+            # Superadmin: all platform users
+            qs = (
+                User.objects
+                .prefetch_related("memberships__organization")
+                .order_by("-created_at")
+            )
+        else:
+            # Org-scoped: only members of the current organization
+            org = get_current_organization()
+            if not org:
+                return Response({"error": "Organización requerida."}, status=400)
+
+            try:
+                membership = Membership.objects.get(
+                    user=request.user, organization=org, is_active=True
+                )
+            except Membership.DoesNotExist:
+                return Response({"error": "Sin permisos."}, status=403)
+
+            if membership.role not in ("org_admin", "sales_manager"):
+                return Response({"error": "Sin permisos."}, status=403)
+
+            member_ids = Membership.objects.filter(
+                organization=org, is_active=True
+            ).values_list("user_id", flat=True)
+
+            qs = (
+                User.objects
+                .filter(id__in=member_ids)
+                .prefetch_related("memberships__organization")
+                .order_by("-created_at")
+            )
+
+        if search:
+            qs = qs.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        if status_filter == "active":
+            qs = qs.filter(is_active=True)
+        elif status_filter == "inactive":
+            qs = qs.filter(is_active=False)
+        elif status_filter == "staff":
+            qs = qs.filter(is_staff=True)
+
+        if plan_filter:
+            qs = qs.filter(
+                memberships__organization__plan=plan_filter,
+                memberships__is_active=True,
+            ).distinct()
+
+        serializer = AdminUserSerializer(qs, many=True)
+        return Response({"count": qs.count(), "results": serializer.data})
+
+    def post(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Sin permisos."}, status=403)
+
+        email = (request.data.get("email") or "").strip()
+        if not email:
+            return Response({"error": "El email es requerido."}, status=400)
+        if User.objects.filter(email=email).exists():
+            return Response({"error": "Ya existe un usuario con ese email."}, status=400)
+
+        user = User(
+            email      = email,
+            first_name = request.data.get("first_name", ""),
+            last_name  = request.data.get("last_name",  ""),
+            phone      = request.data.get("phone",      ""),
+            is_staff   = bool(request.data.get("is_staff", False)),
+            is_active  = bool(request.data.get("is_active", True)),
+        )
+        password = request.data.get("password", "")
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save()
+
+        # Optionally create membership if org_id + role provided
+        org_id = request.data.get("org_id")
+        role   = request.data.get("role", "sales_executive")
+        if org_id:
+            org = Organization.objects.filter(id=org_id).first()
+            if org:
+                Membership.objects.get_or_create(
+                    user=user, organization=org,
+                    defaults={"role": role, "is_active": True},
+                )
+
+        return Response(AdminUserSerializer(user).data, status=201)
+
+    def patch(self, request, user_id):
+        if not request.user.is_staff:
+            return Response({"error": "Sin permisos."}, status=403)
+
+        user = get_object_or_404(User, id=user_id)
+
+        allowed = {"is_active", "is_staff", "first_name", "last_name", "phone"}
+        for field, value in request.data.items():
+            if field in allowed:
+                setattr(user, field, value)
+        user.save()
+
+        # Create or update membership when org_id + role provided
+        org_id = request.data.get("org_id")
+        role   = request.data.get("role")
+        if org_id and role:
+            org = Organization.objects.filter(id=org_id).first()
+            if org:
+                membership, _ = Membership.objects.get_or_create(
+                    user=user, organization=org,
+                    defaults={"role": role, "is_active": True},
+                )
+                membership.role      = role
+                membership.is_active = True
+                membership.save()
+
+        return Response(AdminUserSerializer(user).data)
+
+    def delete(self, request, user_id):
+        if not request.user.is_staff:
+            return Response({"error": "Sin permisos."}, status=403)
+
+        user = get_object_or_404(User, id=user_id)
+        if user.pk == request.user.pk:
+            return Response({"error": "No puedes eliminarte a ti mismo."}, status=400)
+
+        user.delete()
+        return Response(status=204)
+
+
+class AdminOrganizationsView(APIView):
+    """GET /admin/organizations/ — staff-only list of all organizations."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.is_staff:
+            return Response({"error": "Sin permisos."}, status=403)
+        orgs = Organization.objects.filter(is_active=True).order_by("name")
+        return Response(OrganizationSerializer(orgs, many=True).data)
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):

@@ -40,9 +40,9 @@ class Integration(TenantModel):
     error_message  = models.TextField(blank=True)
 
     class Meta:
-        db_table       = "integrations"
+        db_table        = "integrations"
         unique_together = ["organization", "channel_type"]
-        ordering       = ["channel_type"]
+        ordering        = ["channel_type"]
 
     def __str__(self):
         return f"{self.get_channel_type_display()} ({self.organization.name})"
@@ -219,6 +219,7 @@ class VoiceCall(TenantModel):
     sentiment          = models.CharField(max_length=20, blank=True, verbose_name="Sentimiento")
     lead               = models.ForeignKey("crm.Lead", on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Lead")
     appointment        = models.ForeignKey("crm.CalendarEvent", on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Cita")
+    direction          = models.CharField(max_length=10, choices=[("inbound", "Entrante"), ("outbound", "Saliente")], default="inbound", verbose_name="Dirección")
     escalated_to_human = models.BooleanField(default=False, verbose_name="Escalado a humano")
     qualification_data = models.JSONField(default=dict, blank=True, verbose_name="Datos de calificación")
     structured_output  = models.JSONField(default=dict, blank=True, verbose_name="Salida estructurada")

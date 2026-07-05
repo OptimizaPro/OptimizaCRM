@@ -10,6 +10,7 @@ from apps.accounts.serializers import UserSerializer
 from .models import (
     Lead, Customer, Opportunity, Task, Activity,
     CalendarEvent, PipelineTemplate, PipelineStage,
+    Team, TeamMembership,
 )
 
 
@@ -25,6 +26,7 @@ class LeadSerializer(serializers.ModelSerializer):
             "company", "title", "source", "status", "score", "notes",
             "assigned_to", "assigned_to_detail", "custom_fields",
             "email_opens", "link_clicks", "page_visits", "engagement_score",
+            "outbound_consent", "consent_date",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "score", "engagement_score", "created_at", "updated_at"]
@@ -90,7 +92,7 @@ class CalendarEventSerializer(serializers.ModelSerializer):
     class Meta:
         model  = CalendarEvent
         fields = [
-            "id", "title", "description", "event_type",
+            "id", "title", "description", "event_type", "status",
             "start_time", "end_time", "location",
             "related_type", "related_id", "is_all_day", "user",
             "created_at", "updated_at",
@@ -119,6 +121,28 @@ class PipelineTemplateSerializer(serializers.ModelSerializer):
 
     def get_opportunity_count(self, obj):
         return obj.opportunities.count()
+
+
+class TeamMembershipSerializer(serializers.ModelSerializer):
+    user_detail = UserSerializer(source="user", read_only=True)
+
+    class Meta:
+        model  = TeamMembership
+        fields = ["id", "user", "user_detail", "role", "joined_at"]
+        read_only_fields = ["id", "joined_at"]
+
+
+class TeamSerializer(serializers.ModelSerializer):
+    memberships  = TeamMembershipSerializer(many=True, read_only=True)
+    member_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = Team
+        fields = ["id", "name", "description", "color", "memberships", "member_count", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def get_member_count(self, obj):
+        return obj.memberships.count()
 
 
 class BulkLeadActionSerializer(serializers.Serializer):
