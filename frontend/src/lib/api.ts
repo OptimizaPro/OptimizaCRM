@@ -110,6 +110,14 @@ class ApiClient {
     });
   }
 
+  put<T>(endpoint: string, data?: unknown, options?: RequestOptions) {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: "PUT",
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
   delete<T>(endpoint: string, options?: RequestOptions) {
     return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
@@ -1493,6 +1501,61 @@ export const calendarApi = {
 
   delete: (token: string, orgId: string, id: string) =>
     api.delete(`/calendar/${id}/`, { token, orgId }),
+};
+
+// ─── Voice Call Records ───────────────────────────────────────────────────────
+
+export interface VoiceCallStructuredOutput {
+  lead_name:           string | null;
+  qualification_score: number | null;
+  is_interested:       boolean | null;
+  intent:              string | null;
+  summary_es:          string | null;
+  follow_up_action:    string | null;
+  budget_mentioned:    string | null;
+  timeline:            string | null;
+  objections:          string | null;
+}
+
+export interface VoiceCallRecord {
+  id:               number;
+  vapi_call_id:     string;
+  agent_id:         string | null;
+  agent_name:       string;
+  caller_name:      string | null;
+  caller_phone:     string | null;
+  status:           string;
+  duration_seconds: number | null;
+  sentiment:        string | null;
+  ended_at:         string | null;
+  created_at:       string;
+  lead_id:          string | null;
+  transcript?:      string | null;
+  summary?:         string | null;
+  structured_output: VoiceCallStructuredOutput;
+}
+
+export interface VoiceCallsResponse {
+  results:     VoiceCallRecord[];
+  count:       number;
+  page:        number;
+  page_size:   number;
+  total_pages: number;
+}
+
+export const voiceCallsApi = {
+  /** GET /voice-widget/calls/ — paginated list for the org */
+  list: (token: string, orgId: string, params?: { agentId?: string; page?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.agentId) qs.set("agent_id", params.agentId);
+    if (params?.page)    qs.set("page", String(params.page));
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return api.get<VoiceCallsResponse>(`/voice-widget/calls/${suffix}`, { token, orgId });
+  },
+
+  /** GET /voice-widget/calls/<id>/ — full detail with transcript */
+  detail: (token: string, orgId: string, id: number) =>
+    api.get<VoiceCallRecord>(`/voice-widget/calls/${id}/`, { token, orgId }),
 };
 
 // ─── Outbound Voice Calls ─────────────────────────────────────────────────────
