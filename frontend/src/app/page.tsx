@@ -488,8 +488,8 @@ export default function HomePage() {
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-400" />
                   Nuevo · Agente de Voz IA
                 </div>
-                <h2 className="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">
-                  Tu recepcionista <span className="whitespace-nowrap">con IA</span><br />
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+                  <span className="whitespace-nowrap">Tu recepcionista con IA</span><br />
                   <span className="text-orange-500">que nunca duerme</span>
                 </h2>
                 <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-400">
