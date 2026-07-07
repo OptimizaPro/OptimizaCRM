@@ -58,7 +58,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Nosotros",
   description:
-    "Conoce la historia de OptimizaCRM. Construido por Nelson Alvarez tras más de 8 años gestionando PYMEs en LATAM. Misión: democratizar el CRM para equipos de ventas latinoamericanos.",
+    "Conoce la historia de OptimizaCRM. Construido por Nelson Alvarez tras más de 10 años gestionando PYMEs en LATAM. Misión: democratizar el CRM para equipos de ventas latinoamericanos.",
   alternates: { canonical: "https://optimizacrm.com/nosotros" },
   openGraph: {
     url: "https://optimizacrm.com/nosotros",
@@ -75,7 +75,7 @@ const personSchema = {
   jobTitle: "Founder & Developer",
   worksFor: { "@type": "Organization", name: "OptimizaPro", url: "https://optimizacrm.com" },
   description:
-    "Fundador de OptimizaCRM. Más de 8 años liderando equipos de ventas y operaciones en Real Estate, Hospitality y Retail en Guatemala y Centroamérica.",
+    "Fundador de OptimizaCRM. Más de 10 años liderando equipos de ventas y operaciones en Real Estate, Hospitality y Retail en Guatemala y Centroamérica.",
   knowsAbout: ["CRM software", "Sales Management", "SaaS", "Artificial Intelligence", "Next.js", "Django"],
   nationality: { "@type": "Country", name: "Guatemala" },
 };
@@ -281,7 +281,7 @@ export default function AboutPage() {
                 </h2>
                 <div className="space-y-4 text-lg leading-relaxed text-slate-400">
                   <p>
-                    Después de más de 8 años gestionando y asesorando negocios en Centroamérica,
+                    Después de más de 10 años gestionando y asesorando negocios en Centroamérica,
                     vi de primera mano cómo las PYMEs perdían oportunidades por no tener las
                     herramientas adecuadas — o por tener herramientas que nadie sabía usar.
                   </p>
