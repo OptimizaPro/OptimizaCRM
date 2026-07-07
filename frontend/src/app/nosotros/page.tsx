@@ -156,7 +156,7 @@ export default function AboutPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-white">Ing. Nelson Alvarez</p>
-                      <p className="text-sm text-slate-400">Founder, OptimizaCRM</p>
+                      <p className="text-sm text-slate-400">Fundador, OptimizaCRM</p>
                     </div>
                   </footer>
                 </blockquote>
