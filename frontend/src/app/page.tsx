@@ -466,7 +466,7 @@ export default function HomePage() {
                   Nuevo · Agente de Voz IA
                 </div>
                 <h2 className="mt-2 text-4xl font-black tracking-tight text-white sm:text-5xl">
-                  Tu recepcionista con IA<br />
+                  Tu recepcionista <span className="whitespace-nowrap">con IA</span><br />
                   <span className="text-orange-500">que nunca duerme</span>
                 </h2>
                 <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-400">
