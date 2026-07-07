@@ -343,7 +343,7 @@ export default function HomePage() {
                     </Button>
                   </Link>
                   <Link href={data.cta_secondary_href as string}>
-                    <Button size="lg" variant="outline" className="px-8 text-base border-slate-700 text-slate-300 hover:border-orange-600 hover:text-orange-400 bg-transparent">
+                    <Button size="lg" variant="outline" className="px-8 text-base border-slate-700 text-slate-300 hover:border-orange-600 hover:text-orange-400 bg-slate-900">
                       {data.cta_secondary}
                     </Button>
                   </Link>
