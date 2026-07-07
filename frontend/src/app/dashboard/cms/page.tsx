@@ -34,7 +34,7 @@ const DEFAULT_CONTENT = {
       { title: "Previsión de Ingresos", description: "Predicciones de ingresos con IA y niveles de confianza." },
       { title: "SaaS multicliente",     description: "Multi-tenancy empresarial con aislamiento completo de datos." },
       { title: "Automatización",        description: "Automatiza tareas repetitivas y céntrate en cerrar negocios." },
-      { title: "Seguridad Empresarial", description: "Cumplimiento RGPD con cifrado de extremo a extremo." },
+      { title: "Seguridad Empresarial", description: "Cumplimiento con leyes de protección de datos en LATAM (LGPD, Ley 25.326, Ley 1581) y estándares internacionales como el RGPD, con cifrado de extremo a extremo." },
     ],
     cta_section_headline: "¿Listo para transformar tus ventas?",
     cta_section_text:     "Únete a los equipos de ventas que ya usan Optimiza-CRM para cerrar más negocios.",

@@ -56,7 +56,7 @@ const DEFAULTS = {
     { title: "Previsión de Ingresos", description: "Predicciones de revenue basadas en IA con intervalos de confianza." },
     { title: "SaaS multicliente", description: "Aislamiento completo de datos a nivel empresarial." },
     { title: "Automatización", description: "Seguimientos automáticos y generación de emails con IA." },
-    { title: "Seguridad Empresarial", description: "RBAC, JWT, auditoría completa y cumplimiento OWASP." },
+    { title: "Seguridad Empresarial", description: "RBAC, JWT, auditoría completa y cumplimiento con normativas de protección de datos en LATAM y estándares internacionales." },
   ],
   cta_section_headline: "¿Listo para transformar tus ventas?",
   cta_section_text: "Únete a cientos de equipos que ya usan OptimizaCRM para cerrar más negocios.",
