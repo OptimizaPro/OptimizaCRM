@@ -100,16 +100,6 @@ const DEFAULTS = {
         "Protección contra accesos no autorizados",
       ],
     },
-    {
-      icon: "Phone",
-      title: "Agente de Voz IA",
-      items: [
-        "Atiende llamadas 24/7 en español natural",
-        "Califica y registra leads automáticamente",
-        "Agenda citas en el calendario del CRM",
-        "Escala a agente humano cuando es necesario",
-      ],
-    },
   ],
 };
 
