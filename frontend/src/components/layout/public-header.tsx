@@ -58,7 +58,7 @@ export function PublicHeader() {
               Iniciar sesión
             </Button>
           </Link>
-          <Link href="/register">
+          <Link href="/register" className="hidden sm:block">
             <Button className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white">
               Comenzar gratis <ArrowRight className="h-3.5 w-3.5" />
             </Button>
@@ -90,6 +90,13 @@ export function PublicHeader() {
           <Link href="/login" onClick={() => setOpen(false)} className="block py-2.5 text-sm font-medium text-slate-300 hover:text-orange-400">
             Iniciar sesión
           </Link>
+          <div className="pt-2 pb-1">
+            <Link href="/register" onClick={() => setOpen(false)}>
+              <Button className="w-full gap-1.5 bg-orange-600 hover:bg-orange-500 text-white">
+                Comenzar gratis <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
         </div>
       )}
     </header>
