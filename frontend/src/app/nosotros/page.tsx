@@ -198,7 +198,7 @@ export default function AboutPage() {
 
             <div className="mt-12 grid gap-4 sm:grid-cols-3">
               {[
-                { value: "8+",    label: "Años en gestión empresarial" },
+                { value: "10+",    label: "Años en gestión empresarial" },
                 { value: "100%",  label: "Enfoque en resultados reales" },
                 { value: "LATAM", label: "Mercado objetivo y corazón" },
               ].map(({ value, label }) => (
@@ -257,7 +257,7 @@ export default function AboutPage() {
                     <p className="mt-1 text-sm font-medium text-orange-400">Founder & Developer</p>
                     <div className="mt-5 space-y-2">
                       {[
-                        "8+ años en gestión empresarial",
+                        "10+ años en gestión empresarial",
                         "Fundador de OptimizaPro",
                         "Especialista en PYMEs LATAM",
                         "Full-stack · IA · SaaS",
