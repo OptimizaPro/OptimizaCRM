@@ -54,7 +54,7 @@ const DEFAULTS = {
     { title: "Lead Scoring con IA", description: "Prioriza leads automáticamente usando modelos de machine learning." },
     { title: "Pipeline Visual", description: "Tableros Kanban con arrastrar y soltar para gestionar oportunidades." },
     { title: "Previsión de Ingresos", description: "Predicciones de revenue basadas en IA con intervalos de confianza." },
-    { title: "Multi-Tenant SaaS", description: "Aislamiento completo de datos a nivel empresarial." },
+    { title: "SaaS multicliente", description: "Aislamiento completo de datos a nivel empresarial." },
     { title: "Automatización", description: "Seguimientos automáticos y generación de emails con IA." },
     { title: "Seguridad Empresarial", description: "RBAC, JWT, auditoría completa y cumplimiento OWASP." },
   ],
