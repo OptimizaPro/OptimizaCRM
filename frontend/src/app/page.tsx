@@ -71,7 +71,7 @@ const STATS = [
   { value: "100%", label: "Datos del negocio" },
   { value: "40%",  label: "Más conversiones" },
   { value: "2.4×", label: "Retorno de inversión" },
-  { value: "< 5′", label: "Tiempo de configuración" },
+  { value: "< 10′", label: "Tiempo de configuración" },
 ];
 
 const CHANNELS = [
