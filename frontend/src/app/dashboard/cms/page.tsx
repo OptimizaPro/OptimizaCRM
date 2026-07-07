@@ -32,7 +32,7 @@ const DEFAULT_CONTENT = {
       { title: "Lead Scoring con IA",   description: "Puntúa y prioriza leads automáticamente con reglas inteligentes y modelos de IA." },
       { title: "Gestión de Pipeline",   description: "Tableros kanban visuales con etapas personalizables y arrastrar y soltar." },
       { title: "Previsión de Ingresos", description: "Predicciones de ingresos con IA y niveles de confianza." },
-      { title: "SaaS multicliente",     description: "Multi-tenancy empresarial con aislamiento completo de datos." },
+      { title: "SaaS multicliente",     description: "Multiusuarios empresarial con aislamiento completo de datos." },
       { title: "Automatización",        description: "Automatiza tareas repetitivas y céntrate en cerrar negocios." },
       { title: "Seguridad Empresarial", description: "Cumplimiento con leyes de protección de datos en LATAM (LGPD, Ley 25.326, Ley 1581) y estándares internacionales como el RGPD, con cifrado de extremo a extremo." },
     ],
