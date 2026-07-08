@@ -866,6 +866,8 @@ export interface VoiceWidget {
   is_active:         boolean;
   lead_count:        number;
   call_count:        number;
+  has_vapi_private_key?: boolean;
+  has_vapi_public_key?:  boolean;
   config: {
     agent_name?:       string;
     voice?:            string;

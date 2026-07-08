@@ -454,54 +454,89 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
         <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-300">Claves de conexión</p>
           <div className="grid gap-3 sm:grid-cols-2">
+            {/* Private Key */}
             <div>
               <label className={labelCls + " mb-1 block"}>Private API Key</label>
-              <div className="relative">
-                <input
-                  type={showPrivateKey ? "text" : "password"}
-                  className={inputCls + " pr-9"}
-                  value={vapiPrivateKey}
-                  onChange={(e) => { setVapiPrivateKey(e.target.value); setDirty(true); }}
-                  placeholder="sk-••••••••••••••••"
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPrivateKey((v) => !v)}
-                  className="absolute inset-y-0 right-2.5 flex items-center text-slate-500 hover:text-orange-400 transition-colors"
-                  tabIndex={-1}
-                  title={showPrivateKey ? "Ocultar clave" : "Mostrar clave"}
-                >
-                  {showPrivateKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              {widget?.has_vapi_private_key && !vapiPrivateKey ? (
+                <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2">
+                  <span className="text-xs text-slate-400 tracking-widest">••••••••••••••••</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-green-400">Guardada ✓</span>
+                    <button
+                      type="button"
+                      onClick={() => { setVapiPrivateKey(" "); setTimeout(() => setVapiPrivateKey(""), 0); }}
+                      className="text-[10px] text-slate-500 hover:text-orange-400 transition-colors underline"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type={showPrivateKey ? "text" : "password"}
+                    className={inputCls + " pr-9"}
+                    value={vapiPrivateKey}
+                    onChange={(e) => { setVapiPrivateKey(e.target.value); setDirty(true); }}
+                    placeholder="sk-••••••••••••••••"
+                    autoComplete="off"
+                    autoFocus={!!widget?.has_vapi_private_key}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPrivateKey((v) => !v)}
+                    className="absolute inset-y-0 right-2.5 flex items-center text-slate-500 hover:text-orange-400 transition-colors"
+                    tabIndex={-1}
+                    title={showPrivateKey ? "Ocultar clave" : "Mostrar clave"}
+                  >
+                    {showPrivateKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              )}
             </div>
+            {/* Public Key */}
             <div>
               <label className={labelCls + " mb-1 block"}>Public API Key</label>
-              <div className="relative">
-                <input
-                  type={showPublicKey ? "text" : "password"}
-                  className={inputCls + " pr-9"}
-                  value={vapiPublicKey}
-                  onChange={(e) => { setVapiPublicKey(e.target.value); setDirty(true); }}
-                  placeholder="pk-••••••••••••••••"
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPublicKey((v) => !v)}
-                  className="absolute inset-y-0 right-2.5 flex items-center text-slate-500 hover:text-orange-400 transition-colors"
-                  tabIndex={-1}
-                  title={showPublicKey ? "Ocultar clave" : "Mostrar clave"}
-                >
-                  {showPublicKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
+              {widget?.has_vapi_public_key && !vapiPublicKey ? (
+                <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2">
+                  <span className="text-xs text-slate-400 tracking-widest">••••••••••••••••</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-green-400">Guardada ✓</span>
+                    <button
+                      type="button"
+                      onClick={() => { setVapiPublicKey(" "); setTimeout(() => setVapiPublicKey(""), 0); }}
+                      className="text-[10px] text-slate-500 hover:text-orange-400 transition-colors underline"
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type={showPublicKey ? "text" : "password"}
+                    className={inputCls + " pr-9"}
+                    value={vapiPublicKey}
+                    onChange={(e) => { setVapiPublicKey(e.target.value); setDirty(true); }}
+                    placeholder="pk-••••••••••••••••"
+                    autoComplete="off"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPublicKey((v) => !v)}
+                    className="absolute inset-y-0 right-2.5 flex items-center text-slate-500 hover:text-orange-400 transition-colors"
+                    tabIndex={-1}
+                    title={showPublicKey ? "Ocultar clave" : "Mostrar clave"}
+                  >
+                    {showPublicKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-          {widget?.vapi_assistant_id && !vapiPrivateKey && (
+          {(widget?.has_vapi_private_key || widget?.has_vapi_public_key) && (vapiPrivateKey || vapiPublicKey) && (
             <p className="mt-2 rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-300">
-              Si rotaste tus claves de voz, re-ingresa la nueva <strong>Private Key</strong> antes de guardar para que el asistente se sincronice correctamente.
+              Vas a reemplazar una clave guardada. Asegúrate de que la nueva sea correcta antes de guardar.
             </p>
           )}
         </div>

@@ -169,6 +169,7 @@ def voice_widget_manage(request):
             return JsonResponse({"widget": None, "knowledge_base": None})
 
         kb = widget.knowledge_base
+        org_settings = org.settings or {}
         return JsonResponse({
             "widget": {
                 "id":               str(widget.id),
@@ -180,6 +181,8 @@ def voice_widget_manage(request):
                 "lead_count":       widget.lead_count,
                 "call_count":       widget.call_count,
                 "config":           widget.config,
+                "has_vapi_private_key": bool(org_settings.get("vapi_private_key")),
+                "has_vapi_public_key":  bool(org_settings.get("vapi_public_key")),
             },
             "knowledge_base": {
                 "id":                     str(kb.id),
