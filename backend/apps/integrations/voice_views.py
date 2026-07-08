@@ -894,19 +894,15 @@ def voice_upload_avatar(request):
     import os
     import uuid
     from django.conf import settings
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
 
     ext = os.path.splitext(uploaded.name)[1].lower() or ".jpg"
     filename = f"{uuid.uuid4().hex}{ext}"
-    rel_path = os.path.join("voice-avatars", str(org.id), filename)
-    abs_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+    rel_path = f"voice-avatars/{org.id}/{filename}"
 
-    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
-    with open(abs_path, "wb") as f:
-        for chunk in uploaded.chunks():
-            f.write(chunk)
-
-    backend_url = getattr(settings, "BACKEND_PUBLIC_URL", "http://localhost:8000")
-    avatar_url = f"{backend_url}/media/{rel_path.replace(os.sep, '/')}"
+    saved_path = default_storage.save(rel_path, ContentFile(uploaded.read()))
+    avatar_url = default_storage.url(saved_path)
 
     # Persist in widget config
     from .models import VoiceWidget
