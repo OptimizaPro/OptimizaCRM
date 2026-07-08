@@ -224,6 +224,23 @@ def classify_text(text: str, org=None) -> dict:
     groq_key   = org_settings.get("groq_api_key")   or getattr(settings, "GROQ_API_KEY",   "")
     openai_key = org_settings.get("openai_api_key") or getattr(settings, "OPENAI_API_KEY", "")
 
+    # Fallback: read from ai_provider integration (Dashboard → Integraciones)
+    if org and not groq_key and not openai_key:
+        try:
+            from .models import Integration
+            ai_int = Integration.objects.filter(
+                organization=org, channel_type="ai_provider", status="connected"
+            ).first()
+            if ai_int:
+                provider = (ai_int.config.get("provider") or "").lower()
+                api_key  = ai_int.config.get("api_key", "")
+                if provider == "openai":
+                    openai_key = api_key
+                else:
+                    groq_key = api_key  # groq or any other provider defaults to groq path
+        except Exception:
+            pass
+
     if not groq_key and not openai_key:
         raise ValueError(
             "No hay clave de API configurada. Añade GROQ_API_KEY u OPENAI_API_KEY en "
