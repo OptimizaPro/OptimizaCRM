@@ -266,8 +266,6 @@ def voice_widget_manage(request):
         vapi_private_key = org_settings.get("vapi_private_key", "")
         vapi_error       = None
 
-        print(f"[VapiSync] org={org.id} key_present={bool(vapi_private_key)} assistant_id='{widget.vapi_assistant_id}'", flush=True)
-
         if vapi_private_key:
             # If a new private key was submitted, clear the stale assistant ID so a
             # fresh assistant is created under the new Vapi account (avoids cross-account 403).

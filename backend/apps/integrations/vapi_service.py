@@ -53,6 +53,8 @@ VOICE_MAP = {
     "es-MX-JorgeNeural":  {"provider": "azure", "voiceId": "es-MX-JorgeNeural"},
     "es-MX-DaliaNeural":  {"provider": "azure", "voiceId": "es-MX-DaliaNeural"},
     "es-ES-ElviraNeural": {"provider": "azure", "voiceId": "es-ES-ElviraNeural"},
+    "es-GT-MartaNeural":  {"provider": "azure", "voiceId": "es-GT-MartaNeural"},
+    "es-GT-AndresNeural": {"provider": "azure", "voiceId": "es-GT-AndresNeural"},
 }
 
 
