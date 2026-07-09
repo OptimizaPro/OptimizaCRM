@@ -284,7 +284,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
   const sourcesCount: number     = sourcesQ.data?.count ?? sources.length;
   const sourcesAtLimit           = sourcesCount >= sourcesLimit;
 
-  const [deletingSourceId, setDeletingSourceId] = useState<number | null>(null);
+  const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null);
   const deleteSourceMutation = useMutation({
     mutationFn: (id: number) => voiceWidgetApi.deleteKbSource(auth.token, auth.orgId, id),
     onSuccess: () => {

@@ -838,7 +838,7 @@ export const widgetApi = {
 // ── Voice Widget ──────────────────────────────────────────────────────────────
 
 export interface VoiceKBSource {
-  id:          number;
+  id:          string;
   source_type: "url" | "file";
   name:        string;
   char_count:  number;
@@ -982,7 +982,7 @@ export const voiceWidgetApi = {
       { token, orgId },
     ),
 
-  deleteKbSource: async (token: string, orgId: string, sourceId: number) => {
+  deleteKbSource: async (token: string, orgId: string, sourceId: string) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
     const res = await fetch(`${apiUrl}/voice-widget/kb-sources/${sourceId}/`, {
       method: "DELETE",

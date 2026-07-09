@@ -81,7 +81,7 @@ urlpatterns = [
 
     # ── Voice KB Sources — list & delete (authenticated) ─────────────────────
     path("voice-widget/kb-sources/",              voice_kb_sources,          name="voice-kb-sources"),
-    path("voice-widget/kb-sources/<int:source_id>/", voice_kb_source_delete, name="voice-kb-source-delete"),
+    path("voice-widget/kb-sources/<uuid:source_id>/", voice_kb_source_delete, name="voice-kb-source-delete"),
 
     # ── Voice AI — Generate system prompt (authenticated) ─────────────────────
     path("voice-widget/generate-prompt/",         voice_generate_prompt,     name="voice-generate-prompt"),
