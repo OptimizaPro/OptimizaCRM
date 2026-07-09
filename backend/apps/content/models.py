@@ -544,6 +544,113 @@ DEFAULT_CONTENT = {
         "roi_human_total":     "~$820/mes",
         "roi_multiplier":      "16×",
     },
+    "guatemala": {
+        "hero_badge":          "Diseñado para empresas en Guatemala",
+        "hero_headline":       "CRM con Inteligencia Artificial para Guatemala",
+        "hero_subheadline":    (
+            "Gestiona leads, WhatsApp y tu pipeline de ventas con IA. "
+            "Agente de voz 24/7 en español. Factura Electrónica FEL incluida. "
+            "La herramienta que las PYMEs guatemaltecas necesitaban."
+        ),
+        "trust_signals": [
+            "14 días gratis",
+            "Sin tarjeta de crédito",
+            "FEL para la SAT de Guatemala",
+            "Soporte en español",
+        ],
+        "cta_primary_text":    "Empezar gratis — 14 días",
+        "cta_primary_href":    "/register",
+        "cta_secondary_text":  "Ver precios →",
+        "cta_secondary_href":  "/precios",
+        # Intro
+        "intro_headline": "El CRM con IA que entiende el mercado guatemalteco",
+        "intro_text": (
+            "La mayoría de los CRM en el mercado están diseñados para EE.UU. o España. "
+            "OptimizaCRM nació para Centroamérica y LATAM: precios en USD accesibles para PYMEs, "
+            "soporte en español de Guatemala, integración con WhatsApp (el canal #1 de comunicación "
+            "empresarial en el país) y facturación FEL nativa."
+        ),
+        # Sección CRM
+        "crm_badge":       "CRM con IA · WhatsApp · Guatemala",
+        "crm_headline":    "Todo lo que necesitas para vender más en Guatemala",
+        "crm_subheadline": "Desde el primer contacto en WhatsApp hasta la factura FEL, sin salir de una sola plataforma.",
+        # Sección WhatsApp
+        "whatsapp_headline": "WhatsApp es el canal #1 en Guatemala. Úsalo en tu CRM.",
+        "whatsapp_text": (
+            "Tus clientes ya están en WhatsApp. Con OptimizaCRM, cada mensaje llega a un inbox "
+            "centralizado, se vincula al lead correspondiente y queda en el historial del CRM. "
+            "Sin cambiar entre apps."
+        ),
+        "whatsapp_features": [
+            "Responde desde el CRM sin abrir el celular",
+            "Historial completo de conversaciones por cliente",
+            "Automatiza respuestas a preguntas frecuentes",
+            "Notifica a tu equipo cuando llega un lead nuevo",
+            "El agente de voz IA transfiere a WhatsApp cuando necesitas escalación humana",
+        ],
+        # Sección Agente de Voz
+        "voz_badge":       "Agente de Voz IA · Guatemala",
+        "voz_headline":    "Tu recepcionista con inteligencia artificial que nunca duerme",
+        "voz_subheadline": (
+            "Atiende llamadas, califica leads y agenda citas automáticamente, 24 horas al día. "
+            "En español natural, sin que tus clientes noten la diferencia."
+        ),
+        # Sección FEL
+        "fel_headline": "Factura Electrónica FEL incluida en todos los planes para Guatemala",
+        "fel_text": (
+            "OptimizaCRM emite Facturas Electrónicas en Línea (FEL) que cumplen con los "
+            "requisitos de la SAT (Superintendencia de Administración Tributaria) de Guatemala. "
+            "Tus clientes reciben su factura automáticamente al cerrar una venta. "
+            "Sin sistemas externos, sin integraciones adicionales, sin costo extra."
+        ),
+        "fel_badges": [
+            "Régimen General SAT",
+            "FEL conforme Acuerdo 49-2018",
+            "Envío automático al cliente",
+        ],
+        # Sección Precios
+        "pricing_headline":    "Planes accesibles para PYMEs guatemaltecas",
+        "pricing_subheadline": "Precios por organización, no por usuario. Sin permanencia. Sin letra pequeña. FEL incluida.",
+        # FAQs
+        "faqs": [
+            {
+                "q": "¿Qué es un CRM con inteligencia artificial para Guatemala?",
+                "a": "Un CRM con IA es un software de gestión de clientes que usa inteligencia artificial para calificar leads automáticamente, predecir qué contactos tienen más probabilidad de cerrar y automatizar seguimientos. OptimizaCRM está diseñado para el mercado guatemalteco: emite FEL, soporta tu equipo en español y tiene precios accesibles para PYMEs.",
+            },
+            {
+                "q": "¿El CRM se integra con WhatsApp en Guatemala?",
+                "a": "Sí. OptimizaCRM incluye un inbox multicanal con WhatsApp Business integrado. Recibe, responde y gestiona conversaciones de WhatsApp directamente desde el CRM, con historial vinculado a cada lead o cliente. Sin cambiar entre apps.",
+            },
+            {
+                "q": "¿Qué es un agente de voz con IA y para qué sirve?",
+                "a": "Es una recepcionista virtual que atiende llamadas automáticamente, 24/7. Habla en español natural, responde preguntas sobre tu empresa, califica leads y agenda citas. Ideal para empresas guatemaltecas que no quieren perder llamadas fuera de horario.",
+            },
+            {
+                "q": "¿OptimizaCRM emite Factura Electrónica FEL?",
+                "a": "Sí. Todos los planes incluyen emisión de FEL para clientes en Guatemala, cumpliendo los requisitos de la SAT. No necesitas un sistema externo de facturación.",
+            },
+            {
+                "q": "¿Cuánto cuesta el CRM con IA en Guatemala?",
+                "a": "Los planes inician desde $19 USD/mes por organización (no por usuario). Incluye CRM completo con IA, WhatsApp integrado y FEL. El agente de voz IA está disponible desde $49 USD/mes adicionales. 14 días de prueba gratis, sin tarjeta de crédito.",
+            },
+            {
+                "q": "¿El agente de voz entiende el español guatemalteco?",
+                "a": "Sí. El agente está optimizado para el español latinoamericano, incluyendo el acento y vocabulario guatemalteco. Responde de forma natural y contextual.",
+            },
+            {
+                "q": "¿Puedo probar el CRM gratis en Guatemala?",
+                "a": "Sí. 14 días de prueba gratuita sin tarjeta de crédito. Incluye acceso completo al CRM, pipeline, WhatsApp, lead scoring con IA y 100 minutos del agente de voz.",
+            },
+        ],
+        # CTA final
+        "cta_final_headline":       "Empieza a vender más con IA hoy mismo",
+        "cta_final_subheadline":    "14 días gratis. Sin tarjeta de crédito. CRM + WhatsApp + Agente de Voz IA + FEL.",
+        "cta_final_primary_text":   "Crear cuenta gratis",
+        "cta_final_primary_href":   "/register",
+        "cta_final_secondary_text": "Hablar con el equipo",
+        "cta_final_secondary_href": "/contacto",
+        "cta_final_note":           "¿Preguntas? Escríbenos por WhatsApp o al formulario de contacto. Respuesta en menos de 24 h.",
+    },
     "terminos": {
         "headline":     "Términos y Condiciones",
         "last_updated": "23 de junio de 2026",
@@ -595,6 +702,7 @@ class SiteContent(models.Model):
         ("servicios_implementacion",       "Servicios — Implementación CRM"),
         ("servicios_implementacion_voz",   "Servicios — Setup Agente de Voz IA"),
         ("voz_ia",                         "Agente de Voz IA — Landing"),
+        ("guatemala",                      "CRM para Guatemala — Landing"),
     ]
 
     key        = models.CharField(max_length=50, unique=True, choices=SECTION_CHOICES)

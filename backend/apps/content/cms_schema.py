@@ -423,6 +423,100 @@ SECTIONS = [
             },
         ],
     },
+    {
+        "key":   "guatemala",
+        "label": "Guatemala — Landing",
+        "desc":  "Contenido de la página /guatemala: CRM con IA para el mercado guatemalteco",
+        "icon":  "flag",
+        "groups": [
+            {
+                "label": "HERO",
+                "cols":  1,
+                "fields": [
+                    {"key": "hero_badge",         "label": "Badge",                   "hint": "Texto pequeño sobre el titular", "type": "text",     "col": 1},
+                    {"key": "hero_headline",      "label": "Titular (H1)",            "hint": "",                               "type": "text",     "col": 1},
+                    {"key": "hero_subheadline",   "label": "Subtítulo",               "hint": "",                               "type": "textarea", "col": 1},
+                    {"key": "trust_signals",      "label": "Señales de confianza",    "hint": 'Array JSON — ej. ["14 días gratis", "Sin tarjeta de crédito"]', "type": "json", "col": 1},
+                    {"key": "cta_primary_text",   "label": "CTA principal — texto",   "hint": "",                               "type": "text",     "col": 1},
+                    {"key": "cta_primary_href",   "label": "CTA principal — enlace",  "hint": "",                               "type": "text",     "col": 1},
+                    {"key": "cta_secondary_text", "label": "CTA secundario — texto",  "hint": "",                               "type": "text",     "col": 1},
+                    {"key": "cta_secondary_href", "label": "CTA secundario — enlace", "hint": "",                               "type": "text",     "col": 1},
+                ],
+            },
+            {
+                "label": "SECCIÓN INTRO",
+                "cols":  1,
+                "fields": [
+                    {"key": "intro_headline", "label": "Titular",  "hint": "", "type": "text",     "col": 1},
+                    {"key": "intro_text",     "label": "Párrafo",  "hint": "", "type": "textarea", "col": 1},
+                ],
+            },
+            {
+                "label": "SECCIÓN CRM CON IA",
+                "cols":  1,
+                "fields": [
+                    {"key": "crm_badge",       "label": "Badge",     "hint": "", "type": "text",     "col": 1},
+                    {"key": "crm_headline",    "label": "Titular",   "hint": "", "type": "text",     "col": 1},
+                    {"key": "crm_subheadline", "label": "Subtítulo", "hint": "", "type": "textarea", "col": 1},
+                ],
+            },
+            {
+                "label": "SECCIÓN WHATSAPP",
+                "cols":  1,
+                "fields": [
+                    {"key": "whatsapp_headline", "label": "Titular",          "hint": "", "type": "text",     "col": 1},
+                    {"key": "whatsapp_text",     "label": "Párrafo",          "hint": "", "type": "textarea", "col": 1},
+                    {"key": "whatsapp_features", "label": "Lista de features","hint": 'Array JSON — ["Feature 1", "Feature 2"]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "SECCIÓN AGENTE DE VOZ IA",
+                "cols":  1,
+                "fields": [
+                    {"key": "voz_badge",       "label": "Badge",     "hint": "", "type": "text",     "col": 1},
+                    {"key": "voz_headline",    "label": "Titular",   "hint": "", "type": "text",     "col": 1},
+                    {"key": "voz_subheadline", "label": "Subtítulo", "hint": "", "type": "textarea", "col": 1},
+                ],
+            },
+            {
+                "label": "SECCIÓN FEL (FACTURA ELECTRÓNICA)",
+                "cols":  1,
+                "fields": [
+                    {"key": "fel_headline", "label": "Titular",          "hint": "", "type": "text",     "col": 1},
+                    {"key": "fel_text",     "label": "Párrafo",          "hint": "", "type": "textarea", "col": 1},
+                    {"key": "fel_badges",   "label": "Badges FEL",       "hint": 'Array JSON — ["Badge 1", "Badge 2"]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "SECCIÓN PRECIOS",
+                "cols":  1,
+                "fields": [
+                    {"key": "pricing_headline",    "label": "Titular",   "hint": "Los precios reales se cargan dinámicamente desde Billing", "type": "text",     "col": 1},
+                    {"key": "pricing_subheadline", "label": "Subtítulo", "hint": "",                                                        "type": "textarea", "col": 1},
+                ],
+            },
+            {
+                "label": "PREGUNTAS FRECUENTES",
+                "cols":  1,
+                "fields": [
+                    {"key": "faqs", "label": "FAQs", "hint": 'Array JSON — [{q, a}]', "type": "json", "col": 1},
+                ],
+            },
+            {
+                "label": "CTA FINAL",
+                "cols":  1,
+                "fields": [
+                    {"key": "cta_final_headline",       "label": "Titular",                  "hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_final_subheadline",    "label": "Subtítulo",                "hint": "", "type": "textarea", "col": 1},
+                    {"key": "cta_final_primary_text",   "label": "Botón principal — texto",  "hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_final_primary_href",   "label": "Botón principal — enlace", "hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_final_secondary_text", "label": "Botón secundario — texto", "hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_final_secondary_href", "label": "Botón secundario — enlace","hint": "", "type": "text",     "col": 1},
+                    {"key": "cta_final_note",           "label": "Nota bajo los botones",    "hint": "", "type": "text",     "col": 1},
+                ],
+            },
+        ],
+    },
 ]
 
 SECTION_MAP = {s["key"]: s for s in SECTIONS}
