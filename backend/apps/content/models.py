@@ -608,9 +608,6 @@ DEFAULT_CONTENT = {
             "FEL conforme Acuerdo 49-2018",
             "Envío automático al cliente",
         ],
-        # Sección Precios
-        "pricing_headline":    "Planes accesibles para PYMEs guatemaltecas",
-        "pricing_subheadline": "Precios por organización, no por usuario. Sin permanencia. Sin letra pequeña. FEL incluida.",
         # FAQs
         "faqs": [
             {

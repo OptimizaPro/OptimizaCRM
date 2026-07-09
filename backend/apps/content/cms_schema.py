@@ -488,14 +488,6 @@ SECTIONS = [
                 ],
             },
             {
-                "label": "SECCIÓN PRECIOS",
-                "cols":  1,
-                "fields": [
-                    {"key": "pricing_headline",    "label": "Titular",   "hint": "Los precios reales se cargan dinámicamente desde Billing", "type": "text",     "col": 1},
-                    {"key": "pricing_subheadline", "label": "Subtítulo", "hint": "",                                                        "type": "textarea", "col": 1},
-                ],
-            },
-            {
                 "label": "PREGUNTAS FRECUENTES",
                 "cols":  1,
                 "fields": [

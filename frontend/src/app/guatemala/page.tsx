@@ -32,8 +32,6 @@ interface CmsGuatemala {
   fel_headline?: string;
   fel_text?: string;
   fel_badges?: string[];
-  pricing_headline?: string;
-  pricing_subheadline?: string;
   faqs?: Array<{ q: string; a: string }>;
   cta_final_headline?: string;
   cta_final_subheadline?: string;
@@ -133,8 +131,6 @@ export default async function GuatemalaPage() {
     fel_headline:        cms.fel_headline        ?? "Factura Electrónica FEL incluida en todos los planes para Guatemala",
     fel_text:            cms.fel_text            ?? "OptimizaCRM emite Facturas Electrónicas en Línea (FEL) que cumplen con los requisitos de la SAT de Guatemala. Tus clientes reciben su factura automáticamente al cerrar una venta. Sin sistemas externos, sin costo extra.",
     fel_badges:          cms.fel_badges          ?? ["Régimen General SAT", "FEL conforme Acuerdo 49-2018", "Envío automático al cliente"],
-    pricing_headline:    cms.pricing_headline    ?? "Planes accesibles para PYMEs guatemaltecas",
-    pricing_subheadline: cms.pricing_subheadline ?? "Precios por organización, no por usuario. Sin permanencia. Sin letra pequeña. FEL incluida.",
     faqs:                cms.faqs               ?? [],
     cta_final_headline:       cms.cta_final_headline       ?? "Empieza a vender más con IA hoy mismo",
     cta_final_subheadline:    cms.cta_final_subheadline    ?? "14 días gratis. Sin tarjeta de crédito. CRM + WhatsApp + Agente de Voz IA + FEL.",
@@ -399,8 +395,8 @@ export default async function GuatemalaPage() {
       <section className="border-b border-slate-800/60" id="precios-guatemala">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
           <div className="mb-3 text-sm font-semibold uppercase tracking-widest text-orange-400">Precios para Guatemala</div>
-          <h2 className="text-3xl font-bold text-white">{c.pricing_headline}</h2>
-          <p className="mt-4 text-slate-400 max-w-xl mx-auto">{c.pricing_subheadline}</p>
+          <h2 className="text-3xl font-bold text-white">Planes accesibles para PYMEs guatemaltecas</h2>
+          <p className="mt-4 text-slate-400 max-w-xl mx-auto">Precios por organización, no por usuario. Sin permanencia. Sin letra pequeña. FEL incluida.</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-slate-400">
             {[
               "Desde $19/mes por organización",
