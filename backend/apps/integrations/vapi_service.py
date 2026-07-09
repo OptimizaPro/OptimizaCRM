@@ -190,7 +190,7 @@ def _build_tools(widget) -> list:
     return tools
 
 
-def _build_model_config(llm_model: str, system_prompt: str) -> dict:
+def _build_model_config(llm_model: str, system_prompt: str, tools: list) -> dict:
     """Returns Vapi model config dict based on llm_model string 'provider/model-name'."""
     parts    = llm_model.split("/", 1)
     provider = parts[0] if len(parts) == 2 else "groq"
@@ -200,6 +200,7 @@ def _build_model_config(llm_model: str, system_prompt: str) -> dict:
         "model":       model,
         "messages":    [{"role": "system", "content": system_prompt}],
         "temperature": 0.6,
+        "tools":       tools,
     }
 
 
@@ -221,9 +222,8 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
             f"Hola, soy {cfg.get('agent_name', 'el asistente')} de {widget.organization.name}. ¿En qué puedo ayudarte hoy?",
         ),
         "endCallMessage": cfg.get("farewell", "¡Hasta luego! Que tenga un excelente día."),
-        "model":          _build_model_config(widget.llm_model, system_prompt),
+        "model":          _build_model_config(widget.llm_model, system_prompt, tools),
         "voice":          voice_config,
-        "tools":          tools,
         "transcriber": {
             "provider": "deepgram",
             "language": "es",
