@@ -77,7 +77,7 @@ const faqPreciosSchema = {
       name: "¿Cuánto cuesta un CRM con IA en Guatemala?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "OptimizaCRM es el CRM con inteligencia artificial más accesible para PYMEs en Guatemala. Los planes inician desde $19 USD/mes por organización (no por usuario). Incluye CRM completo con IA, WhatsApp Business integrado y Factura Electrónica FEL para la SAT de Guatemala. El agente de voz IA está disponible desde $49 USD/mes adicionales.",
+        text: "OptimizaCRM es el CRM con inteligencia artificial más accesible para PYMEs en Guatemala. Los planes inician desde $19 USD/mes por organización (no por usuario). Incluye CRM completo con IA, WhatsApp Business integrado y Factura Electrónica FEL para la SAT de Guatemala. El agente de voz IA está disponible desde $149 USD/mes adicionales.",
       },
     },
     {

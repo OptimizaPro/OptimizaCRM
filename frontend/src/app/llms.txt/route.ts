@@ -94,7 +94,7 @@ OptimizaCRM incluye un agente de voz IA para empresas en Guatemala y LATAM:
 - Califica leads y registra la información directamente en el CRM
 - Agenda citas automáticamente en el calendario del equipo
 - Transfiere conversaciones a humanos vía WhatsApp cuando es necesario
-- Disponible desde $49 USD/mes (Voz Starter: 1 agente, 300 min/mes)
+- Disponible desde $149 USD/mes (Voz Starter: 1 agente, 300 min/mes)
 
 ## Mercado Guatemala — Características locales
 

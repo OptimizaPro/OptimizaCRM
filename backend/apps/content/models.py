@@ -628,7 +628,7 @@ DEFAULT_CONTENT = {
             },
             {
                 "q": "¿Cuánto cuesta el CRM con IA en Guatemala?",
-                "a": "Los planes inician desde $19 USD/mes por organización (no por usuario). Incluye CRM completo con IA, WhatsApp integrado y FEL. El agente de voz IA está disponible desde $49 USD/mes adicionales. 14 días de prueba gratis, sin tarjeta de crédito.",
+                "a": "Los planes inician desde $19 USD/mes por organización (no por usuario). Incluye CRM completo con IA, WhatsApp integrado y FEL. El agente de voz IA está disponible desde $149 USD/mes adicionales. 14 días de prueba gratis, sin tarjeta de crédito.",
             },
             {
                 "q": "¿El agente de voz entiende el español guatemalteco?",

@@ -529,7 +529,7 @@ export default function HomePage() {
                   </Link>
                   <Link href="/voz-ia#pricing">
                     <Button variant="outline" className="border-slate-700 text-slate-300 hover:border-orange-600 hover:text-orange-400 bg-transparent">
-                      Ver precios · Desde $49/mes
+                      Ver precios · Desde $149/mes
                     </Button>
                   </Link>
                 </div>

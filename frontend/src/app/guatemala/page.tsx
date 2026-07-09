@@ -352,7 +352,7 @@ export default async function GuatemalaPage() {
                   <span className="ml-auto rounded-full bg-purple-500/20 px-2 py-0.5 text-xs text-purple-400 font-semibold">Recomendado</span>
                 </div>
                 <ul className="space-y-2 text-sm text-slate-300">
-                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> <strong>Desde $49 USD/mes</strong> (~Q380)</li>
+                  <li className="flex items-center gap-2"><span className="text-green-500">✓</span> <strong>Desde $149 USD/mes</strong> (~Q1,160)</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">✓</span> 24 horas, 7 días, feriados incluidos</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Cero llamadas perdidas</li>
                   <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Sin vacaciones ni permisos</li>

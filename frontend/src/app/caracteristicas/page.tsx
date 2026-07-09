@@ -208,7 +208,7 @@ export default function FeaturesPage() {
                   Ver Agente de Voz <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
-              <p className="text-xs text-slate-500">Desde $49/mes · 14 días gratis</p>
+              <p className="text-xs text-slate-500">Desde $149/mes · 14 días gratis</p>
             </div>
           </div>
         </section>
