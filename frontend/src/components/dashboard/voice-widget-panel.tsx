@@ -196,6 +196,8 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
   const [vapiPublicKey,     setVapiPublicKey]     = useState("");
   const [showPrivateKey,    setShowPrivateKey]    = useState(false);
   const [showPublicKey,     setShowPublicKey]     = useState(false);
+  const [editingPrivKey,    setEditingPrivKey]    = useState(false);
+  const [editingPubKey,     setEditingPubKey]     = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["voice-widget", agentId ?? "default"],
@@ -247,6 +249,10 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
       const warning = (data as Record<string, unknown>).vapi_warning as string | undefined;
       setSaveMsg(warning ? `⚠ Error Vapi: ${warning}` : "Asistente sincronizado ✓");
       setTimeout(() => setSaveMsg(""), warning ? 30000 : 6000);
+      setVapiPrivateKey("");
+      setVapiPublicKey("");
+      setEditingPrivKey(false);
+      setEditingPubKey(false);
     },
   });
 
@@ -457,14 +463,14 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
             {/* Private Key */}
             <div>
               <label className={labelCls + " mb-1 block"}>Private API Key</label>
-              {widget?.has_vapi_private_key && !vapiPrivateKey ? (
+              {widget?.has_vapi_private_key && !editingPrivKey ? (
                 <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2">
                   <span className="text-xs text-slate-400 tracking-widest">••••••••••••••••</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium text-green-400">Guardada ✓</span>
                     <button
                       type="button"
-                      onClick={() => { setVapiPrivateKey(" "); setTimeout(() => setVapiPrivateKey(""), 0); }}
+                      onClick={() => setEditingPrivKey(true)}
                       className="text-[10px] text-slate-500 hover:text-orange-400 transition-colors underline"
                     >
                       Cambiar
@@ -480,7 +486,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
                     onChange={(e) => { setVapiPrivateKey(e.target.value); setDirty(true); }}
                     placeholder="sk-••••••••••••••••"
                     autoComplete="off"
-                    autoFocus={!!widget?.has_vapi_private_key}
+                    autoFocus={editingPrivKey}
                   />
                   <button
                     type="button"
@@ -497,14 +503,14 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
             {/* Public Key */}
             <div>
               <label className={labelCls + " mb-1 block"}>Public API Key</label>
-              {widget?.has_vapi_public_key && !vapiPublicKey ? (
+              {widget?.has_vapi_public_key && !editingPubKey ? (
                 <div className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2">
                   <span className="text-xs text-slate-400 tracking-widest">••••••••••••••••</span>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium text-green-400">Guardada ✓</span>
                     <button
                       type="button"
-                      onClick={() => { setVapiPublicKey(" "); setTimeout(() => setVapiPublicKey(""), 0); }}
+                      onClick={() => setEditingPubKey(true)}
                       className="text-[10px] text-slate-500 hover:text-orange-400 transition-colors underline"
                     >
                       Cambiar
@@ -520,6 +526,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
                     onChange={(e) => { setVapiPublicKey(e.target.value); setDirty(true); }}
                     placeholder="pk-••••••••••••••••"
                     autoComplete="off"
+                    autoFocus={editingPubKey}
                   />
                   <button
                     type="button"
@@ -534,7 +541,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
               )}
             </div>
           </div>
-          {(widget?.has_vapi_private_key || widget?.has_vapi_public_key) && (vapiPrivateKey || vapiPublicKey) && (
+          {(editingPrivKey || editingPubKey) && (
             <p className="mt-2 rounded-lg border border-amber-800 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-300">
               Vas a reemplazar una clave guardada. Asegúrate de que la nueva sea correcta antes de guardar.
             </p>
