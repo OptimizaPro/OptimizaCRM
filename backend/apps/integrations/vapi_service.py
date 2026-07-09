@@ -66,7 +66,10 @@ def _build_system_prompt(widget, kb) -> str:
     cfg = widget.config or {}
     qs = kb.qualification_questions if kb else []
     qs_text = "\n".join(f"- {q}" for q in qs) if qs else "No aplica."
-    return SYSTEM_PROMPT_TEMPLATE.format(
+
+    # Prepend custom system prompt if defined
+    custom = (widget.system_prompt or "").strip()
+    kb_block = SYSTEM_PROMPT_TEMPLATE.format(
         agent_name            = cfg.get("agent_name", "Asistente"),
         company_name          = widget.organization.name,
         company_info          = (kb.company_info if kb else "") or "No disponible.",
@@ -80,6 +83,8 @@ def _build_system_prompt(widget, kb) -> str:
         whatsapp_number       = (kb.whatsapp_number if kb else "") or "nuestro equipo",
         farewell              = cfg.get("farewell", "¡Hasta luego! Que tenga un excelente día."),
     )
+
+    return f"{custom}\n\n{kb_block}".lstrip() if custom else kb_block
 
 
 def _build_tools(widget) -> list:

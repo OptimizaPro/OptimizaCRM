@@ -174,7 +174,7 @@ function VoiceSnippetBox({ token }: { token: string }) {
 
 const DEFAULT_WIDGET: VoiceWidget = {
   id: "", token: "", name: "Agente de Voz", vapi_assistant_id: "", llm_model: "groq/llama-3.3-70b-versatile",
-  is_active: true, lead_count: 0, call_count: 0,
+  is_active: true, lead_count: 0, call_count: 0, system_prompt: "",
   config: { agent_name: "Sofía", voice: "es-MX-NuriaNeural", color: "#EA580C", greeting: "", farewell: "", avatar_url: "", escalation_mode: "whatsapp", transfer_number: "" },
   knowledge_base: null,
 };
@@ -690,7 +690,25 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
           </div>
         </div>
 
-        {/* ── C. Base de Conocimiento ──────────────────────────────────────── */}
+        {/* ── C. Instrucciones del agente (system prompt) ─────────────────── */}
+        <div className="border-t border-slate-800 pt-5">
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Instrucciones del agente</p>
+            <span className="text-[10px] text-slate-500">Opcional · se añade antes de la base de conocimiento</span>
+          </div>
+          <p className="mb-3 text-[11px] text-slate-500">
+            Define la personalidad, tono y restricciones del agente. Ejemplo: qué temas puede tratar, qué no, cómo responder ante objeciones, etc.
+          </p>
+          <textarea
+            className={cn(inputCls, "min-h-[140px] resize-y font-mono text-xs leading-relaxed")}
+            value={merged.system_prompt ?? ""}
+            onChange={(e) => { patch("system_prompt", e.target.value); setDirty(true); }}
+            placeholder={`Eres ${merged.config.agent_name || "Sofía"}, asistente virtual de [empresa]. Habla siempre en español, tono amable y profesional.\n\nNUNCA hables de: competidores, política, religión o temas ajenos al negocio.\nSi preguntan algo que no sabes: "Lo consultaré con mi equipo y me pongo en contacto contigo."\nSi el cliente quiere hablar con una persona, transfiere inmediatamente sin preguntar.`}
+            spellCheck={false}
+          />
+        </div>
+
+        {/* ── D. Base de Conocimiento ──────────────────────────────────────── */}
         <div className="border-t border-slate-800 pt-5">
           <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Base de Conocimiento</p>
