@@ -905,20 +905,24 @@ export interface VoiceAgentPlan {
 }
 
 export const voiceWidgetApi = {
-  get: (token: string, orgId: string, agentId?: string) =>
-    api.get<{ widget: VoiceWidget | null }>(
+  get: async (token: string, orgId: string, agentId?: string) => {
+    const res = await api.get<{ widget: VoiceWidget | null; knowledge_base: VoiceKnowledgeBase | null }>(
       agentId ? `/voice-widget/manage/?agent_id=${agentId}` : "/voice-widget/manage/",
       { token, orgId },
-    ),
+    );
+    // Nest knowledge_base inside widget so the component can access it as widget.knowledge_base
+    if (res.widget) res.widget.knowledge_base = res.knowledge_base;
+    return res;
+  },
 
   save: (token: string, orgId: string, data: {
-    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config" | "name">>;
+    widget?: Partial<Pick<VoiceWidget, "llm_model" | "is_active" | "config" | "name" | "system_prompt">>;
     knowledge_base?: Partial<VoiceKnowledgeBase>;
     vapi_private_key?: string;
     vapi_public_key?: string;
     agent_id?: string;
   }) =>
-    api.post<{ widget: VoiceWidget; vapi_warning?: string }>("/voice-widget/manage/", data, { token, orgId }),
+    api.post<{ widget: VoiceWidget; knowledge_base: VoiceKnowledgeBase | null; vapi_warning?: string }>("/voice-widget/manage/", data, { token, orgId }),
 
   listAgents: (token: string, orgId: string) =>
     api.get<{ agents: VoiceAgentSummary[]; plan: VoiceAgentPlan; agent_count: number }>(
