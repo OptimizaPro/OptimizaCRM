@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PublicHeader, PublicFooter } from "@/components/layout/public-header";
 import { Button } from "@/components/ui/button";
-import { cmsApi } from "@/lib/api";
+import { cmsApi, voicePlansPublicApi } from "@/lib/api";
 import {
   ArrowRight, CheckCircle, Brain, Target, BarChart3,
   Users, Zap, Shield, Mail, Smartphone,
@@ -319,10 +319,18 @@ function VoiceAgentMockup() {
 
 export default function HomePage() {
   const [data, setData] = useState(DEFAULTS);
+  const [vozStarterPrice, setVozStarterPrice] = useState<string | null>(null);
 
   useEffect(() => {
     cmsApi.getSection("hero").then(({ data: d }) => {
       setData((prev) => ({ ...prev, ...d as typeof DEFAULTS }));
+    }).catch(() => {});
+
+    voicePlansPublicApi.list().then((plans) => {
+      const sorted = [...plans].sort((a, b) => a.sort_order - b.sort_order);
+      if (sorted.length > 0) {
+        setVozStarterPrice(`$${Math.round(parseFloat(sorted[0].price_monthly))}`);
+      }
     }).catch(() => {});
   }, []);
 
@@ -529,7 +537,7 @@ export default function HomePage() {
                   </Link>
                   <Link href="/voz-ia#pricing">
                     <Button variant="outline" className="border-slate-700 text-slate-300 hover:border-orange-600 hover:text-orange-400 bg-transparent">
-                      Ver precios · Desde $149/mes
+                      Ver precios · Desde {vozStarterPrice ?? "$149"}/mes
                     </Button>
                   </Link>
                 </div>
