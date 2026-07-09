@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
   ExternalLink, Maximize2, Rocket, Globe2, Loader2, FileUp, Eye, EyeOff, Camera,
-  Link2, FileText, Trash2, AlertCircle,
+  Link2, FileText, Trash2, AlertCircle, X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,23 @@ const MODEL_OPTIONS = [
 ];
 
 const inputCls = "w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500";
+
+const KB_FIELD_LABELS: Record<string, string> = {
+  company_info:             "Sobre la empresa",
+  products_services:        "Productos y servicios",
+  pricing:                  "Precios y planes",
+  faqs:                     "Preguntas frecuentes",
+  working_hours:            "Horario de atención",
+  contact_info:             "Información de contacto",
+  appointment_rules:        "Reglas de citas",
+  qualification_questions:  "Preguntas de calificación",
+};
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 const labelCls = "text-xs font-medium text-slate-400";
 
 // ─── ExpandableTextarea ───────────────────────────────────────────────────────
@@ -373,21 +390,33 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
   };
 
   // File import
-  const [fileImporting,  setFileImporting]  = useState(false);
-  const [fileImported,   setFileImported]   = useState<string[]>([]);
+  const [fileImportOpen,  setFileImportOpen]  = useState(false);
+  const [pendingFile,     setPendingFile]     = useState<File | null>(null);
+  const [fileImporting,   setFileImporting]   = useState(false);
+  const [fileImported,    setFileImported]    = useState<string[]>([]);
   const [fileImportError, setFileImportError] = useState("");
 
-  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";            // reset so same file can be re-selected
-    if (!file) return;
+  const openFileImport = () => {
+    setPendingFile(null);
+    setFileImportError("");
+    setFileImportOpen(true);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    setFileImportError("");
+    setPendingFile(file);
+  };
+
+  const handleFileImport = async () => {
+    if (!pendingFile) return;
 
     setFileImporting(true);
-    setFileImported([]);
     setFileImportError("");
 
     try {
-      const { knowledge_base } = await voiceWidgetApi.importFile(auth.token, auth.orgId, file, agentId);
+      const { knowledge_base } = await voiceWidgetApi.importFile(auth.token, auth.orgId, pendingFile, agentId);
       const imported: string[] = [];
       const fieldsToMerge = [
         "company_info", "products_services", "pricing", "faqs",
@@ -407,6 +436,8 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
       setDirty(true);
       setFileImported(imported);
       qc.invalidateQueries({ queryKey: ["kb-sources", agentId ?? "default"] });
+      setFileImportOpen(false);
+      setPendingFile(null);
     } catch (err) {
       setFileImportError((err as Error).message || "Error al importar el archivo");
     } finally {
@@ -731,27 +762,21 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
                 URL
               </button>
               {/* Import from file */}
-              <label
+              <button
+                type="button"
+                onClick={openFileImport}
+                disabled={sourcesAtLimit}
                 className={cn(
                   "flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition-colors",
-                  sourcesAtLimit || fileImporting
+                  sourcesAtLimit
                     ? "cursor-not-allowed opacity-40"
-                    : "cursor-pointer hover:border-orange-600 hover:text-orange-400"
+                    : "hover:border-orange-600 hover:text-orange-400"
                 )}
-                title={sourcesAtLimit ? "Límite de fuentes alcanzado — actualiza tu plan" : "Importar desde PDF o Markdown"}
+                title={sourcesAtLimit ? "Límite de fuentes alcanzado — actualiza tu plan" : "Importar desde PDF, Markdown o texto"}
               >
-                {fileImporting
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <FileUp   className="h-3.5 w-3.5" />}
-                PDF / MD
-                <input
-                  type="file"
-                  accept=".pdf,.md,.txt"
-                  className="sr-only"
-                  disabled={fileImporting || sourcesAtLimit}
-                  onChange={handleFileImport}
-                />
-              </label>
+                <FileUp className="h-3.5 w-3.5" />
+                Archivo
+              </button>
             </div>
           </div>
 
@@ -772,18 +797,13 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-green-800 bg-green-950/40 px-3 py-2">
               <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-400" />
               <p className="text-xs text-green-300">
-                Importado desde archivo:{" "}
-                <span className="font-medium">{fileImported.join(", ")}</span>.
-                Revisa y haz clic en <strong>Guardar cambios</strong>.
+                Archivo importado correctamente. Campos actualizados:{" "}
+                <span className="font-medium">
+                  {fileImported.map((f) => KB_FIELD_LABELS[f] ?? f).join(", ")}
+                </span>.{" "}
+                Revisa los campos y haz clic en <strong>Guardar cambios</strong>.
               </p>
             </div>
-          )}
-
-          {/* File import error */}
-          {fileImportError && (
-            <p className="mb-3 rounded-lg border border-red-800 bg-red-950/30 px-3 py-2 text-xs text-red-400">
-              {fileImportError}
-            </p>
           )}
 
           {/* ── Fuentes ──────────────────────────────────────────────────── */}
@@ -933,6 +953,109 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
                     <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Importando…</>
                   ) : (
                     <><Globe2 className="h-3.5 w-3.5" /> Importar</>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* File Import Dialog */}
+          <Dialog open={fileImportOpen} onOpenChange={(open) => { if (!fileImporting) { setFileImportOpen(open); if (!open) { setPendingFile(null); setFileImportError(""); } } }}>
+            <DialogContent className="max-w-lg border-slate-700 bg-slate-900 p-0">
+              <DialogHeader className="border-b border-slate-800 px-6 py-4">
+                <DialogTitle className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <FileUp className="h-4 w-4 text-orange-400" />
+                  Importar archivo a la base de conocimiento
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 px-6 py-5">
+                <p className="text-xs text-slate-400">
+                  Sube un PDF, Markdown (.md) o texto plano (.txt). La IA extraerá y clasificará el contenido en los campos de la base de conocimiento.
+                </p>
+
+                {/* Drop zone / file preview */}
+                {!pendingFile ? (
+                  <label className="group flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-slate-700 bg-slate-800/40 px-6 py-8 text-center transition-colors hover:border-orange-600/60 hover:bg-slate-800/70">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-700 text-slate-400 transition-colors group-hover:bg-orange-950/60 group-hover:text-orange-400">
+                      <FileUp className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-300">Haz clic para seleccionar un archivo</p>
+                      <p className="mt-0.5 text-xs text-slate-500">PDF · Markdown (.md) · Texto (.txt) · Máx. 10 MB</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.md,.txt"
+                      className="sr-only"
+                      onChange={handleFileSelect}
+                    />
+                  </label>
+                ) : (
+                  <div className="flex items-start gap-3 rounded-xl border border-slate-700 bg-slate-800/50 p-4">
+                    <div className={cn(
+                      "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-xs font-bold",
+                      pendingFile.name.endsWith(".pdf")
+                        ? "bg-red-950/60 text-red-400"
+                        : pendingFile.name.endsWith(".md")
+                          ? "bg-purple-950/60 text-purple-400"
+                          : "bg-slate-700 text-slate-400"
+                    )}>
+                      {pendingFile.name.endsWith(".pdf") ? "PDF" : pendingFile.name.endsWith(".md") ? "MD" : "TXT"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-200" title={pendingFile.name}>
+                        {pendingFile.name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">{formatFileSize(pendingFile.size)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPendingFile(null)}
+                      disabled={fileImporting}
+                      className="flex-shrink-0 rounded-lg p-1 text-slate-500 hover:bg-slate-700 hover:text-slate-300 transition-colors disabled:opacity-40"
+                      title="Cambiar archivo"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Error */}
+                {fileImportError && (
+                  <div className="flex items-start gap-2 rounded-lg border border-red-800 bg-red-950/30 px-3 py-2.5">
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-red-400" />
+                    <p className="text-xs text-red-300">{fileImportError}</p>
+                  </div>
+                )}
+
+                {/* Processing hint */}
+                {fileImporting && (
+                  <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-400" />
+                    <p className="text-xs text-slate-400">Procesando con IA — puede tardar unos segundos…</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-800 px-6 py-4">
+                <Button
+                  variant="ghost"
+                  className="text-slate-400 hover:text-white"
+                  onClick={() => setFileImportOpen(false)}
+                  disabled={fileImporting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white"
+                  onClick={handleFileImport}
+                  disabled={!pendingFile || fileImporting}
+                >
+                  {fileImporting ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Procesando…</>
+                  ) : (
+                    <><FileUp className="h-3.5 w-3.5" /> Importar</>
                   )}
                 </Button>
               </div>
