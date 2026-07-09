@@ -68,7 +68,7 @@ const labelCls = "text-xs font-medium text-slate-400";
 // ─── ExpandableTextarea ───────────────────────────────────────────────────────
 
 function ExpandableTextarea({
-  label, value, onChange, placeholder, rows = 3, hint, colSpan2 = false,
+  label, value, onChange, placeholder, rows = 3, hint, colSpan2 = false, textareaClassName,
 }: {
   label: string;
   value: string;
@@ -77,6 +77,7 @@ function ExpandableTextarea({
   rows?: number;
   hint?: string;
   colSpan2?: boolean;
+  textareaClassName?: string;
 }) {
   const [open,  setOpen]  = useState(false);
   const [draft, setDraft] = useState(value);
@@ -103,7 +104,7 @@ function ExpandableTextarea({
       </div>
       <textarea
         rows={rows}
-        className={inputCls + " resize-none"}
+        className={cn(inputCls, "resize-none", textareaClassName)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -230,10 +231,11 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
     mutationFn: () =>
       voiceWidgetApi.save(auth.token, auth.orgId, {
         widget: {
-          llm_model: merged.llm_model,
-          is_active: merged.is_active,
-          config:    merged.config,
-          name:      merged.name,
+          llm_model:     merged.llm_model,
+          is_active:     merged.is_active,
+          config:        merged.config,
+          name:          merged.name,
+          system_prompt: merged.system_prompt ?? "",
         },
         knowledge_base: mergedKb,
         ...(vapiPrivateKey ? { vapi_private_key: vapiPrivateKey } : {}),
@@ -692,19 +694,18 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
 
         {/* ── C. Instrucciones del agente (system prompt) ─────────────────── */}
         <div className="border-t border-slate-800 pt-5">
-          <div className="mb-1 flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">Instrucciones del agente</p>
-            <span className="text-[10px] text-slate-500">Opcional · se añade antes de la base de conocimiento</span>
-          </div>
           <p className="mb-3 text-[11px] text-slate-500">
             Define la personalidad, tono y restricciones del agente. Ejemplo: qué temas puede tratar, qué no, cómo responder ante objeciones, etc.
           </p>
-          <textarea
-            className={cn(inputCls, "min-h-[140px] resize-y font-mono text-xs leading-relaxed")}
+          <ExpandableTextarea
+            label="Instrucciones del agente"
+            hint="(Opcional · se añade antes de la base de conocimiento)"
             value={merged.system_prompt ?? ""}
-            onChange={(e) => { patch("system_prompt", e.target.value); setDirty(true); }}
+            onChange={(v) => { patch("system_prompt", v); setDirty(true); }}
             placeholder={`Eres ${merged.config.agent_name || "Sofía"}, asistente virtual de [empresa]. Habla siempre en español, tono amable y profesional.\n\nNUNCA hables de: competidores, política, religión o temas ajenos al negocio.\nSi preguntan algo que no sabes: "Lo consultaré con mi equipo y me pongo en contacto contigo."\nSi el cliente quiere hablar con una persona, transfiere inmediatamente sin preguntar.`}
-            spellCheck={false}
+            rows={5}
+            colSpan2
+            textareaClassName="font-mono text-xs leading-relaxed"
           />
         </div>
 
