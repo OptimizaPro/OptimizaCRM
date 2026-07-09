@@ -44,24 +44,6 @@ interface CmsGuatemala {
   cta_final_note?: string;
 }
 
-interface ApiPlan {
-  id: number;
-  slug: string;
-  name: string;
-  tagline: string;
-  price_monthly: string;
-  price_annual: string;
-  currency: string;
-  price_display: string;
-  cta_text: string;
-  features: Array<{ text: string; included: boolean; highlight: boolean }>;
-  has_trial: boolean;
-  trial_days: number;
-  is_popular: boolean;
-  sort_order: number;
-  ai_credits_monthly: number;
-}
-
 // ─── Data fetching ─────────────────────────────────────────────────────────────
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
@@ -76,18 +58,6 @@ async function getCmsContent(): Promise<CmsGuatemala> {
     return (json.data ?? json) as CmsGuatemala;
   } catch {
     return {};
-  }
-}
-
-async function getPlans(): Promise<ApiPlan[]> {
-  try {
-    const res = await fetch(`${API}/billing/plans/`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
   }
 }
 
@@ -137,7 +107,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function GuatemalaPage() {
-  const [cms, plans] = await Promise.all([getCmsContent(), getPlans()]);
+  const cms = await getCmsContent();
 
   // Fallback defaults (por si la API no responde aún)
   const c = {
@@ -243,7 +213,7 @@ export default async function GuatemalaPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { val: plans.length > 0 ? `$${Math.round(parseFloat(plans[0].price_monthly))}` : "$19", lbl: "Desde por mes", sub: "por organización" },
+                { val: "$19", lbl: "Desde por mes", sub: "por organización" },
                 { val: "14", lbl: "Días gratis", sub: "sin tarjeta" },
                 { val: "24/7", lbl: "Agente de voz", sub: "siempre activo" },
                 { val: "FEL", lbl: "Facturación", sub: "cumple con la SAT" },
@@ -425,73 +395,34 @@ export default async function GuatemalaPage() {
         </div>
       </section>
 
-      {/* ── Precios (dinámicos desde API) ── */}
+      {/* ── Precios CTA ── */}
       <section className="border-b border-slate-800/60" id="precios-guatemala">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <div className="mx-auto max-w-2xl text-center mb-14">
-            <div className="mb-3 text-sm font-semibold uppercase tracking-widest text-orange-400">Precios para Guatemala</div>
-            <h2 className="text-3xl font-bold text-white">{c.pricing_headline}</h2>
-            <p className="mt-4 text-slate-400">{c.pricing_subheadline}</p>
+        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
+          <div className="mb-3 text-sm font-semibold uppercase tracking-widest text-orange-400">Precios para Guatemala</div>
+          <h2 className="text-3xl font-bold text-white">{c.pricing_headline}</h2>
+          <p className="mt-4 text-slate-400 max-w-xl mx-auto">{c.pricing_subheadline}</p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-slate-400">
+            {[
+              "Desde $19/mes por organización",
+              "14 días gratis sin tarjeta",
+              "FEL incluida en todos los planes",
+              "Cancela cuando quieras",
+            ].map((item) => (
+              <span key={item} className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{item}
+              </span>
+            ))}
           </div>
-
-          {plans.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-3">
-              {plans
-                .filter((p) => !["enterprise"].includes(p.slug))
-                .sort((a, b) => a.sort_order - b.sort_order)
-                .map((plan) => (
-                  <div key={plan.slug} className={`relative rounded-2xl border p-7 flex flex-col ${
-                    plan.is_popular
-                      ? "border-orange-500/50 bg-orange-950/20"
-                      : "border-slate-800 bg-slate-900/60"
-                  }`}>
-                    {plan.is_popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-orange-500 px-4 py-1 text-xs font-bold text-white">
-                        Más popular
-                      </div>
-                    )}
-                    <div className="mb-1 text-lg font-bold text-slate-100">{plan.name}</div>
-                    {plan.tagline && <p className="mb-3 text-xs text-slate-500">{plan.tagline}</p>}
-                    <div className="mb-1">
-                      <span className="text-4xl font-extrabold text-white">
-                        ${Math.round(parseFloat(plan.price_monthly))}
-                      </span>
-                      <span className="text-sm text-slate-500">/mes por organización</span>
-                    </div>
-                    {plan.has_trial && (
-                      <p className="mb-6 text-xs text-green-400">{plan.trial_days} días gratis incluidos</p>
-                    )}
-                    <ul className="mb-8 flex-1 space-y-2.5">
-                      {plan.features
-                        .filter((f) => f.included)
-                        .map((f) => (
-                          <li key={f.text} className={`flex items-start gap-2.5 text-sm ${f.highlight ? "text-orange-300 font-medium" : "text-slate-300"}`}>
-                            <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                            {f.text}
-                          </li>
-                        ))}
-                    </ul>
-                    <Button asChild className={plan.is_popular ? "bg-orange-500 hover:bg-orange-600 text-white" : "border border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800"}>
-                      <Link href="/register">{plan.cta_text || "Empezar gratis"}</Link>
-                    </Button>
-                  </div>
-                ))}
-            </div>
-          ) : (
-            /* Fallback si la API no responde */
-            <div className="text-center py-8">
-              <Button asChild size="lg" className="bg-orange-500 hover:bg-orange-600 text-white">
-                <Link href="/precios">Ver todos los planes →</Link>
-              </Button>
-            </div>
-          )}
-
-          <p className="mt-8 text-center text-sm text-slate-500">
-            ¿Tu empresa necesita algo personalizado?{" "}
-            <Link href="/contacto" className="text-orange-400 hover:text-orange-300 underline">
-              Contáctanos para un plan Enterprise →
-            </Link>
-          </p>
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+            <Button asChild size="lg" className="h-12 bg-orange-500 px-10 text-base font-bold text-white hover:bg-orange-600">
+              <Link href="/precios">
+                Ver planes y precios <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="lg" className="h-12 border border-slate-700 px-8 text-base text-slate-300 hover:bg-slate-800">
+              <Link href="/register">Empezar gratis — 14 días</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
