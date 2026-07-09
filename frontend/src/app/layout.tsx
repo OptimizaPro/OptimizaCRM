@@ -10,7 +10,7 @@ const softwareApplicationSchema = {
   "@type": "SoftwareApplication",
   name: "OptimizaCRM",
   description:
-    "CRM con inteligencia artificial para equipos de ventas de PYMEs en Latinoamérica. Lead scoring automático, predicción de churn, pipeline visual, automatizaciones y soporte completo en español.",
+    "CRM con inteligencia artificial para equipos de ventas de PYMEs en Guatemala y LATAM. Lead scoring automático, pipeline visual, WhatsApp integrado, agente de voz IA 24/7 y Factura Electrónica FEL.",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   url: "https://optimizacrm.com",
@@ -64,7 +64,18 @@ const organizationSchema = {
     "Artificial Intelligence for Sales",
     "LATAM SaaS",
     "PYMEs",
+    "CRM Guatemala",
+    "CRM con inteligencia artificial Guatemala",
+    "Agente de voz IA",
+    "WhatsApp CRM",
+    "Factura Electrónica FEL Guatemala",
   ],
+  areaServed: [
+    { "@type": "Country", name: "Guatemala" },
+    { "@type": "Place", name: "LATAM" },
+    { "@type": "Place", name: "Centroamérica" },
+  ],
+  foundingLocation: { "@type": "Place", name: "Guatemala" },
 };
 
 // WebSite — habilita Sitelinks Search Box en Google y define la estructura del sitio para crawlers de IA
@@ -74,7 +85,7 @@ const webSiteSchema = {
   name: "OptimizaCRM",
   url: "https://optimizacrm.com",
   description:
-    "CRM con inteligencia artificial para equipos de ventas de PYMEs en Latinoamérica.",
+    "CRM con inteligencia artificial para equipos de ventas de PYMEs en Guatemala y LATAM. Agente de voz IA 24/7, WhatsApp integrado, pipeline visual y FEL.",
   inLanguage: "es",
   potentialAction: {
     "@type": "SearchAction",
@@ -107,11 +118,21 @@ export const metadata: Metadata = {
   keywords: [
     "CRM para PYMEs",
     "CRM con IA",
+    "CRM con inteligencia artificial",
     "CRM con WhatsApp",
     "pipeline de ventas",
     "lead scoring",
     "software CRM español",
     "WhatsApp CRM",
+    "CRM Guatemala",
+    "CRM con IA Guatemala",
+    "CRM con inteligencia artificial Guatemala",
+    "CRM WhatsApp Guatemala",
+    "agente de voz IA Guatemala",
+    "agente de voz con inteligencia artificial Guatemala",
+    "agente de voz Guatemala",
+    "CRM LATAM",
+    "software CRM Guatemala",
   ],
   authors: [{ name: "OptimizaPro", url: "https://optimizacrm.com" }],
   creator: "OptimizaPro",
@@ -123,7 +144,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    locale: "es_ES",
+    locale: "es_419",
     url: "https://optimizacrm.com",
     siteName: "OptimizaCRM",
     title: "OptimizaCRM · CRM con IA para PYMEs",

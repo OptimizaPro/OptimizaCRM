@@ -1,15 +1,25 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Características",
+  title: "Lead Scoring, Pipeline y IA: Todas las Funciones de OptimizaCRM",
   description:
-    "Lead scoring con IA, pipeline Kanban, automatizaciones, inbox multicanal (WhatsApp + Email), predicción de churn y previsión de ingresos. Todo en una sola plataforma CRM para PYMEs.",
+    "Lead scoring con IA, pipeline Kanban, automatizaciones, inbox multicanal (WhatsApp + Email), predicción de churn y previsión de ingresos. CRM con inteligencia artificial para PYMEs en Guatemala y LATAM.",
+  keywords: [
+    "CRM con IA Guatemala",
+    "CRM con inteligencia artificial Guatemala",
+    "CRM WhatsApp Guatemala",
+    "lead scoring Guatemala",
+    "pipeline ventas Guatemala",
+    "automatización ventas Guatemala",
+    "CRM funciones Guatemala",
+    "software CRM Guatemala",
+  ],
   alternates: { canonical: "https://optimizacrm.com/caracteristicas" },
   openGraph: {
     url: "https://optimizacrm.com/caracteristicas",
-    title: "Características | OptimizaCRM",
+    title: "Funciones CRM con IA para Guatemala y LATAM | OptimizaCRM",
     description:
-      "Lead scoring con IA, pipeline Kanban, automatizaciones, inbox multicanal y mucho más. CRM para PYMEs en LATAM.",
+      "Lead scoring con IA, pipeline Kanban, WhatsApp integrado, automatizaciones y más. El CRM con inteligencia artificial para PYMEs en Guatemala.",
   },
 };
 

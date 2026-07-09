@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Precios",
+  title: "Precios CRM con IA — Desde $19/mes · Sin Tarjeta · LATAM",
   description:
-    "Planes desde $19/mes por organización. Básico, Pro, Equipo y Enterprise. 14 días gratis sin tarjeta de crédito. CRM con IA para PYMEs en LATAM.",
+    "Planes desde $19/mes por organización. Básico, Pro, Equipo y Enterprise. 14 días gratis sin tarjeta. CRM con IA para PYMEs en Guatemala y LATAM. FEL incluida.",
+  keywords: [
+    "precios CRM Guatemala",
+    "cuánto cuesta CRM Guatemala",
+    "CRM barato Guatemala",
+    "CRM con IA precio Guatemala",
+    "software CRM Guatemala precio",
+    "CRM para PYMEs precio LATAM",
+  ],
   alternates: { canonical: "https://optimizacrm.com/precios" },
   openGraph: {
     url: "https://optimizacrm.com/precios",
-    title: "Precios | OptimizaCRM",
-    description: "Planes desde $19/mes. 14 días gratis sin tarjeta. CRM con IA para PYMEs en LATAM.",
+    title: "Precios CRM con IA — Desde $19/mes · Guatemala y LATAM | OptimizaCRM",
+    description: "Planes desde $19/mes por organización. 14 días gratis sin tarjeta. CRM con IA, WhatsApp integrado y FEL para Guatemala.",
   },
 };
 
@@ -62,6 +70,22 @@ const faqPreciosSchema = {
       acceptedAnswer: {
         "@type": "Answer",
         text: "No. El lead scoring con IA está incluido desde el plan Básico. La predicción de churn con IA está incluida en el plan Equipo. No hay costes ocultos por usar las funcionalidades de inteligencia artificial.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "¿Cuánto cuesta un CRM con IA en Guatemala?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "OptimizaCRM es el CRM con inteligencia artificial más accesible para PYMEs en Guatemala. Los planes inician desde $19 USD/mes por organización (no por usuario). Incluye CRM completo con IA, WhatsApp Business integrado y Factura Electrónica FEL para la SAT de Guatemala. El agente de voz IA está disponible desde $49 USD/mes adicionales.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "¿OptimizaCRM emite Factura Electrónica FEL en Guatemala?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Sí. Todos los planes de OptimizaCRM incluyen Factura Electrónica en Línea (FEL) para empresas en Guatemala, cumpliendo con los requisitos de la SAT (Superintendencia de Administración Tributaria). No necesitas un sistema de facturación externo.",
       },
     },
   ],
