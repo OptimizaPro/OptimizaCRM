@@ -277,6 +277,10 @@ def voice_widget_manage(request):
                 assistant_id = create_or_update_assistant(widget, kb, vapi_private_key)
                 widget.vapi_assistant_id = assistant_id
             except Exception as exc:
+                import logging
+                logging.getLogger(__name__).error(
+                    "Vapi create_or_update_assistant failed: %s", exc, exc_info=True
+                )
                 vapi_error = str(exc)
 
         widget.save()

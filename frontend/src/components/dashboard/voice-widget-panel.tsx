@@ -245,8 +245,8 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
       setKbForm({});
       setDirty(false);
       const warning = (data as Record<string, unknown>).vapi_warning as string | undefined;
-      setSaveMsg(warning ? `Guardado con advertencia: ${warning}` : "Asistente sincronizado ✓");
-      setTimeout(() => setSaveMsg(""), 8000);
+      setSaveMsg(warning ? `⚠ Error Vapi: ${warning}` : "Asistente sincronizado ✓");
+      setTimeout(() => setSaveMsg(""), warning ? 30000 : 6000);
     },
   });
 
