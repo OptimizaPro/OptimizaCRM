@@ -189,10 +189,10 @@ def _build_model_config(llm_model: str, system_prompt: str) -> dict:
     provider = parts[0] if len(parts) == 2 else "groq"
     model    = parts[1] if len(parts) == 2 else llm_model
     return {
-        "provider":     provider,
-        "model":        model,
-        "systemPrompt": system_prompt,
-        "temperature":  0.6,
+        "provider":    provider,
+        "model":       model,
+        "messages":    [{"role": "system", "content": system_prompt}],
+        "temperature": 0.6,
     }
 
 
@@ -245,7 +245,12 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
             timeout=15,
         )
 
-    r.raise_for_status()
+    if not r.ok:
+        try:
+            detail = r.json()
+        except Exception:
+            detail = r.text[:600]
+        raise ValueError(f"Vapi {r.status_code}: {detail}")
     data = r.json()
     return data["id"]
 
