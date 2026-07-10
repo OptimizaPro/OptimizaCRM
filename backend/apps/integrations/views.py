@@ -695,7 +695,7 @@ def hub_config(request):
         vcfg            = voice.config or {}
         channels.append({
             "type":             "voice",
-            "label":            "Hablar con IA",
+            "label":            "Hablar con asistente",
             "subtitle":         vcfg.get("agent_name", "Asistente") + " — atención inmediata",
             "agent_name":       vcfg.get("agent_name", "Asistente"),
             "color":            vcfg.get("color", color),
