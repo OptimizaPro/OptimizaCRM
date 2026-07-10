@@ -260,6 +260,24 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
         "backgroundSound":            "off",
         "backchannelingEnabled":      False,
         "backgroundDenoisingEnabled": True,
+        # OptimizaCRM does post-call enrichment via its own LLM (tasks.py).
+        # Disable Vapi's structured data plan to avoid schema validation errors.
+        "analysisPlan": {
+            "summaryPrompt": (
+                "Resume la llamada en español en 2-3 oraciones. "
+                "Incluye el nombre del cliente, su consulta principal y el resultado de la conversación."
+            ),
+            "structuredDataPlan": {"enabled": False},
+            "successEvaluationPlan": {
+                "enabled": True,
+                "rubric": "PassFail",
+                "prompt": (
+                    "La llamada fue exitosa si: el asistente respondió la consulta del cliente, "
+                    "agendó una cita, calificó el lead, o transfirió al equipo correctamente. "
+                    "Responde true o false."
+                ),
+            },
+        },
     }
 
     if widget.vapi_assistant_id:
