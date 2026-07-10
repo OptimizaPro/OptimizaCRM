@@ -866,6 +866,59 @@ def voice_reset_assistant(request):
     return JsonResponse({"ok": True, "cleared": updated > 0})
 
 
+# ─── 8b. Sync assistant ───────────────────────────────────────────────────────
+
+@csrf_exempt
+def voice_sync_assistant(request):
+    """
+    POST /api/v1/voice-widget/sync-assistant/
+    Authenticated — pushes the current widget + KB config to Vapi right now.
+    Accepts optional body: { "agent_id": "<widget-id>" }
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+    if request.method != "POST":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _user, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400)
+
+    from .models import VoiceWidget, VoiceKnowledgeBase
+    from .vapi_service import create_or_update_assistant
+
+    body     = _tool_parse_body(request)
+    agent_id = (body.get("agent_id") or "").strip()
+
+    try:
+        qs = VoiceWidget.objects.filter(organization=org, is_active=True)
+        if agent_id:
+            qs = qs.filter(id=agent_id)
+        widget = qs.select_related("organization").get()
+    except VoiceWidget.DoesNotExist:
+        return JsonResponse({"error": "widget no encontrado"}, status=404)
+
+    org_settings     = org.settings or {}
+    vapi_private_key = org_settings.get("vapi_private_key", "")
+    if not vapi_private_key:
+        return JsonResponse({"error": "No hay clave privada de Vapi configurada"}, status=400)
+
+    try:
+        kb = VoiceKnowledgeBase.objects.get(widget=widget)
+    except VoiceKnowledgeBase.DoesNotExist:
+        kb = None
+
+    try:
+        assistant_id = create_or_update_assistant(widget, kb, vapi_private_key)
+        widget.vapi_assistant_id = assistant_id
+        widget.save(update_fields=["vapi_assistant_id"])
+        return JsonResponse({"ok": True, "assistant_id": assistant_id})
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
 # ─── 9. Upload avatar ────────────────────────────────────────────────────────
 
 @csrf_exempt

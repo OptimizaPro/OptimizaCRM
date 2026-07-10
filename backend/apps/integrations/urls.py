@@ -24,6 +24,7 @@ from .voice_views import (
     voice_scrape_url,
     voice_import_file,
     voice_reset_assistant,
+    voice_sync_assistant,
     voice_upload_avatar,
     voice_widget_agents,
     voice_widget_agent_delete,
@@ -71,6 +72,9 @@ urlpatterns = [
 
     # ── Voice AI Widget — Reset assistant ID (authenticated) ─────────────────
     path("voice-widget/reset-assistant/",        voice_reset_assistant,        name="voice-reset-assistant"),
+
+    # ── Voice AI Widget — Sync/regenerate assistant in Vapi (authenticated) ──
+    path("voice-widget/sync-assistant/",         voice_sync_assistant,         name="voice-sync-assistant"),
 
     # ── Voice AI Widget — Avatar upload (authenticated) ───────────────────────
     path("voice-widget/upload-avatar/",         voice_upload_avatar,         name="voice-upload-avatar"),
