@@ -224,6 +224,21 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
     cfg          = widget.config or {}
     voice_key    = cfg.get("voice", "es-MX-NuriaNeural")
     voice_config = VOICE_MAP.get(voice_key, {"provider": "azure", "voiceId": "es-MX-NuriaNeural"})
+
+    # Vapi requires fallbackPlan.voices[0].voiceId when a voice is specified.
+    # Use a different Azure voice as fallback to avoid same-voice loops.
+    fallback_voice_id = (
+        "es-MX-DaliaNeural"
+        if voice_config.get("voiceId") != "es-MX-DaliaNeural"
+        else "es-MX-NuriaNeural"
+    )
+    voice_payload = {
+        **voice_config,
+        "fallbackPlan": {
+            "voices": [{"provider": "azure", "voiceId": fallback_voice_id}]
+        },
+    }
+
     system_prompt = _build_system_prompt(widget, kb)
     tools         = _build_tools(widget)
 
@@ -235,7 +250,7 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
         ),
         "endCallMessage": cfg.get("farewell", "¡Hasta luego! Que tenga un excelente día."),
         "model":          _build_model_config(widget.llm_model, system_prompt, tools),
-        "voice":          voice_config,
+        "voice":          voice_payload,
         "transcriber": {
             "provider": "deepgram",
             "language": "es",
