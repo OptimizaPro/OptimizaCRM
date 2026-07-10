@@ -34,6 +34,16 @@ PROCESO DE CITAS:
 PREGUNTAS FRECUENTES:
 {faqs}
 
+━━━ RECOPILACIÓN DE DATOS (obligatorio en cada llamada) ━━━
+Durante la conversación, recoge SIEMPRE estos datos del cliente de forma natural:
+- NOMBRE COMPLETO — si el cliente no se presenta, pregunta: "¿Con quién tengo el gusto?"
+- TELÉFONO DE CONTACTO — pregunta: "¿A qué número te podemos llamar si se corta?" (clave para el seguimiento)
+- EMAIL — pide si el cliente quiere recibir información por correo o confirmar una cita
+- EMPRESA O NEGOCIO — pregunta si el contexto es empresarial o profesional
+
+No preguntes todos a la vez. Intégralos de forma conversacional y natural.
+IMPORTANTE: Antes de invocar qualifyLead o bookAppointment asegúrate de tener al menos el nombre y el teléfono del cliente.
+
 ━━━ PREGUNTAS DE CALIFICACIÓN ━━━
 Cuando corresponda, realiza estas preguntas de forma conversacional (nunca todas a la vez):
 {qualification_questions}
@@ -102,19 +112,20 @@ def _build_tools(widget) -> list:
             "type": "function",
             "function": {
                 "name": "bookAppointment",
-                "description": "Agenda una cita en el calendario del equipo. Queda pendiente de confirmación. Informa al cliente que recibirá confirmación.",
+                "description": "Agenda una cita en el calendario del equipo. Queda pendiente de confirmación. Informa al cliente que recibirá confirmación. Asegúrate de tener nombre y teléfono del cliente antes de invocar.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "caller_name":    {"type": "string",  "description": "Nombre completo del cliente"},
-                        "caller_email":   {"type": "string",  "description": "Email del cliente"},
-                        "caller_phone":   {"type": "string",  "description": "Teléfono del cliente"},
+                        "caller_name":    {"type": "string",  "description": "Nombre completo del cliente (obligatorio)"},
+                        "caller_phone":   {"type": "string",  "description": "Teléfono de contacto del cliente (obligatorio para confirmar la cita)"},
+                        "caller_email":   {"type": "string",  "description": "Email del cliente (para enviar confirmación)"},
+                        "company":        {"type": "string",  "description": "Empresa o negocio del cliente"},
                         "preferred_date": {"type": "string",  "description": "Fecha preferida (ej: 2025-07-15 o 'lunes próximo')"},
                         "preferred_time": {"type": "string",  "description": "Hora preferida (ej: 10:00 AM)"},
                         "service_type":   {"type": "string",  "description": "Tipo de servicio o motivo de la cita"},
                         "notes":          {"type": "string",  "description": "Notas adicionales"},
                     },
-                    "required": ["caller_name", "preferred_date"],
+                    "required": ["caller_name", "caller_phone", "preferred_date"],
                 },
             },
             "server": {"url": f"{base}/book-appointment/?token={token}"},
@@ -127,16 +138,16 @@ def _build_tools(widget) -> list:
             "type": "function",
             "function": {
                 "name": "escalateToHuman",
-                "description": "Transfiere a un agente humano vía WhatsApp. Usar si el cliente lo pide o si no puedes resolver la consulta.",
+                "description": "Transfiere a un agente humano vía WhatsApp. Usar si el cliente lo pide o si no puedes resolver la consulta. Intenta obtener nombre y teléfono antes de escalar.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "caller_name":  {"type": "string", "description": "Nombre del cliente"},
-                        "caller_phone": {"type": "string", "description": "Teléfono del cliente"},
+                        "caller_name":  {"type": "string", "description": "Nombre completo del cliente"},
+                        "caller_phone": {"type": "string", "description": "Teléfono del cliente para que el agente lo contacte"},
                         "reason":       {"type": "string", "description": "Motivo del escalado"},
                         "summary":      {"type": "string", "description": "Resumen de la conversación"},
                     },
-                    "required": ["reason"],
+                    "required": ["reason", "caller_name", "caller_phone"],
                 },
             },
             "server": {"url": f"{base}/escalate/?token={token}"},
@@ -170,18 +181,19 @@ def _build_tools(widget) -> list:
         "type": "function",
         "function": {
             "name": "qualifyLead",
-            "description": "Registra los datos de calificación del lead al completar las preguntas.",
+            "description": "Registra los datos del lead al completar la calificación. Invocar solo cuando ya tienes nombre y teléfono del cliente.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "caller_name":  {"type": "string"},
-                    "caller_email": {"type": "string"},
-                    "caller_phone": {"type": "string"},
-                    "answers":      {"type": "object", "description": "Respuestas a las preguntas de calificación"},
-                    "is_qualified": {"type": "boolean", "description": "¿El lead cumple los criterios?"},
-                    "notes":        {"type": "string"},
+                    "caller_name":  {"type": "string",  "description": "Nombre completo del cliente (obligatorio)"},
+                    "caller_phone": {"type": "string",  "description": "Teléfono de contacto del cliente (obligatorio)"},
+                    "caller_email": {"type": "string",  "description": "Email del cliente"},
+                    "company":      {"type": "string",  "description": "Empresa o negocio del cliente"},
+                    "answers":      {"type": "object",  "description": "Respuestas a las preguntas de calificación en formato clave-valor"},
+                    "is_qualified": {"type": "boolean", "description": "¿El lead cumple los criterios de calificación?"},
+                    "notes":        {"type": "string",  "description": "Observaciones adicionales sobre la conversación"},
                 },
-                "required": ["answers"],
+                "required": ["caller_name", "caller_phone", "answers"],
             },
         },
         "server": {"url": f"{base}/qualify/?token={token}"},

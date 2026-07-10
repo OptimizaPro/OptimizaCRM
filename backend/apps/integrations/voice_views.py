@@ -373,6 +373,7 @@ def voice_tool_book_appointment(request):
     caller_name    = args.get("caller_name", "Cliente")
     caller_email   = args.get("caller_email", "")
     caller_phone   = args.get("caller_phone", "")
+    company        = args.get("company", "")
     preferred_date = args.get("preferred_date", "")
     preferred_time = args.get("preferred_time", "")
     service_type   = args.get("service_type", "Consulta")
@@ -415,6 +416,7 @@ def voice_tool_book_appointment(request):
             last_name=caller_name.split(" ", 1)[1] if " " in caller_name else "",
             email=caller_email,
             phone=caller_phone,
+            company=company,
             notes=f"[Voz] Solicitó cita: {service_type}. Fecha preferida: {preferred_date} {preferred_time}".strip(),
         )
 
@@ -545,6 +547,7 @@ def voice_tool_qualify(request):
     caller_name   = args.get("caller_name", "")
     caller_email  = args.get("caller_email", "")
     caller_phone  = args.get("caller_phone", "")
+    company       = args.get("company", "")
     answers       = args.get("answers", {})
     is_qualified  = args.get("is_qualified", True)
     notes         = args.get("notes", "")
@@ -558,6 +561,7 @@ def voice_tool_qualify(request):
         last_name  = name_parts[1] if len(name_parts) > 1 else "",
         email      = caller_email,
         phone      = caller_phone,
+        company    = company,
         status     = "qualified" if is_qualified else "new",
         score      = 80 if is_qualified else 20,
         notes      = f"[Voz] {notes}" if notes else "[Voz] Calificado por agente de voz",
@@ -1080,7 +1084,7 @@ def _get_first_admin(org):
         return None
 
 
-def _upsert_lead(org, first_name, email="", phone="", last_name="",
+def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
                  status="new", score=0, notes="", qualification_data=None):
     """
     Create or update a Lead. Matches by email (if provided) or phone.
@@ -1097,6 +1101,7 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="",
                     "first_name": first_name,
                     "last_name":  last_name,
                     "phone":      phone,
+                    "company":    company,
                     "source":     "voice_agent",
                     "status":     status,
                     "score":      score,
@@ -1104,15 +1109,16 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="",
                 },
             )
             if not created:
-                # Update existing lead
                 if phone and not lead.phone:
                     lead.phone = phone
+                if company and not lead.company:
+                    lead.company = company
                 if notes:
                     lead.notes = (lead.notes + "\n" + notes).strip() if lead.notes else notes
                 if score > lead.score:
                     lead.score = score
                 lead.status = status
-                update_fields = ["phone", "notes", "score", "status"]
+                update_fields = ["phone", "company", "notes", "score", "status"]
                 if qualification_data:
                     lead.custom_fields = {**lead.custom_fields, "qualification": qualification_data}
                     update_fields.append("custom_fields")
@@ -1124,22 +1130,31 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="",
                 defaults={
                     "first_name": first_name,
                     "last_name":  last_name,
+                    "company":    company,
                     "source":     "voice_agent",
                     "status":     status,
                     "score":      score,
                     "notes":      notes,
                 },
             )
-            if not created and notes:
-                lead.notes = (lead.notes + "\n" + notes).strip() if lead.notes else notes
+            if not created:
+                if company and not lead.company:
+                    lead.company = company
+                if notes:
+                    lead.notes = (lead.notes + "\n" + notes).strip() if lead.notes else notes
                 lead.status = status
-                lead.save(update_fields=["notes", "status"])
+                update_fields = ["company", "notes", "status"]
+                if qualification_data:
+                    lead.custom_fields = {**lead.custom_fields, "qualification": qualification_data}
+                    update_fields.append("custom_fields")
+                lead.save(update_fields=update_fields)
         else:
             # No unique identifier — create new lead
             lead = Lead.objects.create(
                 organization = org,
                 first_name   = first_name,
                 last_name    = last_name,
+                company      = company,
                 source       = "voice_agent",
                 status       = status,
                 score        = score,
