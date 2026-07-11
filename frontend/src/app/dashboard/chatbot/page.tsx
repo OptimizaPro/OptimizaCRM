@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/auth";
 import { chatbotApi, type ChatbotWidget, type ChatSession_ } from "@/lib/api";
 import {
   Bot, Save, Copy, Check, RefreshCw, MessageSquare,
-  Loader2, Info, ChevronDown, ChevronUp,
+  Loader2, Info, ChevronDown, ChevronUp, FileUp,
 } from "lucide-react";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -317,7 +317,7 @@ export default function ChatbotPage() {
                   : <ChevronDown className="h-4 w-4 text-slate-400" />}
               </button>
               {promptExpanded && (
-                <div className="mt-2">
+                <div className="mt-2 space-y-2">
                   <textarea
                     className={textareaCls}
                     rows={6}
@@ -325,9 +325,31 @@ export default function ChatbotPage() {
                     onChange={(e) => setSystemPrompt(e.target.value)}
                     placeholder="Eres un asistente de ventas amable. Responde siempre en español. Si no tienes información sobre algo, di que lo consultarás con el equipo…"
                   />
-                  <p className="mt-1.5 text-xs text-slate-500">
-                    Define el tono, idioma y comportamiento del asistente. Se antepone al contexto de la KB.
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-500">
+                      Define el tono, idioma y comportamiento. Se antepone al contexto de la KB.
+                    </p>
+                    <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:border-slate-600 hover:text-slate-100 transition-colors">
+                      <FileUp className="h-3.5 w-3.5" />
+                      Subir .md / .txt
+                      <input
+                        type="file"
+                        accept=".md,.txt"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const text = ev.target?.result as string;
+                            if (text) setSystemPrompt(text);
+                          };
+                          reader.readAsText(file, "utf-8");
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
