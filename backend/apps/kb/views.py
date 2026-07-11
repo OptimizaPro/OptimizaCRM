@@ -138,6 +138,14 @@ def kb_manage(request):
             if field in body:
                 setattr(kb, field, body[field])
         kb.save()
+
+        # Trigger async re-embedding for RAG chatbot
+        try:
+            from apps.chatbot.tasks import embed_knowledge_base
+            embed_knowledge_base.delay(str(kb.id))
+        except Exception:
+            pass  # best-effort — don't fail the save
+
         return _cors(JsonResponse({"knowledge_base": _serialize_kb(kb)}), request)
 
     return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
@@ -205,6 +213,13 @@ def kb_scrape_url(request):
         source_type="url", name=url, char_count=total_chars,
     )
 
+    # Trigger re-embedding after import
+    try:
+        from apps.chatbot.tasks import embed_knowledge_base
+        embed_knowledge_base.delay(str(kb.id))
+    except Exception:
+        pass
+
     return _cors(JsonResponse({
         "knowledge_base": kb_data,
         "char_count":     total_chars,
@@ -271,6 +286,13 @@ def kb_import_file(request):
         organization=org, knowledge_base=kb,
         source_type="file", name=uploaded.name, char_count=total_chars,
     )
+
+    # Trigger re-embedding after import
+    try:
+        from apps.chatbot.tasks import embed_knowledge_base
+        embed_knowledge_base.delay(str(kb.id))
+    except Exception:
+        pass
 
     return _cors(JsonResponse({
         "knowledge_base": kb_data,

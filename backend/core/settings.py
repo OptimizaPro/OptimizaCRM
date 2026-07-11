@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "apps.campaigns",
     "apps.voice_plans",
     "apps.kb",
+    "apps.chatbot",
 ]
 
 MIDDLEWARE = [

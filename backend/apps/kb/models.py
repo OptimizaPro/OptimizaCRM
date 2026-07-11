@@ -59,3 +59,42 @@ class KBSource(TenantModel):
 
     def __str__(self):
         return f"{self.get_source_type_display()}: {self.name[:60]}"
+
+
+class KBChunk(TenantModel):
+    """
+    Fragmento de texto de la KB listo para búsqueda semántica.
+    El embedding se almacena como JSON (lista de floats, 1536 dims OpenAI).
+    Se regenera cuando la KB cambia vía tarea Celery.
+    """
+
+    SECTION_LABELS = {
+        "company_info":            "Sobre la empresa",
+        "products_services":       "Productos y servicios",
+        "pricing":                 "Precios y planes",
+        "faqs":                    "Preguntas frecuentes",
+        "working_hours":           "Horario de atención",
+        "contact_info":            "Información de contacto",
+        "appointment_rules":       "Reglas de citas",
+        "qualification_questions": "Preguntas de calificación",
+    }
+
+    knowledge_base = models.ForeignKey(
+        KnowledgeBase, on_delete=models.CASCADE,
+        related_name="chunks", verbose_name="Base de conocimiento",
+    )
+    section     = models.CharField(max_length=50, verbose_name="Sección KB")
+    chunk_index = models.PositiveSmallIntegerField(default=0, verbose_name="Índice")
+    text        = models.TextField(verbose_name="Texto del fragmento")
+    embedding   = models.TextField(blank=True, verbose_name="Embedding JSON")  # JSON float array
+    embedded_at = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de embedding")
+
+    class Meta:
+        db_table = "kb_chunks"
+        ordering = ["section", "chunk_index"]
+        unique_together = [("knowledge_base", "section", "chunk_index")]
+        verbose_name = "Fragmento KB"
+        verbose_name_plural = "Fragmentos KB"
+
+    def __str__(self):
+        return f"{self.section}[{self.chunk_index}] – {self.text[:60]}"
