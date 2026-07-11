@@ -271,11 +271,6 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
             "successEvaluationPlan": {
                 "enabled": True,
                 "rubric": "PassFail",
-                "prompt": (
-                    "La llamada fue exitosa si: el asistente respondió la consulta del cliente, "
-                    "agendó una cita, calificó el lead, o transfirió al equipo correctamente. "
-                    "Responde true o false."
-                ),
             },
         },
     }
