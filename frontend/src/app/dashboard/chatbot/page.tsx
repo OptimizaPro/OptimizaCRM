@@ -320,35 +320,47 @@ export default function ChatbotPage() {
                 <div className="mt-2 space-y-2">
                   <textarea
                     className={textareaCls}
-                    rows={6}
+                    rows={10}
                     value={systemPrompt}
                     onChange={(e) => setSystemPrompt(e.target.value)}
                     placeholder="Eres un asistente de ventas amable. Responde siempre en español. Si no tienes información sobre algo, di que lo consultarás con el equipo…"
                   />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-500">
-                      Define el tono, idioma y comportamiento. Se antepone al contexto de la KB.
-                    </p>
-                    <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:border-slate-600 hover:text-slate-100 transition-colors">
-                      <FileUp className="h-3.5 w-3.5" />
-                      Subir .md / .txt
-                      <input
-                        type="file"
-                        accept=".md,.txt"
-                        className="sr-only"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          e.target.value = "";
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            const text = ev.target?.result as string;
-                            if (text) setSystemPrompt(text);
-                          };
-                          reader.readAsText(file, "utf-8");
-                        }}
-                      />
-                    </label>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-slate-500">
+                        Define el tono, idioma y comportamiento. Se antepone al contexto de la KB.
+                      </p>
+                      <label className="flex flex-shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs text-slate-300 hover:border-slate-600 hover:text-slate-100 transition-colors">
+                        <FileUp className="h-3.5 w-3.5" />
+                        Subir .md / .txt
+                        <input
+                          type="file"
+                          accept=".md,.txt"
+                          className="sr-only"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = "";
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const text = ev.target?.result as string;
+                              if (text) setSystemPrompt(text);
+                            };
+                            reader.readAsText(file, "utf-8");
+                          }}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      onClick={handleSave}
+                      disabled={saveMutation.isPending}
+                      className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                    >
+                      {saveMutation.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Save className="h-4 w-4" />}
+                      Guardar
+                    </button>
                   </div>
                 </div>
               )}
