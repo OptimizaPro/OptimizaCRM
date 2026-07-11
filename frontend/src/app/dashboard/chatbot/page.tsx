@@ -246,14 +246,16 @@ export default function ChatbotPage() {
                 <p className="text-xs text-slate-500">Si está inactivo, el chatbot no responderá</p>
               </div>
               <button
+                role="switch"
+                aria-checked={isActive}
                 onClick={() => setIsActive((v) => !v)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-slate-900 ${
                   isActive ? "bg-orange-500" : "bg-slate-700"
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    isActive ? "translate-x-5" : "translate-x-0.5"
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    isActive ? "translate-x-5" : "translate-x-0"
                   }`}
                 />
               </button>
