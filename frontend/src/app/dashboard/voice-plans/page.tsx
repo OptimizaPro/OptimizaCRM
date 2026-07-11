@@ -433,12 +433,16 @@ function AgentCard({
   agent,
   onConfigure,
   onDelete,
+  onToggle,
   deleting,
+  toggling,
 }: {
   agent: VoiceAgentSummary;
   onConfigure: () => void;
   onDelete: () => void;
+  onToggle: () => void;
   deleting: boolean;
+  toggling: boolean;
 }) {
   const color = agent.config.color || "#EA580C";
   const initials = (agent.config.agent_name || agent.name || "A")
@@ -466,16 +470,25 @@ function AgentCard({
             {agent.config.agent_name || "Sin nombre de agente"}
           </p>
         </div>
-        <div className="ml-auto flex-shrink-0">
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              agent.is_active
-                ? "bg-green-900/40 text-green-400"
-                : "bg-slate-800 text-slate-500"
-            }`}
-          >
+        {/* Active toggle */}
+        <div className="ml-auto flex-shrink-0 flex items-center gap-2">
+          <span className={`text-[10px] font-semibold ${agent.is_active ? "text-green-400" : "text-slate-500"}`}>
             {agent.is_active ? "Activo" : "Inactivo"}
           </span>
+          <button
+            onClick={onToggle}
+            disabled={toggling}
+            title={agent.is_active ? "Desactivar agente" : "Activar agente"}
+            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+              agent.is_active ? "bg-green-500" : "bg-slate-700"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                agent.is_active ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
       </div>
 
@@ -487,7 +500,8 @@ function AgentCard({
         </div>
         <div className="flex items-center gap-1.5 text-xs text-slate-400">
           <Zap className="h-3 w-3 text-orange-400" />
-          {agent.lead_count} leads
+          {agent.active_leads} leads activos
+          <span className="text-slate-600">/ {agent.lead_count} total</span>
         </div>
       </div>
 
@@ -573,6 +587,7 @@ function AgentsTab({ token, orgId }: { token: string; orgId: string }) {
   const [creating,        setCreating]        = useState(false);
   const [newName,         setNewName]         = useState("");
   const [deletingId,      setDeletingId]      = useState<string | null>(null);
+  const [togglingId,      setTogglingId]      = useState<string | null>(null);
   const [showUpgrade,     setShowUpgrade]     = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -600,6 +615,19 @@ function AgentsTab({ token, orgId }: { token: string; orgId: string }) {
       toast.error("No se pudo crear el agente", { description: e.message });
     },
   });
+
+  const handleToggle = async (agent: VoiceAgentSummary) => {
+    setTogglingId(agent.id);
+    try {
+      await voiceWidgetApi.toggleActive(token, orgId, agent.id, !agent.is_active);
+      qc.invalidateQueries({ queryKey: ["voice-agents"] });
+      toast.success(agent.is_active ? "Agente desactivado" : "Agente activado");
+    } catch (e) {
+      toast.error("Error al cambiar estado", { description: (e as Error).message });
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const handleDelete = async (agent: VoiceAgentSummary) => {
     toast(`¿Eliminar "${agent.name}"?`, {
@@ -632,17 +660,18 @@ function AgentsTab({ token, orgId }: { token: string; orgId: string }) {
     );
   }
 
-  const totalLeads  = agents.reduce((s, a) => s + a.lead_count,  0);
-  const totalCalls  = agents.reduce((s, a) => s + a.call_count,  0);
-  const activeCount = agents.filter((a) => a.is_active).length;
-  const convRate    = totalCalls > 0 ? Math.round((totalLeads / totalCalls) * 100) : 0;
+  const totalLeads        = agents.reduce((s, a) => s + a.lead_count,   0);
+  const totalActiveLeads  = agents.reduce((s, a) => s + a.active_leads, 0);
+  const totalCalls        = agents.reduce((s, a) => s + a.call_count,   0);
+  const activeCount       = agents.filter((a) => a.is_active).length;
+  const convRate          = totalCalls > 0 ? Math.round((totalActiveLeads / totalCalls) * 100) : 0;
 
   return (
     <div className="space-y-6">
       {/* ── Stat cards ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: "Leads captados",   value: totalLeads,               icon: Zap,        color: "text-orange-400", bg: "bg-orange-950/40", border: "border-orange-800/30", glow: "shadow-orange-900/20" },
+          { label: "Leads activos",    value: totalActiveLeads,         icon: Zap,        color: "text-orange-400", bg: "bg-orange-950/40", border: "border-orange-800/30", glow: "shadow-orange-900/20" },
           { label: "Llamadas totales", value: totalCalls,               icon: Phone,      color: "text-sky-400",    bg: "bg-sky-950/40",    border: "border-sky-800/30",    glow: "shadow-sky-900/20"    },
           { label: "Agentes activos",  value: `${activeCount}/${plan.agent_limit}`, icon: Mic, color: "text-green-400", bg: "bg-green-950/40", border: "border-green-800/30", glow: "shadow-green-900/20" },
           { label: "Tasa conversión",  value: `${convRate}%`,           icon: TrendingUp, color: "text-amber-400",  bg: "bg-amber-950/40",  border: "border-amber-800/30",  glow: "shadow-amber-900/20"  },
@@ -757,7 +786,9 @@ function AgentsTab({ token, orgId }: { token: string; orgId: string }) {
                 setSheetAgentId(agent.id);
                 setSheetAgentName(agent.name);
               }}
+              onToggle={() => handleToggle(agent)}
               onDelete={() => handleDelete(agent)}
+              toggling={togglingId === agent.id}
               deleting={deletingId === agent.id}
             />
           ))}

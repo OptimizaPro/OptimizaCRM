@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { PublicHeader, PublicFooter } from "@/components/layout/public-header";
@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import {
   CheckCircle, ArrowRight, Shield, Clock, MessageCircle,
   Globe, Zap, Mic, Brain, Target, Plug, Calendar, TestTube,
-  ChevronDown, Phone, Settings, Rocket,
+  Phone, Settings, Rocket,
 } from "lucide-react";
 import { cmsApi } from "@/lib/api";
+import { FaqSection } from "@/components/ui/faq-section";
 
 // ─── Icon map ────────────────────────────────────────────────────────────────
 
@@ -82,27 +83,6 @@ const STEPS = [
     desc: "Publicamos el widget en tu web, entregamos la documentación y dejamos el agente operativo para tu equipo.",
   },
 ];
-
-// ─── FAQ item ─────────────────────────────────────────────────────────────────
-
-function FaqItem({ q, a }: Faq) {
-  const [open, setOpen] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen(!open)}
-      className="w-full text-left rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4 transition-all hover:border-slate-700"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <span className="font-semibold text-white">{q}</span>
-        <ChevronDown
-          className={`mt-0.5 h-4 w-4 flex-shrink-0 text-orange-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-        />
-      </div>
-      {open && <p className="mt-3 text-sm leading-relaxed text-slate-400">{a}</p>}
-    </button>
-  );
-}
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse rounded bg-slate-800 ${className}`} />;
@@ -412,38 +392,31 @@ export default function VozIaSetupPage() {
         </section>
 
         {/* ── FAQ ───────────────────────────────────────────────────────── */}
-        <section className="px-6 py-20 sm:px-12 lg:px-20">
-          <div className="mx-auto max-w-3xl">
-            <div className="mb-10 text-center">
-              <h2 className="text-3xl font-black text-white sm:text-4xl">Preguntas frecuentes</h2>
+        {isLoading ? (
+          <section className="px-6 py-20 sm:px-12 lg:px-20">
+            <div className="mx-auto max-w-6xl space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 rounded-xl" />
+              ))}
             </div>
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 rounded-xl" />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {(d?.faqs ?? [
-                  { q: "¿Necesito tener ya un plan de Agente de Voz IA activo?", a: "Sí, la configuración se realiza sobre tu cuenta activa. Puedes iniciar la prueba gratuita de 14 días y contratar el setup simultáneamente — los días de trial no corren hasta que actives el agente." },
-                  { q: "¿Cuánto tarda el proceso?", a: "El Setup Starter está listo en 48 horas hábiles. El Setup Pro en 5 días hábiles. Para Enterprise el plazo lo acordamos en el kickoff según la complejidad." },
-                  { q: "¿Qué necesito preparar antes de empezar?", a: "Idealmente: información de tu empresa (web, PDF, documento Word), las preguntas clave que quieres que haga el agente y acceso al calendario si quieres agenda automática. Si no tienes todo perfecto, lo construimos juntos en el kickoff." },
-                  { q: "¿El agente puede atender en varios idiomas?", a: "Sí, en el Setup Enterprise configuramos agentes multi-idioma. Para Starter y Pro el agente se configura en un idioma principal (español latinoamericano por defecto)." },
-                  { q: "¿Qué garantía tienen?", a: "Si al finalizar el setup el agente no responde correctamente según lo acordado, lo ajustamos sin coste adicional hasta que funcione como se espera." },
-                ]).map((faq) => (
-                  <FaqItem key={faq.q} {...faq} />
-                ))}
-              </div>
-            )}
-            <p className="mt-8 text-center text-slate-500">
-              ¿Tienes una duda específica?{" "}
-              <Link href="/contacto" className="font-semibold text-orange-400 hover:text-orange-300">
-                Escríbenos directamente
-              </Link>
-            </p>
-          </div>
-        </section>
+          </section>
+        ) : (
+          <FaqSection
+            badge="FAQ"
+            headline="Preguntas frecuentes"
+            subheadline="Todo lo que necesitas saber antes de contratar el setup de tu agente."
+            items={(d?.faqs ?? [
+              { q: "¿Necesito tener ya un plan de Agente de Voz IA activo?", a: "Sí, la configuración se realiza sobre tu cuenta activa. Puedes iniciar la prueba gratuita de 14 días y contratar el setup simultáneamente — los días de trial no corren hasta que actives el agente." },
+              { q: "¿Cuánto tarda el proceso?", a: "El Setup Starter está listo en 48 horas hábiles. El Setup Pro en 5 días hábiles. Para Enterprise el plazo lo acordamos en el kickoff según la complejidad." },
+              { q: "¿Qué necesito preparar antes de empezar?", a: "Idealmente: información de tu empresa (web, PDF, documento Word), las preguntas clave que quieres que haga el agente y acceso al calendario si quieres agenda automática. Si no tienes todo perfecto, lo construimos juntos en el kickoff." },
+              { q: "¿El agente puede atender en varios idiomas?", a: "Sí, en el Setup Enterprise configuramos agentes multi-idioma. Para Starter y Pro el agente se configura en un idioma principal (español latinoamericano por defecto)." },
+              { q: "¿Qué garantía tienen?", a: "Si al finalizar el setup el agente no responde correctamente según lo acordado, lo ajustamos sin coste adicional hasta que funcione como se espera." },
+            ]).map((f) => ({ q: f.q, a: f.a }))}
+            ctaText="Escríbenos directamente"
+            ctaHref="/contacto"
+            className="bg-slate-950"
+          />
+        )}
 
         {/* ── CTA final ─────────────────────────────────────────────────── */}
         <section className="relative overflow-hidden bg-orange-600 px-6 py-20 sm:px-12 lg:px-20">

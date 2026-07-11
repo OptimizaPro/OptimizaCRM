@@ -9,6 +9,7 @@ import {
   Users, Brain, MessageCircle, BarChart3,
   UserPlus, GraduationCap, Workflow, Plug, LucideIcon, MapPin, Target, Phone, Headset,
 } from "lucide-react";
+import { FaqSection } from "@/components/ui/faq-section";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -134,24 +135,6 @@ const PRICING_FAQS = [
 
 // ─── FAQ Item ─────────────────────────────────────────────────────────────────
 
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen(!open)}
-      className="w-full text-left rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4 transition-all hover:border-slate-700"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <span className="font-semibold text-white">{q}</span>
-        <span className={`mt-0.5 flex-shrink-0 text-orange-400 transition-transform duration-200 ${open ? "rotate-45" : ""}`}>
-          <ArrowRight className="h-4 w-4" />
-        </span>
-      </div>
-      {open && <p className="mt-3 text-sm leading-relaxed text-slate-400">{a}</p>}
-    </button>
-  );
-}
 
 // ─── Cell helper ──────────────────────────────────────────────────────────────
 
@@ -705,25 +688,13 @@ export default function PricingPage() {
         </section>
 
         {/* ── Pricing FAQ ──────────────────────────────────────────────── */}
-        <section className="bg-slate-900 px-6 py-20 sm:px-12 lg:px-20">
-          <div className="mx-auto max-w-3xl">
-            <div className="text-center">
-              <h2 className="text-3xl font-black text-white sm:text-4xl">Dudas sobre precios</h2>
-              <p className="mt-3 text-slate-400">Las preguntas más comunes sobre nuestros planes.</p>
-            </div>
-            <div className="mt-10 space-y-3">
-              {PRICING_FAQS.map((faq) => (
-                <FaqItem key={faq.q} q={faq.q} a={faq.a} />
-              ))}
-            </div>
-            <p className="mt-8 text-center text-slate-500">
-              ¿Tienes otra pregunta?{" "}
-              <Link href="/contacto" className="font-semibold text-orange-400 hover:text-orange-300">
-                Escríbenos directamente
-              </Link>
-            </p>
-          </div>
-        </section>
+        <FaqSection
+          headline="Dudas sobre precios"
+          subheadline="Las preguntas más comunes sobre nuestros planes y facturación."
+          items={PRICING_FAQS}
+          ctaText="Escríbenos directamente"
+          className="bg-slate-900"
+        />
 
         {/* ── CTA implementación ───────────────────────────────────────── */}
         <section className="px-6 py-16 sm:px-12 lg:px-20">

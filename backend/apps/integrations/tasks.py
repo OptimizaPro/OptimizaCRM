@@ -170,7 +170,7 @@ def _update_lead(lead_id: int, data: dict):
 
 
 def _create_or_link_lead(call, data: dict, org):
-    """Creates a Lead from structured output and links it to the VoiceCall."""
+    """Creates or deduplicates a Lead from structured output and links it to the VoiceCall."""
     try:
         from apps.crm.models import Lead  # noqa: PLC0415
 
@@ -189,19 +189,44 @@ def _create_or_link_lead(call, data: dict, org):
         score = data.get("qualification_score") or 0
         status = "qualified" if int(score) >= 7 else "contacted"
 
-        lead = Lead.objects.create(
-            organization = org,
-            first_name   = first_name,
-            last_name    = last_name,
-            email        = data.get("lead_email") or "",
-            phone        = data.get("lead_phone") or call.caller_phone or "",
-            company      = data.get("company") or "",
-            source       = "voice_agent",
-            status       = status,
-            notes        = note.strip(),
-        )
+        phone = data.get("lead_phone") or call.caller_phone or ""
+        email = data.get("lead_email") or ""
+
+        # Try dedup by real Vapi caller phone stored in custom_fields
+        lead = None
+        vapi_caller_phone = call.caller_phone  # caller_phone on VoiceCall holds the PSTN number
+        if vapi_caller_phone:
+            lead = Lead.objects.filter(
+                organization=org,
+                custom_fields__vapi_caller_phone=vapi_caller_phone,
+            ).first()
+
+        if lead is None and email:
+            lead = Lead.objects.filter(organization=org, email=email).first()
+
+        if lead is None and phone:
+            lead = Lead.objects.filter(organization=org, phone=phone).first()
+
+        if lead:
+            _update_lead(lead.pk, data)
+        else:
+            cf = {}
+            if vapi_caller_phone:
+                cf["vapi_caller_phone"] = vapi_caller_phone
+            lead = Lead.objects.create(
+                organization  = org,
+                first_name    = first_name,
+                last_name     = last_name,
+                email         = email,
+                phone         = phone,
+                company       = data.get("company") or "",
+                source        = "voice_agent",
+                status        = status,
+                notes         = note.strip(),
+                custom_fields = cf,
+            )
+            logger.info("_create_or_link_lead: created lead %s for call %s", lead.pk, call.pk)
 
         VoiceCall.objects.filter(pk=call.pk).update(lead=lead)
-        logger.info("_create_or_link_lead: created lead %s for call %s", lead.pk, call.pk)
     except Exception as exc:
         logger.error("_create_or_link_lead: error for call %s — %s", call.pk, exc)

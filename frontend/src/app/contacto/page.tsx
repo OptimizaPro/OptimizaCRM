@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   Mail, MessageCircle, Clock, CheckCircle,
   ArrowRight, Send, Building2, User, Loader2,
+  Plus, Minus,
 } from "lucide-react";
 import { cmsApi } from "@/lib/api";
 
@@ -70,29 +71,6 @@ const FALLBACK: CmsData = {
   demo_cta_href:   "/register",
 };
 
-// ─── FAQ Item ─────────────────────────────────────────────────────────────────
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen(!open)}
-      className="w-full text-left rounded-xl border border-slate-800 bg-slate-900/60 px-5 py-4 transition-all hover:border-slate-700"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <span className="font-semibold text-white">{q}</span>
-        <span className={`mt-0.5 flex-shrink-0 text-orange-400 transition-transform ${open ? "rotate-45" : ""}`}>
-          <ArrowRight className="h-4 w-4" />
-        </span>
-      </div>
-      {open && (
-        <p className="mt-3 text-sm leading-relaxed text-slate-400">{a}</p>
-      )}
-    </button>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ContactPage() {
@@ -136,6 +114,7 @@ export default function ContactPage() {
 
   const [form, setForm] = useState({ name: "", email: "", company: "", reason: "", message: "" });
   const [state, setState] = useState<FormState>("idle");
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -330,10 +309,50 @@ export default function ContactPage() {
                 <h2 className="text-3xl font-black text-white">{d.faq_headline}</h2>
                 <p className="mt-2 text-slate-400">Respuestas rápidas a las dudas más comunes.</p>
 
-                <div className="mt-8 space-y-3">
-                  {(d.faqs ?? []).map((faq) => (
-                    <FaqItem key={faq.q} q={faq.q} a={faq.a} />
-                  ))}
+                <div className="mt-8 space-y-2">
+                  {(d.faqs ?? []).map((faq, i) => {
+                    const open = openFaqIndex === i;
+                    return (
+                      <div
+                        key={faq.q}
+                        className={`group rounded-2xl border transition-all duration-200 overflow-hidden ${
+                          open
+                            ? "border-orange-500/40 bg-slate-800 shadow-lg shadow-orange-950/20"
+                            : "border-slate-700 bg-slate-800/50 hover:border-slate-600"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setOpenFaqIndex(open ? null : i)}
+                          className="flex w-full items-start gap-4 px-5 py-4 text-left"
+                          aria-expanded={open}
+                        >
+                          <span className={`mt-0.5 flex-shrink-0 text-[11px] font-bold tabular-nums leading-none tracking-widest transition-colors ${open ? "text-orange-400" : "text-slate-600 group-hover:text-slate-500"}`}>
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span className={`flex-1 text-sm font-semibold leading-snug transition-colors ${open ? "text-white" : "text-slate-300 group-hover:text-slate-100"}`}>
+                            {faq.q}
+                          </span>
+                          <span className={`mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border transition-all duration-200 ${open ? "border-orange-500/50 bg-orange-950/40 text-orange-400" : "border-slate-600 bg-slate-700 text-slate-400 group-hover:border-slate-500"}`}>
+                            {open ? <Minus className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                          </span>
+                        </button>
+                        <div
+                          className="grid transition-all duration-300 ease-in-out"
+                          style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+                        >
+                          <div className="overflow-hidden">
+                            <div className={`border-t px-5 pb-4 pt-3 transition-colors duration-200 ${open ? "border-orange-500/20" : "border-slate-700"}`}>
+                              <div className="flex gap-4">
+                                <div className="w-px flex-shrink-0 self-stretch bg-orange-500/30 ml-[18px]" />
+                                <p className="text-sm leading-relaxed text-slate-400">{faq.a}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Demo CTA */}

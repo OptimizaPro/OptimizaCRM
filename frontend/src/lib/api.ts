@@ -865,6 +865,7 @@ export interface VoiceWidget {
   llm_model:         string;
   is_active:         boolean;
   lead_count:        number;
+  active_leads:      number;
   call_count:        number;
   system_prompt:         string | null;
   has_vapi_private_key?: boolean;
@@ -889,6 +890,7 @@ export interface VoiceAgentSummary {
   vapi_assistant_id: string;
   is_active:         boolean;
   lead_count:        number;
+  active_leads:      number;
   call_count:        number;
   config: {
     agent_name?: string;
@@ -932,6 +934,12 @@ export const voiceWidgetApi = {
 
   createAgent: (token: string, orgId: string, name: string) =>
     api.post<{ agent: VoiceAgentSummary }>("/voice-widget/agents/", { name }, { token, orgId }),
+
+  toggleActive: (token: string, orgId: string, agentId: string, isActive: boolean) =>
+    api.post<{ widget: VoiceWidget }>("/voice-widget/manage/", {
+      agent_id: agentId,
+      widget: { is_active: isActive },
+    }, { token, orgId }),
 
   deleteAgent: async (token: string, orgId: string, agentId: string) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";

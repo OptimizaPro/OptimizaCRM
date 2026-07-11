@@ -179,6 +179,7 @@ def voice_widget_manage(request):
                 "system_prompt":    widget.system_prompt,
                 "is_active":        widget.is_active,
                 "lead_count":       widget.lead_count,
+                "active_leads":     widget.calls.filter(lead__isnull=False).values("lead").distinct().count(),
                 "call_count":       widget.call_count,
                 "config":           widget.config,
                 "has_vapi_private_key": bool(org_settings.get("vapi_private_key")),
@@ -294,6 +295,7 @@ def voice_widget_manage(request):
                 "system_prompt":     widget.system_prompt,
                 "is_active":         widget.is_active,
                 "lead_count":        widget.lead_count,
+                "active_leads":      widget.calls.filter(lead__isnull=False).values("lead").distinct().count(),
                 "call_count":        widget.call_count,
                 "config":            widget.config,
             },
@@ -373,11 +375,17 @@ def voice_tool_book_appointment(request):
     caller_name    = args.get("caller_name", "Cliente")
     caller_email   = args.get("caller_email", "")
     caller_phone   = args.get("caller_phone", "")
+    client_id      = args.get("client_id", "")
     company        = args.get("company", "")
     preferred_date = args.get("preferred_date", "")
     preferred_time = args.get("preferred_time", "")
     service_type   = args.get("service_type", "Consulta")
     notes          = args.get("notes", "")
+
+    # Real PSTN caller number from Vapi — stable dedup key across repeat calls
+    vapi_caller_phone = ""
+    if "message" in body:
+        vapi_caller_phone = body["message"].get("call", {}).get("customer", {}).get("number", "")
 
     org = widget.organization
 
@@ -410,14 +418,16 @@ def voice_tool_book_appointment(request):
         )
 
         # Create or update Lead
-        _upsert_lead(
+        appt_lead = _upsert_lead(
             org=org,
             first_name=caller_name.split(" ", 1)[0],
             last_name=caller_name.split(" ", 1)[1] if " " in caller_name else "",
             email=caller_email,
             phone=caller_phone,
             company=company,
+            client_id=client_id,
             notes=f"[Voz] Solicitó cita: {service_type}. Fecha preferida: {preferred_date} {preferred_time}".strip(),
+            vapi_caller_phone=vapi_caller_phone,
         )
 
         # Increment counters
@@ -433,7 +443,17 @@ def voice_tool_book_appointment(request):
             link=f"/dashboard/calendar/",
         )
 
-    r = JsonResponse({"result": "Cita registrada. El equipo confirmará a la brevedad."})
+    appt_client_id = (appt_lead.client_id if appt_lead else "") or ""
+    if appt_client_id:
+        appt_result = (
+            f"Cita registrada. El equipo confirmará a la brevedad. "
+            f"El número de identificación del cliente es: {' '.join(appt_client_id)}. "
+            f"Comunícaselo al cliente y pídele que lo guarde para futuras consultas."
+        )
+    else:
+        appt_result = "Cita registrada. El equipo confirmará a la brevedad."
+
+    r = JsonResponse({"result": appt_result})
     return _cors(r, request)
 
 
@@ -547,10 +567,16 @@ def voice_tool_qualify(request):
     caller_name   = args.get("caller_name", "")
     caller_email  = args.get("caller_email", "")
     caller_phone  = args.get("caller_phone", "")
+    client_id     = args.get("client_id", "")
     company       = args.get("company", "")
     answers       = args.get("answers", {})
     is_qualified  = args.get("is_qualified", True)
     notes         = args.get("notes", "")
+
+    # Real PSTN caller number from Vapi — stable dedup key across repeat calls
+    vapi_caller_phone = ""
+    if "message" in body:
+        vapi_caller_phone = body["message"].get("call", {}).get("customer", {}).get("number", "")
 
     org = widget.organization
 
@@ -562,10 +588,12 @@ def voice_tool_qualify(request):
         email      = caller_email,
         phone      = caller_phone,
         company    = company,
+        client_id  = client_id,
         status     = "qualified" if is_qualified else "new",
         score      = 80 if is_qualified else 20,
         notes      = f"[Voz] {notes}" if notes else "[Voz] Calificado por agente de voz",
         qualification_data = answers,
+        vapi_caller_phone  = vapi_caller_phone,
     )
 
     # Increment lead counter
@@ -592,7 +620,18 @@ def voice_tool_qualify(request):
         link="/dashboard/leads/",
     )
 
-    r = JsonResponse({"result": "Datos registrados correctamente."})
+    # Return client_id so the agent can communicate it to the caller
+    client_id_value = (lead.client_id if lead else "") or ""
+    if client_id_value:
+        result_msg = (
+            f"Datos registrados correctamente. "
+            f"El número de identificación del cliente es: {' '.join(client_id_value)}. "
+            f"Comunícaselo al cliente y pídele que lo guarde para futuras consultas."
+        )
+    else:
+        result_msg = "Datos registrados correctamente."
+
+    r = JsonResponse({"result": result_msg})
     return _cors(r, request)
 
 
@@ -1125,6 +1164,21 @@ def voice_kb_source_delete(request, source_id):
 
 # ─── Private helpers ──────────────────────────────────────────────────────────
 
+def _generate_client_id(org) -> str:
+    """
+    Generate a unique 6-digit numeric client ID for this org.
+    Easy to communicate verbally digit by digit over the phone.
+    Falls back to 8 digits if the 6-digit space is somehow exhausted.
+    """
+    import random
+    from apps.crm.models import Lead
+    for _ in range(20):
+        cid = str(random.randint(100000, 999999))
+        if not Lead.objects.filter(organization=org, client_id=cid).exists():
+            return cid
+    return str(random.randint(10000000, 99999999))
+
+
 def _get_first_admin(org):
     """Return the first admin/owner user for the organization, or None."""
     try:
@@ -1138,85 +1192,139 @@ def _get_first_admin(org):
 
 
 def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
-                 status="new", score=0, notes="", qualification_data=None):
+                 status="new", score=0, notes="", qualification_data=None,
+                 vapi_caller_phone="", client_id=""):
     """
-    Create or update a Lead. Matches by email (if provided) or phone.
+    Create or update a Lead. Match priority:
+      0. client_id  — org's own client identifier (highest; explicitly provided by caller)
+      1. vapi_caller_phone stored in custom_fields (real PSTN number — stable across calls)
+      2. email
+      3. agent-extracted phone
+      4. create new
+    vapi_caller_phone is stored in custom_fields["vapi_caller_phone"] so it persists
+    across calls even if the caller gives a different contact number.
     Returns the Lead instance or None.
     """
     from apps.crm.models import Lead
 
     try:
+        # ── Helper: apply updates to an existing lead ────────────────────────
+        def _apply_updates(lead, created=False):
+            if created:
+                return
+            fields = ["status"]
+            if phone and (not lead.phone or phone != lead.phone):
+                lead.phone = phone
+                fields.append("phone")
+            if client_id and not lead.client_id:
+                lead.client_id = client_id
+                fields.append("client_id")
+            if company and not lead.company:
+                lead.company = company
+                fields.append("company")
+            if notes:
+                lead.notes = (lead.notes + "\n" + notes).strip() if lead.notes else notes
+                fields.append("notes")
+            if score > lead.score:
+                lead.score = score
+                fields.append("score")
+            lead.status = status
+            # Store vapi_caller_phone in custom_fields for future dedup
+            if vapi_caller_phone:
+                cf = lead.custom_fields or {}
+                if cf.get("vapi_caller_phone") != vapi_caller_phone:
+                    cf["vapi_caller_phone"] = vapi_caller_phone
+                    lead.custom_fields = cf
+                    fields.append("custom_fields")
+            if qualification_data:
+                cf = lead.custom_fields or {}
+                cf["qualification"] = qualification_data
+                lead.custom_fields = cf
+                if "custom_fields" not in fields:
+                    fields.append("custom_fields")
+            lead.save(update_fields=fields)
+
+        # ── 0. Match by client_id (highest priority — explicitly given by caller) ──
+        if client_id:
+            lead = Lead.objects.filter(
+                organization=org,
+                client_id=client_id,
+            ).first()
+            if lead:
+                _apply_updates(lead)
+                return lead
+
+        # ── 1. Match by real Vapi caller phone (stable PSTN number) ─────────
+        if vapi_caller_phone:
+            lead = Lead.objects.filter(
+                organization=org,
+                custom_fields__vapi_caller_phone=vapi_caller_phone,
+            ).first()
+            if lead:
+                _apply_updates(lead)
+                return lead
+
+        # Ensure new leads always get a client_id
+        new_client_id = client_id or _generate_client_id(org)
+
+        # ── 2. Match by email ────────────────────────────────────────────────
         if email:
+            cf_defaults = {"vapi_caller_phone": vapi_caller_phone} if vapi_caller_phone else {}
             lead, created = Lead.objects.get_or_create(
                 organization = org,
                 email        = email,
                 defaults={
-                    "first_name": first_name,
-                    "last_name":  last_name,
-                    "phone":      phone,
-                    "company":    company,
-                    "source":     "voice_agent",
-                    "status":     status,
-                    "score":      score,
-                    "notes":      notes,
+                    "first_name":    first_name,
+                    "last_name":     last_name,
+                    "phone":         phone,
+                    "company":       company,
+                    "client_id":     new_client_id,
+                    "source":        "voice_agent",
+                    "status":        status,
+                    "score":         score,
+                    "notes":         notes,
+                    "custom_fields": cf_defaults,
                 },
             )
-            if not created:
-                if phone and not lead.phone:
-                    lead.phone = phone
-                if company and not lead.company:
-                    lead.company = company
-                if notes:
-                    lead.notes = (lead.notes + "\n" + notes).strip() if lead.notes else notes
-                if score > lead.score:
-                    lead.score = score
-                lead.status = status
-                update_fields = ["phone", "company", "notes", "score", "status"]
-                if qualification_data:
-                    lead.custom_fields = {**lead.custom_fields, "qualification": qualification_data}
-                    update_fields.append("custom_fields")
-                lead.save(update_fields=update_fields)
+            _apply_updates(lead, created)
+
+        # ── 3. Match by agent-extracted phone ────────────────────────────────
         elif phone:
+            cf_defaults = {"vapi_caller_phone": vapi_caller_phone} if vapi_caller_phone else {}
             lead, created = Lead.objects.get_or_create(
                 organization = org,
                 phone        = phone,
                 defaults={
-                    "first_name": first_name,
-                    "last_name":  last_name,
-                    "company":    company,
-                    "source":     "voice_agent",
-                    "status":     status,
-                    "score":      score,
-                    "notes":      notes,
+                    "first_name":    first_name,
+                    "last_name":     last_name,
+                    "company":       company,
+                    "client_id":     new_client_id,
+                    "source":        "voice_agent",
+                    "status":        status,
+                    "score":         score,
+                    "notes":         notes,
+                    "custom_fields": cf_defaults,
                 },
             )
-            if not created:
-                if company and not lead.company:
-                    lead.company = company
-                if notes:
-                    lead.notes = (lead.notes + "\n" + notes).strip() if lead.notes else notes
-                lead.status = status
-                update_fields = ["company", "notes", "status"]
-                if qualification_data:
-                    lead.custom_fields = {**lead.custom_fields, "qualification": qualification_data}
-                    update_fields.append("custom_fields")
-                lead.save(update_fields=update_fields)
-        else:
-            # No unique identifier — create new lead
-            lead = Lead.objects.create(
-                organization = org,
-                first_name   = first_name,
-                last_name    = last_name,
-                company      = company,
-                source       = "voice_agent",
-                status       = status,
-                score        = score,
-                notes        = notes,
-            )
+            _apply_updates(lead, created)
 
-        if qualification_data:
-            lead.custom_fields = {**lead.custom_fields, "qualification": qualification_data}
-            lead.save(update_fields=["custom_fields"])
+        # ── 4. No identifier — create new ────────────────────────────────────
+        else:
+            cf = {"vapi_caller_phone": vapi_caller_phone} if vapi_caller_phone else {}
+            if qualification_data:
+                cf["qualification"] = qualification_data
+            lead = Lead.objects.create(
+                organization  = org,
+                first_name    = first_name,
+                last_name     = last_name,
+                company       = company,
+                client_id     = new_client_id,
+                source        = "voice_agent",
+                status        = status,
+                score         = score,
+                notes         = notes,
+                custom_fields = cf,
+            )
 
         return lead
     except Exception:
@@ -1235,6 +1343,7 @@ def _widget_summary(widget) -> dict:
         "vapi_assistant_id": widget.vapi_assistant_id,
         "is_active":         widget.is_active,
         "lead_count":        widget.lead_count,
+        "active_leads":      widget.calls.filter(lead__isnull=False).values("lead").distinct().count(),
         "call_count":        widget.call_count,
         "config": {
             "agent_name": cfg.get("agent_name", "Asistente"),

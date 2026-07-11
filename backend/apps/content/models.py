@@ -682,6 +682,15 @@ DEFAULT_CONTENT = {
         "legal_email":   "legal@optimizacrm.com",
         "support_email": "soporte@optimizacrm.com",
     },
+
+    # ── Landing page activation toggles ──────────────────────────────────────
+    "landings_config": {
+        "voz_ia":                    True,
+        "guatemala":                 True,
+        "servicios_whatsapp":        True,
+        "servicios_implementacion":  True,
+        "servicios_implementacion_voz": True,
+    },
 }
 
 
@@ -700,6 +709,7 @@ class SiteContent(models.Model):
         ("servicios_implementacion_voz",   "Servicios — Setup Agente de Voz IA"),
         ("voz_ia",                         "Agente de Voz IA — Landing"),
         ("guatemala",                      "CRM para Guatemala — Landing"),
+        ("landings_config",                "Activación de Landings"),
     ]
 
     key        = models.CharField(max_length=50, unique=True, choices=SECTION_CHOICES)

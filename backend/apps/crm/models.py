@@ -34,8 +34,14 @@ class Lead(TenantModel):
     first_name    = models.CharField(max_length=100)
     last_name     = models.CharField(max_length=100, blank=True)
     email         = models.EmailField(blank=True)
-    phone         = models.CharField(max_length=20, blank=True)
+    phone         = models.CharField(max_length=30, blank=False, default="")
     company       = models.CharField(max_length=255, blank=True)
+    client_id     = models.CharField(
+        max_length=100, blank=True, default="",
+        verbose_name="ID de cliente",
+        help_text="Identificador propio del cliente (p. ej. número de expediente). "
+                  "El agente de voz lo usa para vincular llamadas a registros existentes.",
+    )
     title         = models.CharField(max_length=100, blank=True)
     source        = models.CharField(max_length=50, choices=SOURCE_CHOICES, default="web")
     status        = models.CharField(max_length=50, choices=STATUS_CHOICES, default="new")
@@ -73,6 +79,7 @@ class Lead(TenantModel):
         indexes  = [
             models.Index(fields=["organization", "status"]),
             models.Index(fields=["organization", "assigned_to"]),
+            models.Index(fields=["organization", "client_id"]),
         ]
 
     @property

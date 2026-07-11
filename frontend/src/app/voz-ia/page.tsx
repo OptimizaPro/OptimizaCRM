@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Mic, Phone, Clock, Users, Zap, Check, ArrowRight,
-  Building2, ShoppingBag, Hotel, Star, ChevronDown, ChevronUp,
-  BarChart3, Headphones, Gift,
+  Building2, ShoppingBag, Hotel, Star, BarChart3, Headphones, Gift,
 } from "lucide-react";
+import { FaqSection } from "@/components/ui/faq-section";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -168,7 +168,6 @@ const USE_CASES = [
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function VozIaPage() {
-  const [openFaq, setOpenFaq]             = useState<number | null>(null);
   const [annualBilling, setAnnualBilling] = useState(false);
 
   const [plans, setPlans]           = useState<VoicePlan[]>(DEFAULT_PLANS);
@@ -680,34 +679,13 @@ export default function VozIaPage() {
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
-      <section className="border-b border-slate-800 py-20">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-sm font-semibold uppercase tracking-widest text-orange-400">FAQ</p>
-            <h2 className="mt-3 text-3xl font-bold text-white">Preguntas frecuentes</h2>
-          </div>
-          <div className="space-y-3">
-            {faqs.map((faq, i) => (
-              <div key={faq.id} className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
-                <button
-                  className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                >
-                  <span className="font-medium text-slate-100">{faq.question}</span>
-                  {openFaq === i
-                    ? <ChevronUp className="h-4 w-4 shrink-0 text-orange-400" />
-                    : <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />}
-                </button>
-                {openFaq === i && (
-                  <div className="px-6 pb-5 text-sm leading-relaxed text-slate-400 border-t border-slate-800 pt-4">
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <FaqSection
+        headline="Preguntas frecuentes"
+        subheadline="Todo lo que necesitas saber sobre el Agente de Voz IA antes de empezar."
+        items={faqs.map((f) => ({ q: f.question, a: f.answer }))}
+        ctaText="Escríbenos directamente"
+        className="border-b border-slate-800"
+      />
 
       {/* ── Final CTA ─────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden py-24">

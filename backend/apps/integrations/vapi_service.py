@@ -34,15 +34,30 @@ PROCESO DE CITAS:
 PREGUNTAS FRECUENTES:
 {faqs}
 
-━━━ RECOPILACIÓN DE DATOS (obligatorio en cada llamada) ━━━
-Durante la conversación, recoge SIEMPRE estos datos del cliente de forma natural:
-- NOMBRE COMPLETO — si el cliente no se presenta, pregunta: "¿Con quién tengo el gusto?"
-- TELÉFONO DE CONTACTO — pregunta: "¿A qué número te podemos llamar si se corta?" (clave para el seguimiento)
-- EMAIL — pide si el cliente quiere recibir información por correo o confirmar una cita
-- EMPRESA O NEGOCIO — pregunta si el contexto es empresarial o profesional
+━━━ SECUENCIA OBLIGATORIA ━━━
 
-No preguntes todos a la vez. Intégralos de forma conversacional y natural.
-IMPORTANTE: Antes de invocar qualifyLead o bookAppointment asegúrate de tener al menos el nombre y el teléfono del cliente.
+Sigue estos pasos en orden en cada llamada:
+
+PASO 1 — IDENTIFICACIÓN (inmediatamente después del saludo)
+Pregunta: "¿Tienes un número de cliente con nosotros?"
+  • SÍ → recoge el número y pásalo como client_id. Continúa con su consulta.
+  • NO → ve al PASO 2.
+
+PASO 2 — RECOGE NOMBRE Y TELÉFONO (únicos campos obligatorios)
+  a) NOMBRE: "¿Con quién tengo el gusto de hablar?" — no aceptes silencio ni "no sé". Insiste una vez.
+  b) TELÉFONO: "¿A qué número podemos contactarte?" — insiste una vez si no lo da.
+
+  ➤ En cuanto tengas nombre y teléfono, invoca qualifyLead inmediatamente.
+    No esperes a tener email ni empresa para registrar. Pásalos vacíos si no los tienes aún.
+
+PASO 3 — SIGUE RECOLECTANDO (después de invocar qualifyLead)
+  c) EMAIL: "¿Tienes un correo para enviarte la información?"
+  d) EMPRESA: "¿Trabajas en alguna empresa o tienes tu propio negocio?" (empresa del cliente, NO {company_name})
+  Si los da, invoca qualifyLead de nuevo para actualizar el registro.
+
+PASO 4 — CIERRE
+El sistema te devolverá el número de cliente. Léelo dígito a dígito:
+"Tu número de cliente es: [X] [X] [X]... Anótalo para identificarte en futuras llamadas."
 
 ━━━ PREGUNTAS DE CALIFICACIÓN ━━━
 Cuando corresponda, realiza estas preguntas de forma conversacional (nunca todas a la vez):
@@ -56,6 +71,8 @@ Cuando corresponda, realiza estas preguntas de forma conversacional (nunca todas
 5. Al agendar cita, usa bookAppointment — queda pendiente de confirmación por el equipo.
 6. Al completar calificación, usa qualifyLead para registrar los datos.
 7. Al finalizar, despídete con: {farewell}
+8. MONEDA: Todos los precios son en DÓLARES AMERICANOS (USD). Nunca los menciones en otra moneda ni hagas conversión. Si el cliente pregunta en otra moneda, aclara: "Los precios son en dólares americanos."
+9. EMPRESA DEL CLIENTE: El campo "company" en las herramientas se refiere a la empresa o negocio DEL CLIENTE que llama, NO a {company_name}. Cuando preguntes por la empresa, di: "¿Trabajas para alguna empresa o tienes tu propio negocio?"
 """
 
 VOICE_MAP = {
@@ -79,12 +96,16 @@ def _build_system_prompt(widget, kb) -> str:
 
     # Prepend custom system prompt if defined
     custom = (widget.system_prompt or "").strip()
+    # Wrap pricing with an explicit USD header so the LLM never guesses the currency
+    raw_pricing = (kb.pricing if kb else "") or "No disponible."
+    pricing_with_currency = f"⚠ TODOS LOS PRECIOS SON EN DÓLARES AMERICANOS (USD). NO menciones otra moneda.\n{raw_pricing}"
+
     kb_block = SYSTEM_PROMPT_TEMPLATE.format(
         agent_name            = cfg.get("agent_name", "Asistente"),
         company_name          = widget.organization.name,
         company_info          = (kb.company_info if kb else "") or "No disponible.",
         products_services     = (kb.products_services if kb else "") or "No disponible.",
-        pricing               = (kb.pricing if kb else "") or "No disponible.",
+        pricing               = pricing_with_currency,
         working_hours         = (kb.working_hours if kb else "") or "No especificado.",
         contact_info          = (kb.contact_info if kb else "") or "No disponible.",
         appointment_rules     = (kb.appointment_rules if kb else "") or "Consultar con el equipo.",
@@ -119,7 +140,8 @@ def _build_tools(widget) -> list:
                         "caller_name":    {"type": "string",  "description": "Nombre completo del cliente (obligatorio)"},
                         "caller_phone":   {"type": "string",  "description": "Teléfono de contacto del cliente (obligatorio para confirmar la cita)"},
                         "caller_email":   {"type": "string",  "description": "Email del cliente (para enviar confirmación)"},
-                        "company":        {"type": "string",  "description": "Empresa o negocio del cliente"},
+                        "client_id":      {"type": "string",  "description": "Identificador de cliente si el cliente lo proporcionó (número de expediente, ID de usuario, etc.)"},
+                        "company":        {"type": "string",  "description": "Empresa o negocio DEL CLIENTE (no el proveedor del servicio)"},
                         "preferred_date": {"type": "string",  "description": "Fecha preferida (ej: 2025-07-15 o 'lunes próximo')"},
                         "preferred_time": {"type": "string",  "description": "Hora preferida (ej: 10:00 AM)"},
                         "service_type":   {"type": "string",  "description": "Tipo de servicio o motivo de la cita"},
@@ -181,14 +203,15 @@ def _build_tools(widget) -> list:
         "type": "function",
         "function": {
             "name": "qualifyLead",
-            "description": "Registra los datos del lead al completar la calificación. Invocar solo cuando ya tienes nombre y teléfono del cliente.",
+            "description": "Registra o actualiza los datos del cliente. INVOCAR TAN PRONTO TENGAS nombre y teléfono — no esperes al final. Se puede invocar más de una vez si el cliente da más datos después.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "caller_name":  {"type": "string",  "description": "Nombre completo del cliente (obligatorio)"},
                     "caller_phone": {"type": "string",  "description": "Teléfono de contacto del cliente (obligatorio)"},
                     "caller_email": {"type": "string",  "description": "Email del cliente"},
-                    "company":      {"type": "string",  "description": "Empresa o negocio del cliente"},
+                    "client_id":    {"type": "string",  "description": "Identificador de cliente si el cliente lo proporcionó (número de expediente, ID de usuario, etc.)"},
+                    "company":      {"type": "string",  "description": "Empresa o negocio DEL CLIENTE (no el proveedor del servicio)"},
                     "answers":      {"type": "object",  "description": "Respuestas a las preguntas de calificación en formato clave-valor"},
                     "is_qualified": {"type": "boolean", "description": "¿El lead cumple los criterios de calificación?"},
                     "notes":        {"type": "string",  "description": "Observaciones adicionales sobre la conversación"},

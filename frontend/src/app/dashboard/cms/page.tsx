@@ -11,7 +11,7 @@ import {
   FileText, DollarSign, Zap, Settings2,
   ExternalLink, Upload, X, ImageIcon,
   Users, Mail, Shield, ScrollText, Plus, GripVertical,
-  MessageCircle, Rocket, Mic, Wrench,
+  MessageCircle, Rocket, Mic, Wrench, ToggleLeft, Globe,
 } from "lucide-react";
 
 // ─── Default content (mirrors backend apps/content/models.py DEFAULT_CONTENT) ──
@@ -266,6 +266,13 @@ const DEFAULT_CONTENT = {
     legal_email:   "legal@optimizacrm.com",
     support_email: "soporte@optimizacrm.com",
   },
+  landings_config: {
+    voz_ia:                    true,
+    guatemala:                 true,
+    servicios_whatsapp:        true,
+    servicios_implementacion:  true,
+    servicios_implementacion_voz: true,
+  },
 } as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -282,7 +289,8 @@ type SectionKey =
   | "servicios_whatsapp"
   | "servicios_implementacion"
   | "servicios_implementacion_voz"
-  | "voz_ia";
+  | "voz_ia"
+  | "landings_config";
 
 interface SectionMeta {
   key: SectionKey;
@@ -363,6 +371,12 @@ const SECTIONS: SectionMeta[] = [
     label: "Agente de Voz IA",
     description: "Landing /voz-ia — hero, precios y ROI",
     icon: Mic,
+  },
+  {
+    key: "landings_config",
+    label: "Activar / Desactivar Landings",
+    description: "Enciende o apaga cada landing page",
+    icon: ToggleLeft,
   },
 ];
 
@@ -1296,6 +1310,57 @@ function ServiciosImplementacionVozEditor({ data, onChange }: { data: Record<str
   );
 }
 
+// ─── Landings Config Editor ───────────────────────────────────────────────────
+
+const LANDING_ITEMS = [
+  { key: "voz_ia",                    label: "Agente de Voz IA",       route: "/voz-ia",                      icon: Mic },
+  { key: "guatemala",                  label: "CRM para Guatemala",      route: "/guatemala",                   icon: Globe },
+  { key: "servicios_whatsapp",         label: "Setup WhatsApp Business", route: "/servicios/whatsapp-business", icon: MessageCircle },
+  { key: "servicios_implementacion",   label: "Implementación CRM",      route: "/servicios/implementacion",    icon: Rocket },
+  { key: "servicios_implementacion_voz", label: "Setup Agente de Voz",   route: "/servicios/voz-ia",            icon: Wrench },
+];
+
+function LandingsConfigEditor({ data, onChange }: { data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-slate-400">
+        Desactiva una landing para redirigir automáticamente a los visitantes a la home. Útil cuando un servicio no está listo para ofrecer.
+      </p>
+      <div className="divide-y divide-slate-800 rounded-xl border border-slate-800 overflow-hidden">
+        {LANDING_ITEMS.map(({ key, label, route, icon: Icon }) => {
+          const isActive = data[key] !== false;
+          return (
+            <div key={key} className="flex items-center justify-between px-4 py-3.5 bg-slate-950">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isActive ? "bg-orange-950/40 text-orange-400" : "bg-slate-800 text-slate-500"}`}>
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${isActive ? "text-slate-100" : "text-slate-500"}`}>{label}</p>
+                  <p className="text-xs text-slate-500">{route}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs font-semibold ${isActive ? "text-green-400" : "text-slate-500"}`}>
+                  {isActive ? "Activa" : "Inactiva"}
+                </span>
+                <button
+                  onClick={() => onChange({ ...data, [key]: !isActive })}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                    isActive ? "bg-green-500" : "bg-slate-700"
+                  }`}
+                >
+                  <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ${isActive ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const EDITORS: Record<SectionKey, React.ComponentType<{ data: Record<string, unknown>; onChange: (d: Record<string, unknown>) => void }>> = {
   hero:                      HeroEditor,
   pricing:                   PricingEditor,
@@ -1309,6 +1374,7 @@ const EDITORS: Record<SectionKey, React.ComponentType<{ data: Record<string, unk
   servicios_implementacion:     ServiciosImplementacionEditor,
   servicios_implementacion_voz: ServiciosImplementacionVozEditor,
   voz_ia:                       VozIaEditor,
+  landings_config:              LandingsConfigEditor,
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -1325,6 +1391,7 @@ export default function CmsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [saveError, setSaveError] = useState<string>("");
 
   const loadContent = useCallback(async () => {
     setLoading(true);
@@ -1347,12 +1414,14 @@ export default function CmsPage() {
   const handleSave = async () => {
     setSaving(true);
     setSaveStatus("idle");
+    setSaveError("");
     try {
       await cmsApi.updateSection(token, activeSection, content[activeSection], orgId);
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch {
+    } catch (err) {
       setSaveStatus("error");
+      setSaveError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setSaving(false);
     }
@@ -1449,8 +1518,8 @@ export default function CmsPage() {
                 </div>
               )}
               {saveStatus === "error" && (
-                <div className="flex items-center gap-1.5 rounded-lg bg-red-950/40 px-3 py-1.5 text-xs font-medium text-red-400">
-                  <AlertCircle className="h-3.5 w-3.5" /> Error al guardar
+                <div className="flex items-center gap-1.5 rounded-lg bg-red-950/40 px-3 py-1.5 text-xs font-medium text-red-400" title={saveError}>
+                  <AlertCircle className="h-3.5 w-3.5" /> {saveError || "Error al guardar"}
                 </div>
               )}
               <Button

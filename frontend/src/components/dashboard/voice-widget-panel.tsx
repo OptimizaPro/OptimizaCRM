@@ -192,7 +192,7 @@ function VoiceSnippetBox({ token }: { token: string }) {
 
 const DEFAULT_WIDGET: VoiceWidget = {
   id: "", token: "", name: "Agente de Voz", vapi_assistant_id: "", llm_model: "openai/gpt-4o",
-  is_active: true, lead_count: 0, call_count: 0, system_prompt: "",
+  is_active: true, lead_count: 0, active_leads: 0, call_count: 0, system_prompt: "",
   config: { agent_name: "Sofía", voice: "es-MX-NuriaNeural", color: "#EA580C", greeting: "", farewell: "", avatar_url: "", escalation_mode: "whatsapp", transfer_number: "" },
   knowledge_base: null,
 };
@@ -468,7 +468,10 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
               </div>
               <div className="flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-3 py-1">
                 <Zap className="h-3 w-3 text-orange-400" />
-                <span className="text-xs font-semibold text-slate-300">{widget.lead_count} leads</span>
+                <span className="text-xs font-semibold text-slate-300">
+                  {widget.active_leads} leads activos
+                  <span className="ml-1 text-slate-500 font-normal">/ {widget.lead_count} total</span>
+                </span>
               </div>
               <button
                 onClick={() => patch("is_active", !merged.is_active)}
