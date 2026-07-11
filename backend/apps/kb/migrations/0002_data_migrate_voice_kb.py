@@ -45,13 +45,15 @@ def _migrate_voice_kb_to_shared(apps, schema_editor):
                 )
 
         # Link all VoiceWidgets that used this VoiceKnowledgeBase
-        VoiceWidget.objects.filter(knowledge_base=voice_kb).update(knowledge_base_v2=kb)
+        # Use raw SQL; cast UUIDs to str for SQLite/PostgreSQL compatibility
+        schema_editor.execute(
+            "UPDATE voice_widgets SET knowledge_base_v2_id = %s WHERE knowledge_base_id = %s",
+            [str(kb.id), str(voice_kb.id)],
+        )
 
 
 def _reverse(apps, schema_editor):
-    # Clearing knowledge_base_v2 is enough for reversal
-    VoiceWidget = apps.get_model("integrations", "VoiceWidget")
-    VoiceWidget.objects.update(knowledge_base_v2=None)
+    schema_editor.execute("UPDATE voice_widgets SET knowledge_base_v2_id = NULL")
     apps.get_model("kb", "KnowledgeBase").objects.all().delete()
 
 
