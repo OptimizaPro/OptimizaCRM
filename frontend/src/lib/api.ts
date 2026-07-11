@@ -1717,6 +1717,51 @@ export const kbApi = {
   },
 };
 
+// ─── Chatbot RAG ─────────────────────────────────────────────────────────────
+
+export interface ChatbotEmbedStatus_ {
+  total_chunks:    number;
+  embedded_chunks: number;
+  ready:           boolean;
+}
+
+export interface ChatbotWidget {
+  id:              string;
+  token:           string;
+  name:            string;
+  is_active:       boolean;
+  llm_model:       string;
+  system_prompt:   string;
+  welcome_message: string;
+  message_count:   number;
+  session_count:   number;
+  config:          Record<string, unknown>;
+  embed_status:    ChatbotEmbedStatus_ | null;
+}
+
+export interface ChatSession_ {
+  id:            string;
+  started_at:    string;
+  message_count: number;
+  first_message: string;
+}
+
+export const chatbotApi = {
+  get: (token: string, orgId: string) =>
+    api.get<{ widget: ChatbotWidget | null }>("/chatbot/manage/", { token, orgId }),
+
+  save: (token: string, orgId: string, data: Partial<ChatbotWidget>) =>
+    api.post<{ widget: ChatbotWidget }>("/chatbot/manage/", data, { token, orgId }),
+
+  triggerEmbed: (token: string, orgId: string) =>
+    api.post<{ ok: boolean; kb_id: string }>("/chatbot/embed/", {}, { token, orgId }),
+
+  listSessions: (token: string, orgId: string, page = 1) =>
+    api.get<{ sessions: ChatSession_[]; count: number; page: number; total_pages: number }>(
+      `/chatbot/sessions/?page=${page}`, { token, orgId },
+    ),
+};
+
 export const teamsApi = {
   list: (token: string, orgId: string) =>
     api.get<Team[]>("/teams/", { token, orgId }),
