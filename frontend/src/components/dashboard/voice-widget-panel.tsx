@@ -55,11 +55,11 @@ const VOICE_OPTIONS = [
   { value: "es-US-AlonsoNeural",   label: "Alonso — Masculino · EE. UU." },
 ];
 const MODEL_OPTIONS = [
-  { value: "groq/llama-3.3-70b-versatile",      label: "Groq Llama 3.3 70B (recomendado)" },
-  { value: "groq/llama-3.1-8b-instant",          label: "Groq Llama 3.1 8B (ultra rápido)" },
-  { value: "openai/gpt-4o",                       label: "OpenAI GPT-4o" },
+  { value: "openai/gpt-4o",                       label: "OpenAI GPT-4o (recomendado)" },
   { value: "openai/gpt-4o-mini",                  label: "OpenAI GPT-4o Mini" },
   { value: "anthropic/claude-3-5-haiku-20241022", label: "Anthropic Claude 3.5 Haiku" },
+  { value: "groq/llama-3.3-70b-versatile",        label: "Groq Llama 3.3 70B" },
+  { value: "groq/llama-3.1-8b-instant",           label: "Groq Llama 3.1 8B (ultra rápido)" },
 ];
 
 const inputCls = "w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500";
@@ -191,7 +191,7 @@ function VoiceSnippetBox({ token }: { token: string }) {
 // ─── Default values ───────────────────────────────────────────────────────────
 
 const DEFAULT_WIDGET: VoiceWidget = {
-  id: "", token: "", name: "Agente de Voz", vapi_assistant_id: "", llm_model: "groq/llama-3.3-70b-versatile",
+  id: "", token: "", name: "Agente de Voz", vapi_assistant_id: "", llm_model: "openai/gpt-4o",
   is_active: true, lead_count: 0, call_count: 0, system_prompt: "",
   config: { agent_name: "Sofía", voice: "es-MX-NuriaNeural", color: "#EA580C", greeting: "", farewell: "", avatar_url: "", escalation_mode: "whatsapp", transfer_number: "" },
   knowledge_base: null,
@@ -677,7 +677,7 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
               <label className={labelCls + " mb-1 block"}>Modelo LLM</label>
               <select
                 className={inputCls}
-                value={merged.llm_model ?? "groq/llama-3.3-70b-versatile"}
+                value={merged.llm_model ?? "openai/gpt-4o"}
                 onChange={(e) => patch("llm_model", e.target.value)}
               >
                 {MODEL_OPTIONS.map((m) => (

@@ -205,7 +205,7 @@ def _build_tools(widget) -> list:
 def _build_model_config(llm_model: str, system_prompt: str, tools: list) -> dict:
     """Returns Vapi model config dict based on llm_model string 'provider/model-name'."""
     parts    = llm_model.split("/", 1)
-    provider = parts[0] if len(parts) == 2 else "groq"
+    provider = parts[0] if len(parts) == 2 else "openai"
     model    = parts[1] if len(parts) == 2 else llm_model
     return {
         "provider":    provider,

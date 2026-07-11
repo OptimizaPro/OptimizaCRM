@@ -32,12 +32,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  web:       "Sitio web",
-  referral:  "Referido",
-  cold_call: "Llamada fría",
-  social:    "Redes sociales",
-  event:     "Evento",
-  other:     "Otro",
+  web:         "Sitio web",
+  referral:    "Referido",
+  cold_call:   "Llamada fría",
+  social:      "Redes sociales",
+  event:       "Evento",
+  voice_agent: "Agente de voz",
+  other:       "Otro",
 };
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
