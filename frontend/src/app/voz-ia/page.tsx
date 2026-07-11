@@ -76,7 +76,7 @@ const DEFAULT_FAQS = [
   { id: 4, question: "¿Los leads que captura el agente van directo a mi CRM?", answer: "Sí. Cada lead calificado por el agente aparece automáticamente en tu pipeline de OptimizaCRM con nombre, email, teléfono, motivo de contacto y resumen de la conversación.", sort_order: 3 },
   { id: 5, question: "¿Puedo personalizar lo que dice el agente?", answer: "Completamente. Configuras el nombre del agente, su saludo inicial, despedida, información de tu empresa, productos, precios, horarios y preguntas de calificación. También puedes importar la KB desde una URL o PDF.", sort_order: 4 },
   { id: 6, question: "¿Qué sucede cuando se agotan los minutos del mes?", answer: "Recibes alertas al 80% y 100% del límite. Los minutos adicionales se cobran a $0.08–0.10/min según tu plan. Puedes actualizar a un plan superior en cualquier momento.", sort_order: 5 },
-  { id: 7, question: "¿El agente de voz está incluido en los planes de CRM?", answer: "Durante los 14 días de prueba gratuita incluimos 1 agente con 100 minutos para que puedas probarlo. Pasado el trial, es un servicio adicional. Los planes Enterprise de CRM incluyen Voz Pro (3 agentes, 1.000 min).", sort_order: 6 },
+  { id: 7, question: "¿El agente de voz está incluido en los planes de CRM?", answer: "Durante los 14 días de prueba gratuita incluimos 1 agente con 100 minutos para que puedas probarlo. Pasado el trial, es un servicio adicional. Los planes de Voz-AI incluyen Voz Starter (1 agente y 300 minutos), Voz Pro (3 agentes, 1.000 min) y Voz Enterprise (5 agentes, 5.000 min).", sort_order: 6 },
 ];
 
 const DEFAULT_STATS = [

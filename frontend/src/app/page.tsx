@@ -502,7 +502,7 @@ export default function HomePage() {
                 </h2>
                 <p className="mt-5 max-w-md text-lg leading-relaxed text-slate-400">
                   Atiende llamadas, califica leads y agenda citas en automático las 24 h.
-                  En español perfecto, sin costes de personal adicional.
+                  En español, sin costes de personal adicional.
                 </p>
                 <div className="mt-8 grid grid-cols-3 gap-3">
                   {[
