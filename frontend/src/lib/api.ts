@@ -1647,6 +1647,76 @@ export const teamGoalApi = {
     api.put<TeamGoal_>("/analytics/team-goal/", data, { token, orgId }),
 };
 
+// ── Shared Knowledge Base ─────────────────────────────────────────────────────
+
+export interface KnowledgeBase {
+  id:                      string;
+  company_info:            string;
+  products_services:       string;
+  pricing:                 string;
+  faqs:                    string;
+  working_hours:           string;
+  contact_info:            string;
+  appointment_rules:       string;
+  qualification_questions: string[];
+  whatsapp_number:         string;
+}
+
+export interface KBSource {
+  id:          string;
+  source_type: "url" | "file";
+  name:        string;
+  char_count:  number;
+  created_at:  string;
+}
+
+export const kbApi = {
+  get: (token: string, orgId: string) =>
+    api.get<{ knowledge_base: KnowledgeBase; source_count: number; source_limit: number }>(
+      "/kb/manage/", { token, orgId },
+    ),
+
+  save: (token: string, orgId: string, data: Partial<KnowledgeBase>) =>
+    api.post<{ knowledge_base: KnowledgeBase }>("/kb/manage/", data, { token, orgId }),
+
+  scrapeUrl: (token: string, orgId: string, url: string) =>
+    api.post<{ knowledge_base: Partial<KnowledgeBase>; char_count: number; source: KBSource }>(
+      "/kb/scrape-url/", { url }, { token, orgId },
+    ),
+
+  importFile: async (token: string, orgId: string, file: File) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${apiUrl}/kb/import-file/`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "X-Organization-ID": orgId },
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || `Error ${res.status}`);
+    }
+    return res.json() as Promise<{ knowledge_base: Partial<KnowledgeBase>; char_count: number; filename: string; source: KBSource }>;
+  },
+
+  listSources: (token: string, orgId: string) =>
+    api.get<{ sources: KBSource[]; limit: number; count: number }>("/kb/sources/", { token, orgId }),
+
+  deleteSource: async (token: string, orgId: string, sourceId: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    const res = await fetch(`${apiUrl}/kb/sources/${sourceId}/`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}`, "X-Organization-ID": orgId },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error || `Error ${res.status}`);
+    }
+    return res.json() as Promise<{ ok: boolean }>;
+  },
+};
+
 export const teamsApi = {
   list: (token: string, orgId: string) =>
     api.get<Team[]>("/teams/", { token, orgId }),

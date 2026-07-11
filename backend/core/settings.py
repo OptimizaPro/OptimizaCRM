@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.forms",
     "apps.campaigns",
     "apps.voice_plans",
+    "apps.kb",
 ]
 
 MIDDLEWARE = [

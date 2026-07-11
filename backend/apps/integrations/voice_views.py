@@ -90,9 +90,14 @@ def _notify_admins(org, title, message, notification_type="lead", link=""):
 
 def _get_voice_widget(token):
     from .models import VoiceWidget
-    return VoiceWidget.objects.select_related("organization", "knowledge_base").get(
-        token=token, is_active=True
-    )
+    return VoiceWidget.objects.select_related(
+        "organization", "knowledge_base", "knowledge_base_v2",
+    ).get(token=token, is_active=True)
+
+
+def _effective_kb(widget):
+    """Return knowledge_base_v2 (new shared KB) if set, else old knowledge_base."""
+    return widget.knowledge_base_v2 or widget.knowledge_base
 
 
 # ─── 1. Public config endpoint ────────────────────────────────────────────────
@@ -162,13 +167,13 @@ def voice_widget_manage(request):
     if request.method == "GET":
         agent_id = request.GET.get("agent_id")
         if agent_id:
-            widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base").first()
+            widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base", "knowledge_base_v2").first()
         else:
-            widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base").first()
+            widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base", "knowledge_base_v2").first()
         if not widget:
             return JsonResponse({"widget": None, "knowledge_base": None})
 
-        kb = widget.knowledge_base
+        kb = _effective_kb(widget)
         org_settings = org.settings or {}
         return JsonResponse({
             "widget": {
@@ -241,25 +246,42 @@ def voice_widget_manage(request):
             widget.system_prompt = widget_data["system_prompt"]
 
         # Update or create knowledge base
+        # Prefer knowledge_base_v2 (new shared KB); fall back to old VoiceKnowledgeBase
         kb_data = body.get("knowledge_base")
+        KB_FIELDS = [
+            "company_info", "products_services", "pricing", "faqs",
+            "working_hours", "contact_info", "appointment_rules",
+            "qualification_questions", "whatsapp_number",
+        ]
         if kb_data is not None:
-            if widget.knowledge_base:
-                kb = widget.knowledge_base
+            # ── Write to new shared KnowledgeBase ────────────────────────────
+            from apps.kb.models import KnowledgeBase as SharedKB
+            if widget.knowledge_base_v2_id:
+                kb_new = widget.knowledge_base_v2
             else:
-                kb = VoiceKnowledgeBase.objects.create(organization=org)
-                widget.knowledge_base = kb
+                kb_new = SharedKB.objects.create(organization=org)
+                widget.knowledge_base_v2 = kb_new
 
-            kb_fields = [
-                "company_info", "products_services", "pricing", "faqs",
-                "working_hours", "contact_info", "appointment_rules",
-                "qualification_questions", "whatsapp_number",
-            ]
-            for field in kb_fields:
+            for field in KB_FIELDS:
                 if field in kb_data:
-                    setattr(kb, field, kb_data[field])
-            kb.save()
+                    setattr(kb_new, field, kb_data[field])
+            kb_new.save()
+
+            # ── Keep legacy VoiceKnowledgeBase in sync (for existing callers) ──
+            if widget.knowledge_base:
+                kb_legacy = widget.knowledge_base
+            else:
+                kb_legacy = VoiceKnowledgeBase.objects.create(organization=org)
+                widget.knowledge_base = kb_legacy
+
+            for field in KB_FIELDS:
+                if field in kb_data:
+                    setattr(kb_legacy, field, kb_data[field])
+            kb_legacy.save()
+
+            kb = kb_new
         else:
-            kb = widget.knowledge_base
+            kb = _effective_kb(widget)
 
         # Push to Vapi — use freshly saved org.settings
         org.refresh_from_db(fields=["settings"])
@@ -516,7 +538,7 @@ def voice_tool_escalate(request):
     )
 
     # Build WhatsApp link for the response message
-    kb = widget.knowledge_base
+    kb = _effective_kb(widget)
     whatsapp_number = (kb.whatsapp_number if kb else "") or ""
     if whatsapp_number:
         wa_msg = f"Hola, soy {caller_name}. Me comunicó el asistente de voz. {reason}"
@@ -803,6 +825,21 @@ def _save_kb_source(org, agent_id, source_type, name, char_count):
             name=name,
             char_count=char_count,
         )
+
+        # Mirror the source to the shared KnowledgeBase (knowledge_base_v2)
+        try:
+            from apps.kb.models import KBSource as SharedKBSource
+            if widget.knowledge_base_v2_id:
+                SharedKBSource.objects.create(
+                    organization=org,
+                    knowledge_base=widget.knowledge_base_v2,
+                    source_type=source_type,
+                    name=name,
+                    char_count=char_count,
+                )
+        except Exception:
+            pass  # best-effort — don't fail the main flow
+
         return {
             "source": {
                 "id":          source.id,
@@ -944,10 +981,12 @@ def voice_sync_assistant(request):
     if not vapi_private_key:
         return JsonResponse({"error": "No hay clave privada de Vapi configurada"}, status=400)
 
-    try:
-        kb = VoiceKnowledgeBase.objects.get(widget=widget)
-    except VoiceKnowledgeBase.DoesNotExist:
-        kb = None
+    kb = _effective_kb(widget)
+    if kb is None:
+        try:
+            kb = VoiceKnowledgeBase.objects.get(widget=widget)
+        except VoiceKnowledgeBase.DoesNotExist:
+            kb = None
 
     try:
         assistant_id = create_or_update_assistant(widget, kb, vapi_private_key)

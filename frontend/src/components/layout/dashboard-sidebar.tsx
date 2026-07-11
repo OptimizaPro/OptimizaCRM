@@ -8,7 +8,7 @@ import {
   Calendar, BarChart3, Brain, Settings, LogOut, Menu,
   Plug, Inbox, MessageCircle, ChevronDown, MessagesSquare,
   TrendingUp, ListTodo, LineChart, ShieldCheck, FileText,
-  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound,
+  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, useSidebarStore } from "@/store/auth";
@@ -107,7 +107,8 @@ const NAV: NavEntry[] = [
         { href: "/dashboard/users",        label: "Usuarios",          icon: Users },
         { href: "/dashboard/teams",        label: "Equipos",           icon: UsersRound },
         { href: "/dashboard/automation",    label: "Automatizaciones",  icon: Zap },
-        { href: "/dashboard/voice-plans",  label: "Agente de Voz IA", icon: Mic },
+        { href: "/dashboard/voice-plans",      label: "Agente de Voz IA",  icon: Mic      },
+        { href: "/dashboard/knowledge-base",   label: "Base de Conocimiento", icon: BookOpen },
         { href: "/dashboard/hub",          label: "Hub de Contacto",      icon: LayoutGrid  },
         { href: "/dashboard/forms",        label: "Formularios",          icon: FormInput   },
         { href: "/dashboard/cms",          label: "Contenido Web",        icon: FileText    },
