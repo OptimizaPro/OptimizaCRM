@@ -116,7 +116,9 @@ function SourceBadge({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function KnowledgeBasePage() {
-  const { token, organizationId } = useAuthStore();
+  const { tokens, organization } = useAuthStore();
+  const token = tokens?.access ?? "";
+  const organizationId = organization?.id ?? "";
   const qc = useQueryClient();
 
   // ── Local form state ──────────────────────────────────────────────────────
