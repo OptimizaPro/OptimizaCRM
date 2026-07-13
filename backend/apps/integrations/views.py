@@ -5,6 +5,9 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 
 import imaplib
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 import smtplib
 import email as email_lib
 import urllib.request
@@ -728,6 +731,24 @@ def hub_config(request):
             "number":   wa_number.replace(" ", ""),
             "message":  cfg.get("whatsapp_message", "Hola, me gustaría más información"),
         })
+
+    # ── Chatbot RAG — toggle: ChatbotWidget.is_active ─────────────────────────
+    try:
+        from apps.chatbot.models import ChatbotWidget
+        chatbot, _ = ChatbotWidget.objects.get_or_create(organization=org)
+        if chatbot.is_active:
+            ccfg = chatbot.config or {}
+            channels.append({
+                "type":            "chatbot",
+                "label":           chatbot.name or "Chat con IA",
+                "subtitle":        "Respuestas instantáneas con IA",
+                "token":           str(chatbot.token),
+                "welcome_message": chatbot.welcome_message or "¡Hola! ¿En qué puedo ayudarte?",
+                "color":           ccfg.get("color", "#0891b2"),
+                "capture_lead":    ccfg.get("capture_lead", False),
+            })
+    except Exception as exc:
+        logger.warning("hub_config: chatbot channel error for org %s: %s", org.id, exc)
 
     r = JsonResponse({
         "color":    color,

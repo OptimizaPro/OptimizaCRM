@@ -42,6 +42,22 @@ class ChatbotWidget(TenantModel):
 class ChatSession(models.Model):
     """Sesión anónima de chat (no requiere login)."""
 
+    CAPTURE_STATES = [
+        ("init",      "Inicio"),
+        ("ask_name",  "Preguntando nombre"),
+        ("ask_phone", "Preguntando teléfono"),
+        ("ask_email", "Preguntando email"),
+        ("active",    "Activo"),
+        ("skip",      "Sin captura"),
+    ]
+
+    INTENT_LEVELS = [
+        ("high",   "Alto"),
+        ("medium", "Medio"),
+        ("low",    "Bajo"),
+        ("",       "Sin análisis"),
+    ]
+
     id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     widget     = models.ForeignKey(ChatbotWidget, on_delete=models.CASCADE, related_name="sessions")
     started_at = models.DateTimeField(auto_now_add=True)
@@ -51,6 +67,13 @@ class ChatSession(models.Model):
         "crm.Lead", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="chat_sessions",
     )
+    # ── Lead capture state machine ─────────────────────────────────────────────
+    capture_state  = models.CharField(max_length=20, choices=CAPTURE_STATES, default="init")
+    lead_data      = models.JSONField(default=dict, blank=True)   # {name, phone, email} collected so far
+    # ── Intent analysis (populated after session ends or on demand) ────────────
+    intent_level   = models.CharField(max_length=10, blank=True, default="")
+    intent_topics  = models.JSONField(default=list, blank=True)
+    intent_summary = models.TextField(blank=True)
 
     class Meta:
         db_table = "chatbot_sessions"

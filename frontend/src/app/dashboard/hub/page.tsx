@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { WebWidgetPanel } from "@/components/dashboard/web-widget-panel";
-import { widgetApi } from "@/lib/api";
+import { widgetApi, chatbotApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import {
   LayoutGrid, Users, MessageCircle, Mic, ExternalLink,
-  Copy, Check, Zap, Globe, TrendingUp, ChevronDown, ChevronUp,
+  Copy, Check, Zap, Globe, TrendingUp, ChevronDown, ChevronUp, Bot,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -77,12 +77,18 @@ export default function HubPage() {
     enabled:  !!tokens && !!organization,
   });
 
-  const widget       = data?.widget ?? null;
-  const cfg          = widget?.config ?? {};
-  const formActive   = Boolean(widget?.is_active);
-  const waActive     = Boolean(cfg.whatsapp_enabled) && Boolean(cfg.whatsapp_number);
-  const activeChannels = [formActive, waActive].filter(Boolean).length;
-  const convRate     = widget && widget.lead_count > 0 ? widget.lead_count : 0;
+  const { data: chatbotData } = useQuery({
+    queryKey: ["chatbot-manage", organization?.id],
+    queryFn:  () => chatbotApi.get(tokens!.access, organization!.id),
+    enabled:  !!tokens && !!organization,
+  });
+
+  const widget         = data?.widget ?? null;
+  const cfg            = widget?.config ?? {};
+  const formActive     = Boolean(widget?.is_active);
+  const waActive       = Boolean(cfg.whatsapp_enabled) && Boolean(cfg.whatsapp_number);
+  const chatbotActive  = Boolean(chatbotData?.widget?.is_active);
+  const activeChannels = [formActive, waActive, chatbotActive].filter(Boolean).length;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -113,7 +119,7 @@ export default function HubPage() {
           </div>
 
           {/* ── Stat cards ──────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 mb-6">
             {[
               {
                 label: "Leads captados",
@@ -124,7 +130,7 @@ export default function HubPage() {
               },
               {
                 label: "Canales activos",
-                value: isLoading ? "—" : `${activeChannels}/3`,
+                value: isLoading ? "—" : `${activeChannels}/4`,
                 icon: LayoutGrid,
                 color: "text-sky-400",
                 bg:    "bg-sky-950/30",
@@ -142,6 +148,13 @@ export default function HubPage() {
                 icon: MessageCircle,
                 color: waActive ? "text-green-400" : "text-slate-500",
                 bg:    waActive ? "bg-green-950/30" : "bg-slate-800/50",
+              },
+              {
+                label: "Chatbot RAG",
+                value: isLoading ? "—" : chatbotActive ? "Activo" : "Inactivo",
+                icon: Bot,
+                color: chatbotActive ? "text-sky-400" : "text-slate-500",
+                bg:    chatbotActive ? "bg-sky-950/30" : "bg-slate-800/50",
               },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className="rounded-2xl border border-slate-800 bg-slate-950 p-4 flex flex-col gap-3">
@@ -174,8 +187,9 @@ export default function HubPage() {
 
                 {/* Channels */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <ChannelBadge icon={Users}         label="Formulario" active={formActive} />
-                  <ChannelBadge icon={MessageCircle} label="WhatsApp"   active={waActive}   />
+                  <ChannelBadge icon={Users}         label="Formulario"  active={formActive}    />
+                  <ChannelBadge icon={MessageCircle} label="WhatsApp"    active={waActive}      />
+                  <ChannelBadge icon={Bot}           label="Chatbot RAG" active={chatbotActive} />
                   <Link href="/dashboard/voice-plans">
                     <ChannelBadge icon={Mic} label="Voz IA" active={false} />
                   </Link>
@@ -199,13 +213,18 @@ export default function HubPage() {
                 </a>
               </div>
 
-              {/* Voz IA hint */}
+              {/* Auto-channels hint */}
               <p className="mt-3 text-xs text-slate-500">
-                El canal <span className="text-slate-400">Voz IA</span> se activa desde{" "}
+                <span className="text-slate-400">Voz IA</span> se activa desde{" "}
                 <Link href="/dashboard/voice-plans" className="text-orange-400 hover:text-orange-300 underline underline-offset-2">
                   Agente de Voz IA
-                </Link>{" "}
-                — el widget lo detecta automáticamente.
+                </Link>
+                {" "}·{" "}
+                <span className="text-slate-400">Chatbot RAG</span> se activa desde{" "}
+                <Link href="/dashboard/chatbot" className="text-orange-400 hover:text-orange-300 underline underline-offset-2">
+                  Chatbot RAG
+                </Link>
+                {" "}— el widget los detecta automáticamente.
               </p>
             </div>
           ) : !isLoading && (

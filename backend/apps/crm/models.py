@@ -24,6 +24,7 @@ class Lead(TenantModel):
         ("social",      "Redes sociales"),
         ("event",       "Evento"),
         ("voice_agent", "Agente de voz"),
+        ("chatbot",     "Chatbot IA"),
         ("other",       "Otro"),
     ]
 
@@ -41,6 +42,11 @@ class Lead(TenantModel):
         verbose_name="ID de cliente",
         help_text="Identificador propio del cliente (p. ej. número de expediente). "
                   "El agente de voz lo usa para vincular llamadas a registros existentes.",
+    )
+    lead_ref_id   = models.CharField(
+        max_length=20, blank=True, default="", db_index=True,
+        verbose_name="ID de referencia chatbot",
+        help_text="Código OPT-XXXX asignado por el ChatBot IA al capturar el lead.",
     )
     title         = models.CharField(max_length=100, blank=True)
     source        = models.CharField(max_length=50, choices=SOURCE_CHOICES, default="web")

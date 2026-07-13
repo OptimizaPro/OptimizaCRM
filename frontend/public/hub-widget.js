@@ -81,10 +81,12 @@
     voice: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm-2 4a2 2 0 0 1 4 0v6a2 2 0 0 1-4 0V5zm-5 6a1 1 0 0 1 1 1 6 6 0 0 0 12 0 1 1 0 1 1 2 0 8 8 0 0 1-7 7.93V21h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.07A8 8 0 0 1 4 12a1 1 0 0 1 1-1z"/></svg>',
     form: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12z"/></svg>',
     whatsapp: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM11.999 0C5.373 0 0 5.373 0 12c0 2.117.554 4.103 1.523 5.826L.057 23.926a.5.5 0 0 0 .611.611l6.101-1.466A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.8 9.8 0 0 1-5.012-1.373l-.36-.213-3.626.872.888-3.544-.234-.374A9.772 9.772 0 0 1 2.182 12c0-5.42 4.398-9.818 9.817-9.818 5.42 0 9.819 4.398 9.819 9.818 0 5.42-4.399 9.818-9.819 9.818z"/></svg>',
+    chatbot: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7 14a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1m10 0a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1M5 17a7 7 0 0 0 14 0z"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a4 4 0 0 0-4 4v6a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm-2 4a2 2 0 0 1 4 0v6a2 2 0 0 1-4 0V5zm-5 6a1 1 0 0 1 1 1 6 6 0 0 0 12 0 1 1 0 1 1 2 0 8 8 0 0 1-7 7.93V21h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.07A8 8 0 0 1 4 12a1 1 0 0 1 1-1z"/></svg>',
     hangup: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>',
   };
-  var CHANNEL_COLORS = { voice: '#7c3aed', form: '#0ea5e9', whatsapp: '#25D366' };
+  var CHANNEL_COLORS = { voice: '#7c3aed', form: '#0ea5e9', whatsapp: '#25D366', chatbot: '#0891b2' };
 
   // ── Main boot ──────────────────────────────────────────────────────────────
   function boot(cfg) {
@@ -135,7 +137,7 @@
       '.ch-arrow{color:#475569;font-size:14px;line-height:1}',
 
       // Panel (form or voice)
-      '.panel{position:absolute;bottom:72px;right:0;width:320px;background:#1e293b;border-radius:16px;box-shadow:0 8px 36px rgba(0,0,0,.45);overflow:hidden;opacity:0;transform:translateY(14px) scale(.97);transition:opacity .2s,transform .2s;pointer-events:none}',
+      '.panel{position:absolute;bottom:72px;right:0;width:340px;background:#1e293b;border-radius:16px;box-shadow:0 8px 36px rgba(0,0,0,.45);overflow:hidden;opacity:0;transform:translateY(14px) scale(.97);transition:opacity .2s,transform .2s;pointer-events:none}',
       '.panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}',
       '.p-head{padding:16px 18px 14px;position:relative}',
       '.p-title{font-size:15px;font-weight:700;color:#fff}',
@@ -162,6 +164,9 @@
       '.reasons{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}',
       '.r-btn{border:1px solid #334155;background:rgba(15,23,42,.6);border-radius:20px;padding:5px 10px;font-size:11px;color:#94a3b8;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap}',
       '.r-btn.active{border-color:'+color+';background:rgba(234,88,12,.12);color:'+color+'}',
+
+      // Chatbot panel
+      '@keyframes cbt{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}',
 
       // Voice panel — premium design
       '.v-panel-body{padding:24px 20px 20px;display:flex;flex-direction:column;align-items:center}',
@@ -209,7 +214,7 @@
     channels.forEach(function (ch) {
       var card = document.createElement('div');
       card.className = 'ch';
-      var bg = CHANNEL_COLORS[ch.type] || color;
+      var bg = ch.color || CHANNEL_COLORS[ch.type] || color;
       var iconStyle = ch.type === 'voice'
         ? 'background:'+bg+';box-shadow:0 0 14px '+bg+'80,0 0 5px '+bg+'4d'
         : 'background:'+bg;
@@ -285,8 +290,12 @@
         closeAll();
         return;
       }
-      if (ch.type === 'form')  { renderForm(ch);  }
-      if (ch.type === 'voice') { renderVoice(ch); }
+      if (ch.type === 'form')    { renderForm(ch);    }
+      if (ch.type === 'voice')   { renderVoice(ch);   }
+      if (ch.type === 'chatbot') {
+        try { renderChatbot(ch); }
+        catch(e) { console.error('[OptimizaCRM Hub] chatbot render error:', e); }
+      }
       panel.classList.add('open');
       hubOpen = false;
       activePanel = ch.type;
@@ -533,6 +542,198 @@
       });
 
       setVState('idle');
+    }
+
+    // ── Chatbot RAG panel ────────────────────────────────────────────────────
+    function renderChatbot(ch) {
+      var cbToken     = ch.token || '';
+      var welcome     = ch.welcome_message || '¡Hola! ¿En qué puedo ayudarte?';
+      var cbColor     = ch.color || '#0891b2';
+      var SESSION_KEY = 'ohub_cbot_' + cbToken.slice(0, 8);
+      var sessionId   = sessionStorage.getItem(SESSION_KEY) || null;
+      var cbBusy      = false;
+      var typingEl    = null;
+
+      // ── Header ────────────────────────────────────────────────────────────
+      var cbHead = document.createElement('div');
+      cbHead.style.cssText = 'background:linear-gradient(135deg,'+cbColor+' 0%,#0e7490 100%);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;';
+      var cbHeadLeft = document.createElement('div');
+      cbHeadLeft.style.cssText = 'display:flex;align-items:center;gap:10px';
+      var cbAvatar = document.createElement('div');
+      cbAvatar.style.cssText = 'width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0';
+      cbAvatar.innerHTML = '<svg viewBox="0 0 24 24" fill="#fff" width="16" height="16"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H3a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7 14a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1m10 0a1 1 0 0 1 1 1 1 1 0 0 1-1 1 1 1 0 0 1-1-1 1 1 0 0 1 1-1M5 17a7 7 0 0 0 14 0z"/></svg>';
+      var cbHeadText = document.createElement('div');
+      var cbTitle = document.createElement('div');
+      cbTitle.style.cssText = 'font-size:13px;font-weight:700;color:#fff;line-height:1.2';
+      cbTitle.textContent = ch.label || 'Asistente IA';
+      var cbSub = document.createElement('div');
+      cbSub.style.cssText = 'font-size:10px;color:rgba(255,255,255,.7);margin-top:1px;display:flex;align-items:center;gap:4px';
+      var cbDot = document.createElement('span');
+      cbDot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block';
+      cbSub.appendChild(cbDot);
+      cbSub.appendChild(document.createTextNode('En línea'));
+      cbHeadText.appendChild(cbTitle);
+      cbHeadText.appendChild(cbSub);
+      cbHeadLeft.appendChild(cbAvatar);
+      cbHeadLeft.appendChild(cbHeadText);
+      var cbClose = document.createElement('button');
+      cbClose.style.cssText = 'background:rgba(255,255,255,.15);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s';
+      cbClose.innerHTML = ICONS.close;
+      cbClose.querySelector('svg').style.cssText = 'width:14px;height:14px;fill:#fff';
+      cbClose.addEventListener('click', closeAll);
+      cbHead.appendChild(cbHeadLeft);
+      cbHead.appendChild(cbClose);
+
+      // ── Messages area ─────────────────────────────────────────────────────
+      var msgsEl = document.createElement('div');
+      msgsEl.style.cssText = 'height:270px;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;background:#0f172a';
+      // Custom scrollbar via a style tag appended to shadow
+      var sbStyle = document.createElement('style');
+      sbStyle.textContent = '#cb-msgs-el::-webkit-scrollbar{width:4px}#cb-msgs-el::-webkit-scrollbar-track{background:transparent}#cb-msgs-el::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:4px}';
+      shadow.appendChild(sbStyle);
+      msgsEl.id = 'cb-msgs-el';
+
+      // ── Footer ────────────────────────────────────────────────────────────
+      var cbFoot = document.createElement('div');
+      cbFoot.style.cssText = 'display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,.06);align-items:flex-start;background:#1e293b';
+
+      var inpEl = document.createElement('textarea');
+      inpEl.style.cssText = [
+        'flex:1',
+        'background:#0f172a',
+        'border:1.5px solid #334155',
+        'border-radius:12px',
+        'padding:10px 12px',
+        'font-size:13px',
+        'color:#e2e8f0',
+        'resize:none',
+        'outline:none',
+        'font-family:inherit',
+        'line-height:1.45',
+        'min-height:44px',
+        'max-height:110px',
+        'overflow-y:auto',
+        'transition:border-color .15s',
+        'display:block',
+      ].join(';');
+      inpEl.placeholder = 'Escribe tu mensaje…';
+      inpEl.rows = 2;
+
+      // Send button — rounded rectangle with gradient
+      var sendBtn = document.createElement('button');
+      sendBtn.style.cssText = [
+        'width:44px',
+        'height:44px',
+        'border-radius:12px',
+        'border:none',
+        'cursor:pointer',
+        'background:linear-gradient(135deg,'+cbColor+',#0e7490)',
+        'display:flex',
+        'align-items:center',
+        'justify-content:center',
+        'flex-shrink:0',
+        'box-shadow:0 2px 10px rgba(8,145,178,.4)',
+        'transition:transform .15s,box-shadow .15s,opacity .15s',
+      ].join(';');
+      sendBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+      sendBtn.disabled = true;
+      sendBtn.addEventListener('mouseenter', function(){ if (!sendBtn.disabled) { sendBtn.style.transform='scale(1.08)'; sendBtn.style.boxShadow='0 4px 16px rgba(8,145,178,.6)'; } });
+      sendBtn.addEventListener('mouseleave', function(){ sendBtn.style.transform=''; sendBtn.style.boxShadow='0 2px 10px rgba(8,145,178,.4)'; });
+
+      cbFoot.appendChild(inpEl);
+      cbFoot.appendChild(sendBtn);
+
+      // ── Mount into panel ──────────────────────────────────────────────────
+      panel.innerHTML = '';
+      panel.appendChild(cbHead);
+      panel.appendChild(msgsEl);
+      panel.appendChild(cbFoot);
+
+      // ── Helpers ───────────────────────────────────────────────────────────
+      function scrollBottom() { setTimeout(function(){ msgsEl.scrollTop = msgsEl.scrollHeight; }, 20); }
+
+      function mdCb(text) {
+        return String(text || '')
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+          .replace(/`([^`]+)`/g,'<code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px;font-size:.85em;font-family:monospace">$1</code>')
+          .replace(/\n/g,'<br>');
+      }
+
+      function appendMsg(role, text) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:6px;align-items:flex-end;max-width:86%' + (role === 'user' ? ';align-self:flex-end;flex-direction:row-reverse' : '');
+        var bubble = document.createElement('div');
+        bubble.style.cssText = 'padding:9px 13px;border-radius:14px;font-size:13px;line-height:1.5;word-break:break-word;max-width:100%;' +
+          (role === 'user'
+            ? 'background:linear-gradient(135deg,'+cbColor+',#0e7490);color:#fff;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(8,145,178,.3)'
+            : 'background:#1e293b;border:1px solid rgba(255,255,255,.08);color:#e2e8f0;border-bottom-left-radius:4px');
+        bubble.innerHTML = mdCb(text);
+        row.appendChild(bubble);
+        msgsEl.appendChild(row);
+        scrollBottom();
+      }
+
+      function showTyping() {
+        typingEl = document.createElement('div');
+        typingEl.style.cssText = 'display:flex;gap:5px;align-items:center;padding:10px 14px;background:#1e293b;border:1px solid rgba(255,255,255,.08);border-radius:14px;border-bottom-left-radius:4px;width:fit-content';
+        for (var i = 0; i < 3; i++) {
+          var d = document.createElement('span');
+          d.style.cssText = 'width:7px;height:7px;border-radius:50%;background:#475569;display:inline-block;animation:cbt .9s ease-in-out infinite ' + (i*0.18) + 's';
+          typingEl.appendChild(d);
+        }
+        msgsEl.appendChild(typingEl);
+        scrollBottom();
+      }
+      function hideTyping() {
+        if (typingEl && typingEl.parentNode) { typingEl.parentNode.removeChild(typingEl); typingEl = null; }
+      }
+
+      function setSendState(busy) {
+        sendBtn.disabled = busy || !inpEl.value.trim();
+        sendBtn.style.opacity = sendBtn.disabled ? '0.35' : '1';
+        sendBtn.style.cursor  = sendBtn.disabled ? 'not-allowed' : 'pointer';
+      }
+
+      function cbSend() {
+        var msg = inpEl.value.trim();
+        if (!msg || cbBusy) return;
+        appendMsg('user', msg);
+        inpEl.value = '';
+        inpEl.style.height = '';
+        cbBusy = true;
+        setSendState(true);
+        showTyping();
+        fetch(API_URL + '/chatbot/chat/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: cbToken, session_id: sessionId || '', message: msg }),
+        })
+          .then(function(r){ return r.json(); })
+          .then(function(res){
+            hideTyping();
+            if (res.session_id) { sessionId = res.session_id; sessionStorage.setItem(SESSION_KEY, sessionId); }
+            appendMsg('bot', res.error ? 'Error: ' + res.error : (res.response || '…'));
+          })
+          .catch(function(){ hideTyping(); appendMsg('bot', 'Error de conexión. Inténtalo de nuevo.'); })
+          .finally(function(){ cbBusy = false; setSendState(false); });
+      }
+
+      inpEl.addEventListener('input', function(){
+        inpEl.style.height = 'auto';
+        inpEl.style.height = Math.min(inpEl.scrollHeight, 110) + 'px';
+        setSendState(cbBusy);
+      });
+      inpEl.addEventListener('focus', function(){ inpEl.style.borderColor = cbColor; });
+      inpEl.addEventListener('blur',  function(){ inpEl.style.borderColor = '#334155'; });
+      inpEl.addEventListener('keydown', function(e){
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!sendBtn.disabled) cbSend(); }
+      });
+      sendBtn.addEventListener('click', cbSend);
+
+      appendMsg('bot', welcome);
+      setSendState(false);
+      setTimeout(function(){ inpEl.focus(); }, 80);
     }
 
     // If only one channel, clicking FAB opens it directly

@@ -5,10 +5,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { useAuthStore } from "@/store/auth";
-import { chatbotApi, type ChatbotWidget, type ChatSession_ } from "@/lib/api";
+import {
+  chatbotApi, type ChatbotWidget, type ChatSession_, type ChatSessionDetail,
+} from "@/lib/api";
 import {
   Bot, Save, Copy, Check, RefreshCw, MessageSquare,
   Loader2, Info, ChevronDown, ChevronUp, FileUp, X,
+  User, Phone, Mail, TrendingUp, TrendingDown, Minus, ChevronRight,
+  Database, Users, Zap,
 } from "lucide-react";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -95,6 +99,9 @@ export default function ChatbotPage() {
   const [welcomeMessage, setWelcomeMessage] = useState("¡Hola! ¿En qué puedo ayudarte hoy?");
   const [systemPrompt, setSystemPrompt]   = useState("");
   const [isActive, setIsActive]           = useState(true);
+  const [color, setColor]                 = useState("#0891b2");
+  const [captureLead, setCaptureLead]     = useState(false);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [promptExpanded, setPromptExpanded] = useState(false);
   const [promptFileName, setPromptFileName] = useState<string | null>(null);
   const [promptDragOver, setPromptDragOver] = useState(false);
@@ -116,6 +123,8 @@ export default function ChatbotPage() {
     setWelcomeMessage(w.welcome_message ?? "¡Hola! ¿En qué puedo ayudarte hoy?");
     setSystemPrompt(w.system_prompt ?? "");
     setIsActive(w.is_active ?? true);
+    setColor((w.config?.color as string) ?? "#0891b2");
+    setCaptureLead((w.config?.capture_lead as boolean) ?? false);
   }, [data?.widget]);
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -140,7 +149,7 @@ export default function ChatbotPage() {
   };
 
   const handleSave = () => {
-    saveMutation.mutate({ name, llm_model: llmModel, welcome_message: welcomeMessage, system_prompt: systemPrompt, is_active: isActive });
+    saveMutation.mutate({ name, llm_model: llmModel, welcome_message: welcomeMessage, system_prompt: systemPrompt, is_active: isActive, config: { color, capture_lead: captureLead } });
   };
 
   // ── Re-embed ──────────────────────────────────────────────────────────────
@@ -160,11 +169,18 @@ export default function ChatbotPage() {
     enabled:  !!token && !!orgId && !!data?.widget,
   });
 
+  const { data: sessionDetail } = useQuery<ChatSessionDetail>({
+    queryKey: ["chatbot-session", orgId, selectedSession],
+    queryFn:  () => chatbotApi.getSession(token, orgId, selectedSession!),
+    enabled:  !!token && !!orgId && !!selectedSession,
+  });
+
   // ── Embed code ───────────────────────────────────────────────────────────
   const widgetToken = data?.widget?.token;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ?? "https://api.optimizacrm.com";
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+  const origin  = typeof window !== "undefined" ? window.location.origin : "https://optimizacrm.com";
   const embedScript = widgetToken
-    ? `<script src="${apiUrl}/static/chatbot.js" data-token="${widgetToken}" defer></script>`
+    ? `<script\n  src="${origin}/chatbot-widget.js"\n  data-token="${widgetToken}"\n  data-api="${apiBase}"\n  defer\n></script>`
     : "";
 
   if (isLoading) {
@@ -274,6 +290,30 @@ export default function ChatbotPage() {
               </button>
             </div>
 
+            {/* Capture lead toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-200">Captura de leads</p>
+                <p className="text-xs text-slate-500">
+                  El chatbot solicitará nombre, teléfono y email tras el saludo inicial y registrará el lead con código OPT-XXXX
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={captureLead}
+                onClick={() => setCaptureLead((v) => !v)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-slate-900 ${
+                  captureLead ? "bg-orange-500" : "bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    captureLead ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+
             {/* Name */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-300">
@@ -285,6 +325,40 @@ export default function ChatbotPage() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Asistente"
               />
+            </div>
+
+            {/* Color */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-300">
+                Color del widget
+              </label>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-shrink-0">
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="h-10 w-10 cursor-pointer rounded-lg border border-slate-700 bg-slate-900 p-0.5"
+                  />
+                </div>
+                <input
+                  className={inputCls + " font-mono uppercase"}
+                  value={color}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setColor(v);
+                  }}
+                  placeholder="#0891b2"
+                  maxLength={7}
+                />
+                <div
+                  className="h-10 w-10 flex-shrink-0 rounded-lg border border-slate-700"
+                  style={{ background: color }}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-slate-500">
+                Personaliza el color del encabezado, botón de enviar y burbujas del chat.
+              </p>
             </div>
 
             {/* LLM model */}
@@ -436,20 +510,50 @@ export default function ChatbotPage() {
             </div>
           </div>
 
-          {/* ── Stats ── */}
+          {/* ── KPI cards ── */}
           {data?.widget && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {[
-                { label: "Mensajes totales", value: data.widget.message_count },
-                { label: "Sesiones iniciadas", value: data.widget.session_count },
-                { label: "Fragmentos KB", value: chunkCount },
-              ].map(({ label, value }) => (
+                {
+                  label: "Mensajes totales",
+                  value: data.widget.message_count.toLocaleString(),
+                  icon: MessageSquare,
+                  color: "text-sky-400", bg: "bg-sky-950/40",
+                  border: "border-sky-800/30", glow: "shadow-sky-900/20",
+                },
+                {
+                  label: "Sesiones totales",
+                  value: data.widget.session_count.toLocaleString(),
+                  icon: Users,
+                  color: "text-orange-400", bg: "bg-orange-950/40",
+                  border: "border-orange-800/30", glow: "shadow-orange-900/20",
+                },
+                {
+                  label: "Leads capturados",
+                  value: (data.widget.leads_count ?? 0).toLocaleString(),
+                  icon: Zap,
+                  color: "text-green-400", bg: "bg-green-950/40",
+                  border: "border-green-800/30", glow: "shadow-green-900/20",
+                },
+                {
+                  label: "Fragmentos KB",
+                  value: chunkCount.toLocaleString(),
+                  icon: Database,
+                  color: "text-amber-400", bg: "bg-amber-950/40",
+                  border: "border-amber-800/30", glow: "shadow-amber-900/20",
+                },
+              ].map(({ label, value, icon: Icon, color, bg, border, glow }) => (
                 <div
                   key={label}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-center"
+                  className={`rounded-2xl border ${border} bg-slate-950 p-5 flex flex-col gap-4 shadow-lg ${glow}`}
                 >
-                  <p className="text-2xl font-bold text-slate-100">{value}</p>
-                  <p className="mt-1 text-xs text-slate-500">{label}</p>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bg} ${color}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-100">{value}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{label}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -477,46 +581,152 @@ export default function ChatbotPage() {
                   <CopyButton text={widgetToken} />
                 </div>
               </div>
+
+              {/* Hub integration note */}
+              <div className="flex items-start gap-2.5 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+                <Info className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-sky-400" />
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  El Chatbot RAG aparece automáticamente como canal en el{" "}
+                  <a href="/dashboard/hub" className="text-sky-400 hover:text-sky-300 underline underline-offset-2">
+                    Hub de Contacto
+                  </a>{" "}
+                  cuando el widget está activo. No se requiere configuración adicional.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* ── Recent sessions ── */}
-          {sessionsData && sessionsData.count > 0 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-200">Sesiones recientes</h3>
-                <span className="text-xs text-slate-500">{sessionsData.count} total</span>
+          {/* ── Session history ── */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-200">Historial de conversaciones</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Haz clic en una sesión para ver la transcripción completa
+                </p>
               </div>
+              {sessionsData && (
+                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400">
+                  {sessionsData.count} sesiones
+                </span>
+              )}
+            </div>
+
+            {!sessionsData ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
+              </div>
+            ) : sessionsData.count === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/40 py-10">
+                <MessageSquare className="h-8 w-8 text-slate-700" />
+                <p className="text-sm text-slate-500">Aún no hay conversaciones</p>
+                <p className="text-xs text-slate-600">Las sesiones del widget aparecerán aquí</p>
+              </div>
+            ) : (
               <div className="space-y-2">
-                {(sessionsData.sessions as ChatSession_[]).slice(0, 8).map((s) => (
-                  <div
+                {(sessionsData.sessions as ChatSession_[]).slice(0, 10).map((s) => (
+                  <button
                     key={s.id}
-                    className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3"
+                    onClick={() => setSelectedSession(selectedSession === s.id ? null : s.id)}
+                    className="w-full text-left rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3 hover:border-slate-700 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <MessageSquare className="h-4 w-4 flex-shrink-0 text-slate-500" />
-                      <div>
-                        <p className="text-xs font-medium text-slate-300">
-                          {new Date(s.started_at).toLocaleString("es-GT", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
-                        </p>
-                        {s.first_message && (
-                          <p className="max-w-xs truncate text-[11px] text-slate-500">
-                            {s.first_message}
-                          </p>
-                        )}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-medium text-slate-300">
+                              {new Date(s.started_at).toLocaleString("es-GT", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })}
+                            </p>
+                            {s.lead && (
+                              <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
+                                {s.lead.ref_id}
+                              </span>
+                            )}
+                            {s.intent_level && (
+                              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                s.intent_level === "high"
+                                  ? "bg-green-500/15 text-green-400"
+                                  : s.intent_level === "medium"
+                                  ? "bg-amber-500/15 text-amber-400"
+                                  : "bg-slate-700 text-slate-400"
+                              }`}>
+                                {s.intent_level === "high" ? <TrendingUp className="h-2.5 w-2.5" />
+                                  : s.intent_level === "medium" ? <Minus className="h-2.5 w-2.5" />
+                                  : <TrendingDown className="h-2.5 w-2.5" />}
+                                {s.intent_level === "high" ? "Alto" : s.intent_level === "medium" ? "Medio" : "Bajo"}
+                              </span>
+                            )}
+                          </div>
+                          {s.lead && (
+                            <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />{s.lead.name}
+                              </span>
+                              {s.lead.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />{s.lead.phone}
+                                </span>
+                              )}
+                              {s.lead.email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />{s.lead.email}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {!s.lead && s.first_message && (
+                            <p className="mt-0.5 max-w-xs truncate text-[11px] text-slate-500">
+                              {s.first_message}
+                            </p>
+                          )}
+                          {s.intent_summary && (
+                            <p className="mt-1 max-w-sm truncate text-[11px] text-slate-400 italic">
+                              {s.intent_summary}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-2">
+                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                          {s.message_count} msg
+                        </span>
+                        <ChevronRight className={`h-3.5 w-3.5 text-slate-600 transition-transform ${selectedSession === s.id ? "rotate-90" : ""}`} />
                       </div>
                     </div>
-                    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-400">
-                      {s.message_count} msg
-                    </span>
-                  </div>
+
+                    {/* Session transcript expanded */}
+                    {selectedSession === s.id && sessionDetail && sessionDetail.id === s.id && (
+                      <div
+                        className="mt-3 space-y-2 border-t border-slate-800 pt-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {sessionDetail.messages.map((msg, i) => (
+                          <div
+                            key={i}
+                            className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-xl px-3 py-2 text-[11px] leading-relaxed ${
+                                msg.role === "user"
+                                  ? "bg-slate-700 text-slate-200"
+                                  : "bg-slate-800 text-slate-300"
+                              }`}
+                            >
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* ── API endpoint info ── */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-3">

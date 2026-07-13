@@ -62,6 +62,14 @@ def _jwt_user_and_org(request):
 # ─── Widget serializer ────────────────────────────────────────────────────────
 
 def _serialize_widget(widget, embed_status=None):
+    from .models import ChatSession
+    try:
+        leads_count = ChatSession.objects.filter(
+            widget=widget, lead__isnull=False,
+        ).values("lead").distinct().count()
+    except Exception:
+        leads_count = 0
+
     return {
         "id":              str(widget.id),
         "token":           str(widget.token),
@@ -72,6 +80,7 @@ def _serialize_widget(widget, embed_status=None):
         "welcome_message": widget.welcome_message,
         "message_count":   widget.message_count,
         "session_count":   widget.session_count,
+        "leads_count":     leads_count,
         "config":          widget.config,
         **({"embed_status": embed_status} if embed_status is not None else {}),
     }
@@ -128,17 +137,40 @@ def chatbot_chat(request):
         ChatbotWidget.objects.filter(pk=widget.pk).update(session_count=widget.session_count + 1)
 
     # Load conversation history (last 12 messages for context)
-    history = [
-        {"role": m.role, "content": m.content}
-        for m in session.messages.order_by("created_at")[:12]
-    ]
+    prior_messages = list(session.messages.order_by("created_at")[:12])
+    history = [{"role": m.role, "content": m.content} for m in prior_messages]
+
+    # Is this the very first exchange? (no messages yet in session)
+    is_first_exchange = len(prior_messages) == 0
 
     # Save user message
     ChatMessage.objects.create(session=session, role="user", content=message)
 
-    # ── RAG pipeline ──────────────────────────────────────────────────────────
-    from .rag_service import chat_rag
-    reply, sources = chat_rag(widget, history, message)
+    # ── Lead capture state machine ────────────────────────────────────────────
+    capture_enabled = (widget.config or {}).get("capture_lead", False)
+    capture_reply   = None
+    skip_rag        = False
+
+    if capture_enabled:
+        try:
+            if session.capture_state not in ("active", "skip"):
+                from .lead_capture import process_capture
+                capture_reply, skip_rag = process_capture(
+                    session, message, is_first_exchange, widget.organization, widget,
+                )
+        except Exception as exc:
+            logger.error("lead_capture error (widget=%s): %s", widget.id, exc)
+            capture_reply = None
+            skip_rag = False
+
+    if skip_rag and capture_reply:
+        reply   = capture_reply
+        sources = []
+    else:
+        # ── RAG pipeline ──────────────────────────────────────────────────────
+        from .rag_service import chat_rag
+        rag_reply, sources = chat_rag(widget, history, message)
+        reply = rag_reply
 
     # Save assistant message
     ChatMessage.objects.create(
@@ -149,6 +181,15 @@ def chatbot_chat(request):
     ChatbotWidget.objects.filter(pk=widget.pk).update(
         message_count=widget.message_count + 2,
     )
+
+    # ── Trigger intent analysis after session reaches 6+ messages ────────────
+    total_msgs = len(prior_messages) + 2  # user + assistant just saved
+    if total_msgs >= 6 and session.capture_state == "active" and not session.intent_level:
+        try:
+            from .lead_capture import analyze_intent
+            analyze_intent(session, widget)
+        except Exception:
+            pass
 
     return _cors(JsonResponse({
         "session_id": str(session.id),
@@ -238,12 +279,21 @@ def chatbot_embed(request):
     except KnowledgeBase.DoesNotExist:
         return _cors(JsonResponse({"error": "No hay base de conocimiento configurada"}, status=404), request)
 
+    from .tasks import embed_knowledge_base
+    kb_id = str(kb.id)
+
+    # Try async first; fall back to synchronous if broker is unavailable.
     try:
-        from .tasks import embed_knowledge_base
-        embed_knowledge_base.delay(str(kb.id))
-        return _cors(JsonResponse({"ok": True, "kb_id": str(kb.id)}), request)
+        embed_knowledge_base.delay(kb_id)
+        return _cors(JsonResponse({"ok": True, "kb_id": kb_id, "mode": "async"}), request)
+    except Exception:
+        pass
+
+    try:
+        result = embed_knowledge_base(kb_id)
+        return _cors(JsonResponse({"ok": True, "kb_id": kb_id, "mode": "sync", **(result or {})}), request)
     except Exception as exc:
-        return _cors(JsonResponse({"error": f"Error al lanzar tarea: {exc}"}, status=500), request)
+        return _cors(JsonResponse({"error": f"Error al procesar embeddings: {exc}"}, status=500), request)
 
 
 # ─── 4. Sessions list ─────────────────────────────────────────────────────────
@@ -285,19 +335,93 @@ def chatbot_sessions(request):
     def _ser_session(s):
         msgs = list(s.messages.order_by("created_at"))
         first_user = next((m.content for m in msgs if m.role == "user"), "")
+        lead_info = None
+        if s.lead_id:
+            try:
+                lead_info = {
+                    "id":    str(s.lead.id),
+                    "ref_id": getattr(s.lead, "lead_ref_id", ""),
+                    "name":  s.lead.full_name,
+                    "phone": s.lead.phone,
+                    "email": s.lead.email,
+                }
+            except Exception:
+                pass
         return {
-            "id":          str(s.id),
-            "started_at":  s.started_at.isoformat(),
-            "message_count": len(msgs),
-            "first_message": first_user[:100],
+            "id":             str(s.id),
+            "started_at":     s.started_at.isoformat(),
+            "message_count":  len(msgs),
+            "first_message":  first_user[:100],
+            "lead":           lead_info,
+            "intent_level":   getattr(s, "intent_level", ""),
+            "intent_topics":  getattr(s, "intent_topics", []),
+            "intent_summary": getattr(s, "intent_summary", ""),
+            "capture_state":  getattr(s, "capture_state", ""),
         }
 
     return _cors(JsonResponse({
-        "sessions":    [_ser_session(s) for s in items.prefetch_related("messages")],
+        "sessions":    [_ser_session(s) for s in items.select_related("lead").prefetch_related("messages")],
         "count":       count,
         "page":        page,
         "page_size":   page_size,
         "total_pages": max(1, (count + page_size - 1) // page_size),
+    }), request)
+
+
+# ─── 4b. Session detail ───────────────────────────────────────────────────────
+
+@csrf_exempt
+def chatbot_session_detail(request, session_id):
+    """
+    GET /api/v1/chatbot/sessions/<session_id>/
+    Returns full transcript + lead + intent for one session.
+    """
+    if request.method == "OPTIONS":
+        return _cors(JsonResponse({}), request)
+    if request.method != "GET":
+        return _cors(JsonResponse({"error": "method not allowed"}, status=405), request)
+
+    try:
+        _, org = _jwt_user_and_org(request)
+    except ValueError as exc:
+        msg = str(exc)
+        return _cors(JsonResponse({"error": msg}, status=401 if msg == "unauthorized" else 400), request)
+
+    from .models import ChatSession
+    try:
+        session = ChatSession.objects.select_related("widget", "lead").get(
+            id=session_id, widget__organization=org,
+        )
+    except ChatSession.DoesNotExist:
+        return _cors(JsonResponse({"error": "not found"}, status=404), request)
+
+    msgs = list(session.messages.order_by("created_at"))
+    lead_info = None
+    if session.lead:
+        lead_info = {
+            "id":     str(session.lead.id),
+            "ref_id": session.lead.lead_ref_id,
+            "name":   session.lead.full_name,
+            "phone":  session.lead.phone,
+            "email":  session.lead.email,
+        }
+
+    return _cors(JsonResponse({
+        "id":             str(session.id),
+        "started_at":     session.started_at.isoformat(),
+        "capture_state":  session.capture_state,
+        "lead":           lead_info,
+        "intent_level":   session.intent_level,
+        "intent_topics":  session.intent_topics,
+        "intent_summary": session.intent_summary,
+        "messages": [
+            {
+                "role":       m.role,
+                "content":    m.content,
+                "created_at": m.created_at.isoformat(),
+            }
+            for m in msgs
+        ],
     }), request)
 
 

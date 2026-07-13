@@ -821,6 +821,7 @@ export interface WebWidget {
     subtitle?: string;
     button_text?: string;
     success_message?: string;
+    whatsapp_enabled?: boolean;
     whatsapp_number?: string;
     whatsapp_message?: string;
     contact_reasons?: string[];
@@ -1735,15 +1736,39 @@ export interface ChatbotWidget {
   welcome_message: string;
   message_count:   number;
   session_count:   number;
+  leads_count:     number;
   config:          Record<string, unknown>;
   embed_status:    ChatbotEmbedStatus_ | null;
 }
 
+export interface ChatLeadInfo {
+  id:     string;
+  ref_id: string;
+  name:   string;
+  phone:  string;
+  email:  string;
+}
+
 export interface ChatSession_ {
-  id:            string;
-  started_at:    string;
-  message_count: number;
-  first_message: string;
+  id:             string;
+  started_at:     string;
+  message_count:  number;
+  first_message:  string;
+  lead:           ChatLeadInfo | null;
+  intent_level:   string;
+  intent_topics:  string[];
+  intent_summary: string;
+  capture_state:  string;
+}
+
+export interface ChatMessage_ {
+  role:       "user" | "assistant";
+  content:    string;
+  created_at: string;
+}
+
+export interface ChatSessionDetail extends ChatSession_ {
+  messages: ChatMessage_[];
 }
 
 export const chatbotApi = {
@@ -1760,6 +1785,9 @@ export const chatbotApi = {
     api.get<{ sessions: ChatSession_[]; count: number; page: number; total_pages: number }>(
       `/chatbot/sessions/?page=${page}`, { token, orgId },
     ),
+
+  getSession: (token: string, orgId: string, sessionId: string) =>
+    api.get<ChatSessionDetail>(`/chatbot/sessions/${sessionId}/`, { token, orgId }),
 };
 
 export const teamsApi = {
