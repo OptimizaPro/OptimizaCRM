@@ -232,6 +232,187 @@ export default function ChatbotPage() {
             </button>
           </div>
 
+          {/* ── KPI cards ── */}
+          {data?.widget && (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[
+                {
+                  label: "Mensajes totales",
+                  value: data.widget.message_count.toLocaleString(),
+                  icon: MessageSquare,
+                  color: "text-sky-400", bg: "bg-sky-950/40",
+                  border: "border-sky-800/30", glow: "shadow-sky-900/20",
+                },
+                {
+                  label: "Sesiones totales",
+                  value: data.widget.session_count.toLocaleString(),
+                  icon: Users,
+                  color: "text-orange-400", bg: "bg-orange-950/40",
+                  border: "border-orange-800/30", glow: "shadow-orange-900/20",
+                },
+                {
+                  label: "Leads capturados",
+                  value: (data.widget.leads_count ?? 0).toLocaleString(),
+                  icon: Zap,
+                  color: "text-green-400", bg: "bg-green-950/40",
+                  border: "border-green-800/30", glow: "shadow-green-900/20",
+                },
+                {
+                  label: "Fragmentos KB",
+                  value: chunkCount.toLocaleString(),
+                  icon: Database,
+                  color: "text-amber-400", bg: "bg-amber-950/40",
+                  border: "border-amber-800/30", glow: "shadow-amber-900/20",
+                },
+              ].map(({ label, value, icon: Icon, color, bg, border, glow }) => (
+                <div
+                  key={label}
+                  className={`rounded-2xl border ${border} bg-slate-950 p-5 flex flex-col gap-4 shadow-lg ${glow}`}
+                >
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bg} ${color}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-slate-100">{value}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Session history ── */}
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-200">Historial de conversaciones</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Haz clic en una sesión para ver la transcripción completa
+                </p>
+              </div>
+              {sessionsData && (
+                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400">
+                  {sessionsData.count} sesiones
+                </span>
+              )}
+            </div>
+
+            {!sessionsData ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
+              </div>
+            ) : sessionsData.count === 0 ? (
+              <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/40 py-10">
+                <MessageSquare className="h-8 w-8 text-slate-700" />
+                <p className="text-sm text-slate-500">Aún no hay conversaciones</p>
+                <p className="text-xs text-slate-600">Las sesiones del widget aparecerán aquí</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {(sessionsData.sessions as ChatSession_[]).slice(0, 10).map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSession(selectedSession === s.id ? null : s.id)}
+                    className="w-full text-left rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3 hover:border-slate-700 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-medium text-slate-300">
+                              {new Date(s.started_at).toLocaleString("es-GT", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })}
+                            </p>
+                            {s.lead && (
+                              <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
+                                {s.lead.ref_id}
+                              </span>
+                            )}
+                            {s.intent_level && (
+                              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                s.intent_level === "high"
+                                  ? "bg-green-500/15 text-green-400"
+                                  : s.intent_level === "medium"
+                                  ? "bg-amber-500/15 text-amber-400"
+                                  : "bg-slate-700 text-slate-400"
+                              }`}>
+                                {s.intent_level === "high" ? <TrendingUp className="h-2.5 w-2.5" />
+                                  : s.intent_level === "medium" ? <Minus className="h-2.5 w-2.5" />
+                                  : <TrendingDown className="h-2.5 w-2.5" />}
+                                {s.intent_level === "high" ? "Alto" : s.intent_level === "medium" ? "Medio" : "Bajo"}
+                              </span>
+                            )}
+                          </div>
+                          {s.lead && (
+                            <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />{s.lead.name}
+                              </span>
+                              {s.lead.phone && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="h-3 w-3" />{s.lead.phone}
+                                </span>
+                              )}
+                              {s.lead.email && (
+                                <span className="flex items-center gap-1">
+                                  <Mail className="h-3 w-3" />{s.lead.email}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {!s.lead && s.first_message && (
+                            <p className="mt-0.5 max-w-xs truncate text-[11px] text-slate-500">
+                              {s.first_message}
+                            </p>
+                          )}
+                          {s.intent_summary && (
+                            <p className="mt-1 max-w-sm truncate text-[11px] text-slate-400 italic">
+                              {s.intent_summary}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-2">
+                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                          {s.message_count} msg
+                        </span>
+                        <ChevronRight className={`h-3.5 w-3.5 text-slate-600 transition-transform ${selectedSession === s.id ? "rotate-90" : ""}`} />
+                      </div>
+                    </div>
+
+                    {/* Session transcript expanded */}
+                    {selectedSession === s.id && sessionDetail && sessionDetail.id === s.id && (
+                      <div
+                        className="mt-3 space-y-2 border-t border-slate-800 pt-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {sessionDetail.messages.map((msg, i) => (
+                          <div
+                            key={i}
+                            className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-xl px-3 py-2 text-[11px] leading-relaxed ${
+                                msg.role === "user"
+                                  ? "bg-slate-700 text-slate-200"
+                                  : "bg-slate-800 text-slate-300"
+                              }`}
+                            >
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* ── Embedding status ── */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -510,55 +691,6 @@ export default function ChatbotPage() {
             </div>
           </div>
 
-          {/* ── KPI cards ── */}
-          {data?.widget && (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {[
-                {
-                  label: "Mensajes totales",
-                  value: data.widget.message_count.toLocaleString(),
-                  icon: MessageSquare,
-                  color: "text-sky-400", bg: "bg-sky-950/40",
-                  border: "border-sky-800/30", glow: "shadow-sky-900/20",
-                },
-                {
-                  label: "Sesiones totales",
-                  value: data.widget.session_count.toLocaleString(),
-                  icon: Users,
-                  color: "text-orange-400", bg: "bg-orange-950/40",
-                  border: "border-orange-800/30", glow: "shadow-orange-900/20",
-                },
-                {
-                  label: "Leads capturados",
-                  value: (data.widget.leads_count ?? 0).toLocaleString(),
-                  icon: Zap,
-                  color: "text-green-400", bg: "bg-green-950/40",
-                  border: "border-green-800/30", glow: "shadow-green-900/20",
-                },
-                {
-                  label: "Fragmentos KB",
-                  value: chunkCount.toLocaleString(),
-                  icon: Database,
-                  color: "text-amber-400", bg: "bg-amber-950/40",
-                  border: "border-amber-800/30", glow: "shadow-amber-900/20",
-                },
-              ].map(({ label, value, icon: Icon, color, bg, border, glow }) => (
-                <div
-                  key={label}
-                  className={`rounded-2xl border ${border} bg-slate-950 p-5 flex flex-col gap-4 shadow-lg ${glow}`}
-                >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${bg} ${color}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-slate-100">{value}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{label}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* ── Embed code ── */}
           {widgetToken && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
@@ -595,138 +727,6 @@ export default function ChatbotPage() {
               </div>
             </div>
           )}
-
-          {/* ── Session history ── */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-slate-200">Historial de conversaciones</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Haz clic en una sesión para ver la transcripción completa
-                </p>
-              </div>
-              {sessionsData && (
-                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400">
-                  {sessionsData.count} sesiones
-                </span>
-              )}
-            </div>
-
-            {!sessionsData ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
-              </div>
-            ) : sessionsData.count === 0 ? (
-              <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/40 py-10">
-                <MessageSquare className="h-8 w-8 text-slate-700" />
-                <p className="text-sm text-slate-500">Aún no hay conversaciones</p>
-                <p className="text-xs text-slate-600">Las sesiones del widget aparecerán aquí</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {(sessionsData.sessions as ChatSession_[]).slice(0, 10).map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelectedSession(selectedSession === s.id ? null : s.id)}
-                    className="w-full text-left rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3 hover:border-slate-700 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500" />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-xs font-medium text-slate-300">
-                              {new Date(s.started_at).toLocaleString("es-GT", {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              })}
-                            </p>
-                            {s.lead && (
-                              <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400">
-                                {s.lead.ref_id}
-                              </span>
-                            )}
-                            {s.intent_level && (
-                              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                s.intent_level === "high"
-                                  ? "bg-green-500/15 text-green-400"
-                                  : s.intent_level === "medium"
-                                  ? "bg-amber-500/15 text-amber-400"
-                                  : "bg-slate-700 text-slate-400"
-                              }`}>
-                                {s.intent_level === "high" ? <TrendingUp className="h-2.5 w-2.5" />
-                                  : s.intent_level === "medium" ? <Minus className="h-2.5 w-2.5" />
-                                  : <TrendingDown className="h-2.5 w-2.5" />}
-                                {s.intent_level === "high" ? "Alto" : s.intent_level === "medium" ? "Medio" : "Bajo"}
-                              </span>
-                            )}
-                          </div>
-                          {s.lead && (
-                            <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
-                              <span className="flex items-center gap-1">
-                                <User className="h-3 w-3" />{s.lead.name}
-                              </span>
-                              {s.lead.phone && (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="h-3 w-3" />{s.lead.phone}
-                                </span>
-                              )}
-                              {s.lead.email && (
-                                <span className="flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />{s.lead.email}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {!s.lead && s.first_message && (
-                            <p className="mt-0.5 max-w-xs truncate text-[11px] text-slate-500">
-                              {s.first_message}
-                            </p>
-                          )}
-                          {s.intent_summary && (
-                            <p className="mt-1 max-w-sm truncate text-[11px] text-slate-400 italic">
-                              {s.intent_summary}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex flex-shrink-0 items-center gap-2">
-                        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-slate-400">
-                          {s.message_count} msg
-                        </span>
-                        <ChevronRight className={`h-3.5 w-3.5 text-slate-600 transition-transform ${selectedSession === s.id ? "rotate-90" : ""}`} />
-                      </div>
-                    </div>
-
-                    {/* Session transcript expanded */}
-                    {selectedSession === s.id && sessionDetail && sessionDetail.id === s.id && (
-                      <div
-                        className="mt-3 space-y-2 border-t border-slate-800 pt-3"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {sessionDetail.messages.map((msg, i) => (
-                          <div
-                            key={i}
-                            className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                          >
-                            <div
-                              className={`max-w-[80%] rounded-xl px-3 py-2 text-[11px] leading-relaxed ${
-                                msg.role === "user"
-                                  ? "bg-slate-700 text-slate-200"
-                                  : "bg-slate-800 text-slate-300"
-                              }`}
-                            >
-                              {msg.content}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* ── API endpoint info ── */}
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 space-y-3">
