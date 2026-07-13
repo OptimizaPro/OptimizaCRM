@@ -204,8 +204,8 @@ export default function ChatbotPage() {
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <DashboardHeader title="Chatbot RAG" />
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div className="flex-1 overflow-y-auto bg-slate-900/30">
+        <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
 
           {/* ── Header row ── */}
           <div className="flex items-center justify-between">
