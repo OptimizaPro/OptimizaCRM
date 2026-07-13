@@ -38,6 +38,7 @@ const SOURCE_LABELS: Record<string, string> = {
   social:      "Redes sociales",
   event:       "Evento",
   voice_agent: "Agente de voz",
+  chatbot:     "Chatbot IA",
   other:       "Otro",
 };
 
@@ -316,7 +317,14 @@ function LeadPanel({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
           <div>
-            <h2 className="font-bold text-slate-100">{lead.full_name || lead.email}</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-bold text-slate-100">{lead.full_name || lead.email}</h2>
+              {lead.lead_ref_id && (
+                <span className="rounded-full bg-orange-500/15 px-2.5 py-0.5 text-xs font-semibold text-orange-400 font-mono">
+                  {lead.lead_ref_id}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500">{lead.company || "Sin empresa"}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -634,8 +642,15 @@ export default function LeadsPage() {
       header: "Nombre",
       cell: ({ getValue, row }) => (
         <button type="button" onClick={() => setSelectedLead(row.original)}
-          className="font-medium text-slate-200 hover:text-orange-400 transition-colors text-left">
-          {getValue() as string}
+          className="text-left space-y-0.5">
+          <span className="block font-medium text-slate-200 hover:text-orange-400 transition-colors">
+            {getValue() as string}
+          </span>
+          {row.original.lead_ref_id && (
+            <span className="inline-block rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 font-mono">
+              {row.original.lead_ref_id}
+            </span>
+          )}
         </button>
       ),
     },

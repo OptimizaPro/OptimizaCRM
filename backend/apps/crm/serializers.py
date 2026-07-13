@@ -22,14 +22,14 @@ class LeadSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Lead
         fields = [
-            "id", "first_name", "last_name", "full_name", "email", "phone",
+            "id", "lead_ref_id", "first_name", "last_name", "full_name", "email", "phone",
             "company", "title", "source", "status", "score", "notes",
             "assigned_to", "assigned_to_detail", "custom_fields",
             "email_opens", "link_clicks", "page_visits", "engagement_score",
             "outbound_consent", "consent_date",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "score", "engagement_score", "created_at", "updated_at"]
+        read_only_fields = ["id", "lead_ref_id", "score", "engagement_score", "created_at", "updated_at"]
 
 
 class CustomerSerializer(serializers.ModelSerializer):
