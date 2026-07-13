@@ -21,7 +21,10 @@ class Integration(TenantModel):
         ("tiktok",             "TikTok Lead Generation"),
         ("google_calendar",    "Google Calendar"),
         ("automation_webhook", "Automatización (Zapier · Make · n8n)"),
-        ("ai_provider",        "Proveedor de IA"),
+        ("ai_provider",        "Proveedor de IA (legacy)"),
+        ("ai_openai",          "OpenAI"),
+        ("ai_groq",            "Groq"),
+        ("ai_anthropic",       "Anthropic"),
     ]
     STATUS_CHOICES = [
         ("disconnected", "Desconectado"),

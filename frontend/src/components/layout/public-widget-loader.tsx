@@ -6,7 +6,7 @@ import { cmsApi } from "@/lib/api";
 /**
  * Reads website_widget_token from CMS general settings and injects
  * hub-widget.js — the unified multi-channel contact hub (form, WhatsApp,
- * Voice AI) using a single FAB button.
+ * Voice AI, Chatbot RAG) using a single FAB button.
  * Add this once to PublicFooter — it covers all landing pages.
  */
 export function PublicWidgetLoader() {
@@ -15,7 +15,6 @@ export function PublicWidgetLoader() {
   useEffect(() => {
     cmsApi.getSection("general")
       .then(({ data }) => {
-        // Support both old key and new key for backward compat
         const t = data?.website_widget_token || data?.website_voice_widget_token;
         if (typeof t === "string" && t.length > 0) setToken(t);
       })
@@ -27,7 +26,6 @@ export function PublicWidgetLoader() {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-    // Clean up any previously injected widgets (legacy or hub)
     ["ocw-widget-script", "ocw-voice-widget-script", "ocw-hub-script"].forEach((id) =>
       document.getElementById(id)?.remove()
     );

@@ -109,11 +109,11 @@ const COMPARISON: {
 const PRICING_FAQS = [
   {
     q: "¿Cómo funciona el precio por usuario?",
-    a: "Cada plan tiene un precio por usuario al mes y un tamaño de equipo incluido. Por ejemplo, si el plan cuesta $19.50/usuario e incluye 2 usuarios, el total mensual es $39. Así puedes comparar directamente con cualquier otro CRM del mercado.",
+    a: "Cada plan tiene un precio por usuario al mes y un tamaño de equipo incluido. Por ejemplo, si el plan cuesta $29/usuario e incluye 2 usuarios, el total mensual es $58. Así puedes comparar directamente con cualquier otro CRM del mercado.",
   },
   {
     q: "¿Qué pasa al terminar los 14 días de prueba?",
-    a: "Tu prueba expira y la cuenta queda suspendida hasta que actives un plan. No te cobramos nada automáticamente ni necesitamos tarjeta para iniciar el periodo de prueba.",
+    a: "Tu prueba expira y la cuenta queda suspendida hasta que actives un plan. No te cobramos nada automáticamente ni necesitamos tarjeta para iniciar el periodo de prueba.",  
   },
   {
     q: "¿Puedo cambiar de plan en cualquier momento?",

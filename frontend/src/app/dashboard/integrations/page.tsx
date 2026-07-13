@@ -12,7 +12,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { integrationsApi, driveApi, type Integration } from "@/lib/api";
 
-type ChannelType = 'whatsapp' | 'email' | 'brevo' | 'outlook' | 'facebook' | 'instagram' | 'telegram' | 'sms' | 'tiktok' | 'google_calendar' | 'automation_webhook' | 'ai_provider';
+type ChannelType = 'whatsapp' | 'email' | 'brevo' | 'outlook' | 'facebook' | 'instagram' | 'telegram' | 'sms' | 'tiktok' | 'google_calendar' | 'automation_webhook' | 'ai_provider' | 'ai_groq' | 'ai_openai' | 'ai_anthropic';
 
 interface GuideStep {
   title: string;
@@ -138,6 +138,26 @@ const AiProviderIcon = () => (
     <circle cx="17" cy="12.5" r="1.5" fill="white" opacity="0.9" />
     <path d="M8 6V4.5a4 4 0 0 1 8 0V6" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" />
     <path d="M12 2.5v1" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+  </svg>
+);
+
+const GroqIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
+    <rect width="24" height="24" rx="6" fill="#F55036" />
+    <text x="12" y="16.5" textAnchor="middle" fontSize="9" fontWeight="800" fill="white" fontFamily="monospace">GROQ</text>
+  </svg>
+);
+
+const OpenAIIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-7 h-7" fill="currentColor">
+    <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855l-5.833-3.387 2.02-1.168a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.412-.663zm2.01-3.023l-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135l-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365l2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z" />
+  </svg>
+);
+
+const AnthropicIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
+    <rect width="24" height="24" rx="6" fill="#D4A574" />
+    <path d="M14.2 6h-2.1L8 18h2.1l.9-2.4h3.9l.9 2.4H18L14.2 6zm-2.6 7.8 1.5-4.1 1.5 4.1h-3z" fill="#1a1a1a" />
   </svg>
 );
 
@@ -493,40 +513,76 @@ const CHANNELS: ChannelConfig[] = [
       ],
     },
   },
+];
+
+const AI_CHANNELS: ChannelConfig[] = [
   {
-    channel_type: 'ai_provider',
-    label: 'Proveedor de IA',
-    icon: <AiProviderIcon />,
-    description: 'Conecta tu propia API key de IA para el asistente de redacción en bandeja y WhatsApp.',
+    channel_type: 'ai_groq',
+    label: 'Groq',
+    icon: <GroqIcon />,
+    description: 'Modelos ultra-rápidos para ChatBot RAG. Plan gratuito generoso, sin tarjeta de crédito.',
     fields: [
-      {
-        key: 'provider',
-        label: 'Proveedor',
-        placeholder: 'groq',
-        helpText: 'Opciones: groq · openai · gemini. Groq es gratuito y el más rápido para redacción.',
-      },
       {
         key: 'api_key',
         label: 'API Key',
         type: 'password',
-        placeholder: 'gsk_xxxxxxxx / sk-xxxxxxxx',
-        helpText: 'Tu clave privada del proveedor seleccionado. Nunca se compartirá con otros usuarios.',
-      },
-      {
-        key: 'model',
-        label: 'Modelo (opcional)',
-        placeholder: 'llama-3.1-8b-instant',
-        helpText: 'Groq: llama-3.1-8b-instant (defecto) o llama-3.3-70b-versatile. OpenAI: gpt-4o-mini. Gemini: gemini-1.5-flash.',
+        placeholder: 'gsk_xxxxxxxxxxxxxxxxxxxxxxxx',
+        helpText: 'Genera tu key en console.groq.com → API Keys. Plan gratuito: 14.400 req/día.',
       },
     ],
     guide: {
-      intro: 'Cada organización usa su propia API key — tus tokens son solo tuyos. Groq es la opción recomendada: gratuita, rápida y sin tarjeta de crédito.',
+      intro: 'Groq es la opción recomendada para el ChatBot RAG: gratuita, ultra-rápida (LPU hardware) y sin tarjeta de crédito.',
       steps: [
-        { title: 'Groq (recomendado) — Crea tu cuenta', description: 'Ve a console.groq.com → Sign up. No requiere tarjeta de crédito. El plan gratuito incluye 14.400 requests/día.' },
-        { title: 'Groq — Genera una API Key', description: 'En el dashboard de Groq → API Keys → Create API Key. Dale un nombre descriptivo como "OptimizaCRM".' },
-        { title: 'OpenAI (alternativa) — Obtén tu API Key', description: 'platform.openai.com → API Keys → Create new secret key. Requiere crédito de pago. Modelo recomendado: gpt-4o-mini (coste muy bajo).' },
-        { title: 'Gemini (alternativa) — Obtén tu API Key', description: 'aistudio.google.com → Get API Key. Plan gratuito disponible. Modelo recomendado: gemini-1.5-flash.' },
-        { title: 'Configura y conecta', description: 'Selecciona el proveedor, pega tu API Key y opcionalmente elige el modelo. Pulsa "Guardar y conectar" — el asistente de redacción quedará activo para toda tu organización.' },
+        { title: 'Crea tu cuenta en Groq', description: 'Ve a console.groq.com → Sign up. No requiere tarjeta de crédito.' },
+        { title: 'Genera una API Key', description: 'Dashboard de Groq → API Keys → Create API Key. Nómbrala "OptimizaCRM".' },
+        { title: 'Pega la API Key aquí', description: 'El CRM la usará para el ChatBot RAG con modelos Llama 3.3 70B o Llama 3.1 8B según configuración del widget.' },
+      ],
+    },
+  },
+  {
+    channel_type: 'ai_openai',
+    label: 'OpenAI',
+    icon: <OpenAIIcon />,
+    description: 'GPT-4o para el Agente de Voz (recomendado) y ChatBot RAG. Requiere crédito de pago.',
+    fields: [
+      {
+        key: 'api_key',
+        label: 'API Key',
+        type: 'password',
+        placeholder: 'sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        helpText: 'Genera tu key en platform.openai.com → API Keys. También se usa para los embeddings del ChatBot RAG.',
+      },
+    ],
+    guide: {
+      intro: 'OpenAI se usa para el Agente de Voz (GPT-4o) y opcionalmente para el ChatBot RAG. También provee los embeddings text-embedding-3-small para la búsqueda semántica.',
+      steps: [
+        { title: 'Crea una cuenta en OpenAI', description: 'Ve a platform.openai.com → Sign up. Necesitas añadir crédito de pago para usar la API.' },
+        { title: 'Genera una API Key', description: 'Dashboard → API Keys → Create new secret key. Cópiala inmediatamente — no se muestra de nuevo.' },
+        { title: 'Añade crédito', description: 'Settings → Billing → Add payment method. Con $5 tienes para miles de llamadas con GPT-4o-mini.' },
+        { title: 'Pega la API Key aquí', description: 'El CRM la usará para el Agente de Voz y los embeddings semánticos del ChatBot RAG.' },
+      ],
+    },
+  },
+  {
+    channel_type: 'ai_anthropic',
+    label: 'Anthropic (Claude)',
+    icon: <AnthropicIcon />,
+    description: 'Claude 3.5 Haiku para ChatBot RAG y casos de uso avanzados.',
+    fields: [
+      {
+        key: 'api_key',
+        label: 'API Key',
+        type: 'password',
+        placeholder: 'sk-ant-xxxxxxxxxxxxxxxxxxxxxxxx',
+        helpText: 'Genera tu key en console.anthropic.com → API Keys.',
+      },
+    ],
+    guide: {
+      intro: 'Anthropic Claude ofrece modelos de alta calidad para razonamiento complejo. Claude 3.5 Haiku es rápido y económico.',
+      steps: [
+        { title: 'Crea una cuenta en Anthropic', description: 'Ve a console.anthropic.com → Sign up.' },
+        { title: 'Genera una API Key', description: 'Dashboard → API Keys → Create Key. Nómbrala "OptimizaCRM".' },
+        { title: 'Pega la API Key aquí', description: 'El CRM la usará cuando el ChatBot RAG esté configurado con un modelo anthropic/.' },
       ],
     },
   },
@@ -858,6 +914,137 @@ export default function IntegrationsPage() {
           </div>
         </div>
 
+        {successMessage && (
+          <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
+            {successMessage}
+          </div>
+        )}
+
+        <div className="mb-6">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+            <AiProviderIcon />
+            Proveedores de Inteligencia Artificial
+          </h2>
+          <p className="mt-1 text-slate-400">
+            Conecta tus propias API keys de IA. Cada proveedor tiene un rol distinto: Groq para ChatBot RAG, OpenAI para Agente de Voz y embeddings.
+          </p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex h-20 items-center justify-center text-slate-200">Cargando...</div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 mb-10">
+            {AI_CHANNELS.map((channel) => {
+              const integration = findIntegration(channel.channel_type);
+              const isConnected = integration?.status === 'connected';
+              const isFormOpen = activeChannel === channel.channel_type;
+
+              return (
+                <div key={channel.channel_type}>
+                  <Card className="h-full bg-slate-950">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <span className="flex-shrink-0">{channel.icon}</span>
+                          <div>
+                            <CardTitle className="text-base">{channel.label}</CardTitle>
+                            <p className="text-xs text-slate-300 mt-0.5">{channel.description}</p>
+                          </div>
+                        </div>
+                        {channel.guide && (
+                          <button
+                            onClick={() => setGuideChannel(channel)}
+                            className="flex-shrink-0 flex items-center gap-1 text-xs text-slate-300 hover:text-slate-400 transition-colors pt-0.5"
+                          >
+                            <BookOpen className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Guía</span>
+                          </button>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between mb-3">
+                        {integration ? statusBadge(integration.status) : statusBadge('disconnected')}
+                        {isConnected && integration?.connected_at && (
+                          <span className="text-xs text-slate-400">
+                            Conectado {formatDate(integration.connected_at)}
+                          </span>
+                        )}
+                      </div>
+
+                      {isConnected ? (
+                        <div className="flex gap-2 flex-wrap">
+                          <Button size="sm" variant="outline" className="text-green-600 border-green-300" disabled>
+                            Configurado &#10003;
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => disconnectMutation.mutate(integration!.id)}
+                            disabled={disconnectMutation.isPending}
+                          >
+                            {disconnectMutation.isPending ? 'Desconectando...' : 'Desconectar'}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenForm(channel.channel_type)}
+                          variant={isFormOpen ? 'outline' : 'default'}
+                          className={!isFormOpen ? 'bg-orange-600 hover:bg-orange-500 text-white' : ''}
+                        >
+                          {isFormOpen ? 'Cancelar' : 'Conectar'}
+                        </Button>
+                      )}
+
+                      {isFormOpen && !isConnected && (
+                        <div className="mt-4 border-t border-slate-800 pt-4 space-y-3">
+                          {errorMessage && (
+                            <p className="text-xs text-red-500">{errorMessage}</p>
+                          )}
+                          {channel.fields.map((field) => (
+                            <div key={field.key}>
+                              <label className="block text-xs font-medium text-slate-400 mb-1">
+                                {field.label}
+                              </label>
+                              <Input
+                                type={field.type || 'text'}
+                                placeholder={field.placeholder}
+                                value={formData[field.key] || ''}
+                                onChange={(e) =>
+                                  setFormData((prev) => ({ ...prev, [field.key]: e.target.value }))
+                                }
+                              />
+                              {field.helpText && (
+                                <p className="mt-1 text-xs text-slate-500">{field.helpText}</p>
+                              )}
+                            </div>
+                          ))}
+                          <Button
+                            size="sm"
+                            className="w-full mt-2 bg-orange-600 hover:bg-orange-500 text-white"
+                            onClick={() => handleConnect(channel)}
+                            disabled={connectMutation.isPending || createMutation.isPending}
+                          >
+                            {connectMutation.isPending || createMutation.isPending
+                              ? 'Conectando...'
+                              : 'Guardar y conectar'}
+                          </Button>
+                        </div>
+                      )}
+
+                      {integration?.error_message && (
+                        <p className="mt-2 text-xs text-red-500">{integration.error_message}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="mb-6">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
             <Plug className="h-5 w-5 text-orange-400" />
@@ -867,12 +1054,6 @@ export default function IntegrationsPage() {
             Conecta tus canales de comunicación para centralizar la gestión en el CRM.
           </p>
         </div>
-
-        {successMessage && (
-          <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
-            {successMessage}
-          </div>
-        )}
 
         {isLoading ? (
           <div className="flex h-32 items-center justify-center text-slate-200">Cargando integraciones...</div>

@@ -108,19 +108,31 @@ def chunk_knowledge_base(kb) -> list[dict]:
 def _get_openai_key(org=None) -> str:
     """
     Priority:
-      1. Org's AI integration (provider=openai)
-      2. OPENAI_API_KEY env var
+      1. Org's ai_openai integration
+      2. Legacy ai_provider with provider=openai
+      3. OPENAI_API_KEY env var
     """
     if org:
         try:
             from apps.integrations.models import Integration
-            integ = Integration.objects.get(
+            # Try specific OpenAI integration first
+            integ = Integration.objects.filter(
+                organization=org, channel_type="ai_openai",
+                status="connected", is_active=True,
+            ).first()
+            if integ:
+                key = (integ.config or {}).get("api_key", "")
+                if key:
+                    return key
+            # Fallback: legacy ai_provider with provider=openai
+            integ = Integration.objects.filter(
                 organization=org, channel_type="ai_provider",
                 status="connected", is_active=True,
-            )
-            cfg = integ.config or {}
-            if cfg.get("provider") == "openai" and cfg.get("api_key"):
-                return cfg["api_key"]
+            ).first()
+            if integ:
+                cfg = integ.config or {}
+                if cfg.get("provider") == "openai" and cfg.get("api_key"):
+                    return cfg["api_key"]
         except Exception:
             pass
 
@@ -137,6 +149,7 @@ def embed_text(text: str, api_key: str) -> Optional[list]:
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "OptimizaCRM/1.0",
         },
         method="POST",
     )
@@ -217,47 +230,69 @@ def retrieve_context(kb, query: str, api_key: str, top_k: int = 4) -> list[dict]
 
 def _resolve_llm(llm_model: str, org) -> tuple[str, str, str]:
     """
-    Resolve (api_key, api_url, model) from the llm_model slug
-    using the org's configured AI provider.
+    Resolve (api_key, api_url, model) from the llm_model slug.
+
+    Resolution order per provider:
+      1. Specific integration: ai_groq / ai_openai / ai_anthropic
+      2. Legacy ai_provider integration (config.provider matches)
+      3. Env var: GROQ_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY
     """
     from apps.integrations.models import Integration
+    import os
 
-    # Determine provider from model slug prefix
+    # Determine provider + model from slug prefix
     if llm_model.startswith("openai/"):
-        provider = "openai"
-        model    = llm_model.split("/", 1)[1]
+        provider       = "openai"
+        channel_type   = "ai_openai"
+        model          = llm_model.split("/", 1)[1]
     elif llm_model.startswith("groq/"):
-        provider = "groq"
-        model    = llm_model.split("/", 1)[1]
+        provider       = "groq"
+        channel_type   = "ai_groq"
+        model          = llm_model.split("/", 1)[1]
     elif llm_model.startswith("anthropic/"):
-        provider = "openai"   # Anthropic via compatible endpoint
-        model    = llm_model.split("/", 1)[1]
+        provider       = "anthropic"
+        channel_type   = "ai_anthropic"
+        model          = llm_model.split("/", 1)[1]
     else:
-        provider = "groq"
-        model    = llm_model
+        provider       = "groq"
+        channel_type   = "ai_groq"
+        model          = llm_model
 
     api_url = LLM_URLS.get(provider, GROQ_API_URL)
 
-    # Try org's integration key
+    # 1. Specific integration (ai_groq / ai_openai / ai_anthropic)
     try:
-        integ = Integration.objects.get(
-            organization=org, channel_type="ai_provider",
+        integ = Integration.objects.filter(
+            organization=org, channel_type=channel_type,
             status="connected", is_active=True,
-        )
-        cfg      = integ.config or {}
-        int_prov = cfg.get("provider", "groq")
-        if int_prov == provider and cfg.get("api_key"):
-            return cfg["api_key"], api_url, model
+        ).first()
+        if integ:
+            key = (integ.config or {}).get("api_key", "")
+            if key:
+                return key, api_url, model
     except Exception:
         pass
 
-    # Env fallback
-    import os
-    key_map = {
-        "groq":   os.environ.get("GROQ_API_KEY", ""),
-        "openai": os.environ.get("OPENAI_API_KEY", ""),
+    # 2. Legacy ai_provider fallback
+    try:
+        integ = Integration.objects.filter(
+            organization=org, channel_type="ai_provider",
+            status="connected", is_active=True,
+        ).first()
+        if integ:
+            cfg = integ.config or {}
+            if cfg.get("provider") == provider and cfg.get("api_key"):
+                return cfg["api_key"], api_url, model
+    except Exception:
+        pass
+
+    # 3. Env vars
+    env_map = {
+        "groq":      os.environ.get("GROQ_API_KEY", ""),
+        "openai":    os.environ.get("OPENAI_API_KEY", ""),
+        "anthropic": os.environ.get("ANTHROPIC_API_KEY", ""),
     }
-    return key_map.get(provider, ""), api_url, model
+    return env_map.get(provider, ""), api_url, model
 
 
 def call_llm_chat(api_key: str, api_url: str, model: str,
@@ -270,12 +305,37 @@ def call_llm_chat(api_key: str, api_url: str, model: str,
         "max_tokens": max_tokens,
     }).encode("utf-8")
 
+    try:
+        import requests as _requests
+        resp = _requests.post(
+            api_url,
+            json={
+                "model": model,
+                "messages": [{"role": "system", "content": system}] + messages,
+                "temperature": 0.4,
+                "max_tokens": max_tokens,
+            },
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=20,
+        )
+        if not resp.ok:
+            return "", f"LLM API error {resp.status_code}: {resp.text[:300]}"
+        return resp.json()["choices"][0]["message"]["content"].strip(), None
+    except ImportError:
+        pass  # fall through to urllib
+    except Exception as e:
+        return "", str(e)
+
     req = urllib.request.Request(
         api_url,
         data=payload,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "python-requests/2.32.0",
         },
         method="POST",
     )
@@ -284,7 +344,7 @@ def call_llm_chat(api_key: str, api_url: str, model: str,
             data = json.loads(resp.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"].strip(), None
     except urllib.error.HTTPError as e:
-        return "", f"LLM API error {e.code}: {e.read().decode('utf-8', errors='replace')[:200]}"
+        return "", f"LLM API error {e.code}: {e.read().decode('utf-8', errors='replace')[:300]}"
     except Exception as e:
         return "", str(e)
 
@@ -306,6 +366,37 @@ REGLAS:
 2. Si el usuario pregunta algo fuera del contexto, di: "No tengo esa información. Te recomiendo contactarnos directamente."
 3. Mantén las respuestas breves (máximo 3-4 oraciones salvo que se pida más detalle).
 """
+
+
+def _kb_direct_context(kb) -> str:
+    """
+    Build a plain-text context block directly from KB fields.
+    Used as fallback when no KBChunks exist yet.
+    """
+    from apps.kb.models import KBChunk  # noqa — needed for SECTION_LABELS
+    labels = KBChunk.SECTION_LABELS
+    parts = []
+    fields = [
+        ("company_info",      kb.company_info),
+        ("products_services", kb.products_services),
+        ("pricing",           kb.pricing),
+        ("faqs",              kb.faqs),
+        ("working_hours",     kb.working_hours),
+        ("contact_info",      kb.contact_info),
+        ("appointment_rules", kb.appointment_rules),
+    ]
+    qs = kb.qualification_questions
+    if qs and isinstance(qs, list):
+        qs_text = "\n".join(f"- {q}" for q in qs if q)
+        if qs_text:
+            fields.append(("qualification_questions", qs_text))
+
+    for section, text in fields:
+        if text and text.strip():
+            label = labels.get(section, section)
+            parts.append(f"[{label}]\n{text.strip()[:600]}")
+
+    return "\n\n".join(parts)
 
 
 def chat_rag(widget, history: list[dict], user_message: str) -> tuple[str, list[dict]]:
@@ -348,7 +439,17 @@ def chat_rag(widget, history: list[dict], user_message: str) -> tuple[str, list[
                 })
             context_text = "\n\n".join(context_parts)
         else:
-            context_text = "No hay información disponible en la base de conocimiento."
+            # No chunks yet — read KB fields directly as fallback context
+            # and schedule the embed task so next requests use RAG properly
+            context_text = _kb_direct_context(kb)
+            if context_text:
+                try:
+                    from apps.chatbot.tasks import embed_knowledge_base
+                    embed_knowledge_base.delay(str(kb.id))
+                except Exception:
+                    pass
+            else:
+                context_text = "No hay información disponible en la base de conocimiento."
     else:
         context_text = "No hay base de conocimiento configurada."
 

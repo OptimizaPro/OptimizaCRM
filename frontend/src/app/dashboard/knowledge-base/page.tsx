@@ -148,20 +148,32 @@ export default function KnowledgeBasePage() {
     enabled:  !!(token && organizationId),
   });
 
+  // Helper: always read fresh auth from store (avoids stale closure on first render)
+  function getAuth() {
+    const { tokens: t, organization: o } = useAuthStore.getState();
+    return { tok: t?.access ?? "", orgId: String(o?.id ?? "") };
+  }
+
   // ── Mutations ─────────────────────────────────────────────────────────────
   const saveMut = useMutation({
-    mutationFn: () => kbApi.save(token!, organizationId!, form as Partial<KnowledgeBase>),
+    mutationFn: () => {
+      const { tok, orgId } = getAuth();
+      return kbApi.save(tok, orgId, form as Partial<KnowledgeBase>);
+    },
     onSuccess: (res) => {
       setForm(res.knowledge_base);
       setDirty(false);
-      qc.invalidateQueries({ queryKey: ["kb-manage", organizationId] });
+      qc.invalidateQueries({ queryKey: ["kb-manage"] });
       toast.success("Base de conocimiento guardada");
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const scrapeMut = useMutation({
-    mutationFn: (url: string) => kbApi.scrapeUrl(token!, organizationId!, url),
+    mutationFn: (url: string) => {
+      const { tok, orgId } = getAuth();
+      return kbApi.scrapeUrl(tok, orgId, url);
+    },
     onSuccess: (res) => {
       // Merge scraped data into form
       setForm((prev) => {
@@ -179,14 +191,17 @@ export default function KnowledgeBasePage() {
       });
       setDirty(true);
       setUrlInput("");
-      qc.invalidateQueries({ queryKey: ["kb-sources", organizationId] });
+      qc.invalidateQueries({ queryKey: ["kb-sources"] });
       toast.success(`URL importada: ${res.source?.name ?? "OK"}`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const importFileMut = useMutation({
-    mutationFn: (file: File) => kbApi.importFile(token!, organizationId!, file),
+    mutationFn: (file: File) => {
+      const { tok, orgId } = getAuth();
+      return kbApi.importFile(tok, orgId, file);
+    },
     onSuccess: (res) => {
       setForm((prev) => {
         const next = { ...prev };
@@ -203,16 +218,19 @@ export default function KnowledgeBasePage() {
       });
       setDirty(true);
       if (fileRef.current) fileRef.current.value = "";
-      qc.invalidateQueries({ queryKey: ["kb-sources", organizationId] });
+      qc.invalidateQueries({ queryKey: ["kb-sources"] });
       toast.success(`Archivo importado: ${res.filename}`);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const deleteSrcMut = useMutation({
-    mutationFn: (sourceId: string) => kbApi.deleteSource(token!, organizationId!, sourceId),
+    mutationFn: (sourceId: string) => {
+      const { tok, orgId } = getAuth();
+      return kbApi.deleteSource(tok, orgId, sourceId);
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["kb-sources", organizationId] });
+      qc.invalidateQueries({ queryKey: ["kb-sources"] });
       toast.success("Fuente eliminada");
     },
     onError: (err: Error) => toast.error(err.message),
