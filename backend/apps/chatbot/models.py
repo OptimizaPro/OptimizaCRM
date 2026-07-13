@@ -43,12 +43,15 @@ class ChatSession(models.Model):
     """Sesión anónima de chat (no requiere login)."""
 
     CAPTURE_STATES = [
-        ("init",      "Inicio"),
-        ("ask_name",  "Preguntando nombre"),
-        ("ask_phone", "Preguntando teléfono"),
-        ("ask_email", "Preguntando email"),
-        ("active",    "Activo"),
-        ("skip",      "Sin captura"),
+        ("init",        "Inicio"),
+        ("ask_id",      "Preguntando ID de referencia"),
+        ("ask_name",    "Preguntando nombre"),
+        ("ask_phone",   "Preguntando teléfono"),
+        ("ask_email",   "Preguntando email"),
+        ("ask_company", "Preguntando empresa"),
+        ("ask_killer",  "Pregunta de calificación"),
+        ("active",      "Activo"),
+        ("skip",        "Sin captura"),
     ]
 
     INTENT_LEVELS = [
