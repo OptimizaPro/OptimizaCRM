@@ -11,8 +11,9 @@ import { settingsApi, type MembershipDetail } from "@/lib/api";
 import {
   User, Building2, Users, CreditCard, Trash2, Shield,
   CheckCircle2, Loader2, ExternalLink, Lock, BanknoteX,
-  KeyRound, ChevronRight, Sparkles, Crown,
+  KeyRound, ChevronRight, Sparkles, Crown, Camera,
 } from "lucide-react";
+import { useRef } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { billingApi, type ApiPlan } from "@/lib/api";
 
@@ -47,15 +48,19 @@ const STATUS_LABELS: Record<string, { label: string; color: string; dot: string 
   incomplete: { label: "Incompleta",      color: "text-slate-400",  dot: "bg-slate-500" },
 };
 
-// ── Avatar initials ──────────────────────────────────────────────────────────
-function Avatar({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) {
+// ── Avatar (photo or initials) ───────────────────────────────────────────────
+function Avatar({ name, photoUrl, size = "md" }: { name: string; photoUrl?: string; size?: "sm" | "md" | "lg" }) {
   const initials = name
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
     .join("");
-  const sz = size === "sm" ? "h-7 w-7 text-xs" : size === "lg" ? "h-12 w-12 text-lg" : "h-9 w-9 text-sm";
+  const sz = size === "sm" ? "h-7 w-7 text-xs" : size === "lg" ? "h-14 w-14 text-lg" : "h-9 w-9 text-sm";
+  if (photoUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={photoUrl} alt={name} className={`${sz} flex-shrink-0 rounded-full object-cover shadow-md`} />;
+  }
   return (
     <div className={`${sz} flex flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-700 font-semibold text-white shadow-md`}>
       {initials || "?"}
@@ -116,6 +121,7 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>("perfil");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [paymentBanner, setPaymentBanner] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [apiPlans, setApiPlans] = useState<ApiPlan[]>([]);
 
@@ -182,6 +188,16 @@ export default function SettingsPage() {
       setTimeout(() => setProfileMsg(null), 4000);
     },
     onError: (e: Error) => setProfileMsg({ type: "err", text: e.message }),
+  });
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: (file: File) => settingsApi.uploadAvatar(tokens!.access, organization!.id, file),
+    onSuccess: (updated) => {
+      setUser({ ...user!, ...updated });
+      setProfileMsg({ type: "ok", text: "Foto actualizada correctamente." });
+      setTimeout(() => setProfileMsg(null), 4000);
+    },
+    onError: () => setProfileMsg({ type: "err", text: "No se pudo subir la foto. Intenta con una imagen menor a 5 MB." }),
   });
 
   const changePasswordMutation = useMutation({
@@ -350,7 +366,33 @@ export default function SettingsPage() {
                     {/* Header with avatar */}
                     <div className="relative flex items-end gap-4 border-b border-slate-800 bg-gradient-to-b from-slate-900 to-slate-950 px-6 py-5">
                       <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-orange-950/20 to-transparent pointer-events-none" />
-                      <Avatar name={fullName} size="lg" />
+
+                      {/* Avatar + upload button */}
+                      <div className="relative flex-shrink-0">
+                        <Avatar name={fullName} photoUrl={user?.avatar ?? undefined} size="lg" />
+                        <button
+                          onClick={() => avatarInputRef.current?.click()}
+                          disabled={uploadAvatarMutation.isPending}
+                          className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-slate-950 bg-slate-700 text-slate-300 hover:bg-orange-600 hover:text-white transition-colors disabled:opacity-50"
+                          title="Cambiar foto"
+                        >
+                          {uploadAvatarMutation.isPending
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : <Camera className="h-3 w-3" />}
+                        </button>
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = "";
+                            if (file) uploadAvatarMutation.mutate(file);
+                          }}
+                        />
+                      </div>
+
                       <div>
                         <p className="text-base font-semibold text-slate-100">{fullName || "—"}</p>
                         <p className="text-sm text-slate-400">{user?.email}</p>
@@ -526,7 +568,7 @@ export default function SettingsPage() {
                           return (
                             <li key={m.id} className="flex items-center justify-between px-6 py-3.5 gap-3">
                               <div className="flex items-center gap-3 min-w-0">
-                                <Avatar name={name} size="sm" />
+                                <Avatar name={name} photoUrl={m.user.avatar ?? undefined} size="sm" />
                                 <div className="min-w-0">
                                   <p className="text-sm font-medium text-slate-200 truncate">
                                     {name}

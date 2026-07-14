@@ -170,6 +170,7 @@ export interface User {
   first_name: string;
   last_name: string;
   full_name: string;
+  avatar?: string;
   is_staff?: boolean;
   role?: string;
   current_organization?: Organization;
@@ -407,6 +408,18 @@ export const settingsApi = {
 
   removeMember: (token: string, orgId: string, membershipId: string) =>
     api.delete(`/organizations/${orgId}/members/${membershipId}/`, { token, orgId }),
+
+  uploadAvatar: async (token: string, orgId: string, file: File): Promise<User> => {
+    const form = new FormData();
+    form.append("avatar", file);
+    const res = await fetch(`${apiUrl}/auth/me/`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "X-Organization-ID": orgId },
+      body: form,
+    });
+    if (!res.ok) throw new Error("No se pudo subir la foto");
+    return res.json() as Promise<User>;
+  },
 };
 
 export const authApi = {
