@@ -221,9 +221,12 @@ def process_capture(
         if _is_ref_id(msg):
             lead = _find_lead_by_ref(org, msg)
             if lead:
-                killer_q = _first_killer_question(widget) if widget else None
-                data     = session.lead_data or {}
-                data["killer_q_idx"] = 0
+                # Skip killer questions if this lead was already qualified before
+                already_scored = bool(session.intent_level or (lead.score and lead.score > 0))
+                killer_q       = None if already_scored else _first_killer_question(widget) if widget else None
+                data           = session.lead_data or {}
+                if killer_q:
+                    data["killer_q_idx"] = 0
                 session.lead          = lead
                 session.lead_data     = data
                 session.capture_state = "ask_killer" if killer_q else "active"

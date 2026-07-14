@@ -151,22 +151,12 @@ def chatbot_chat(request):
     capture_reply   = None
     skip_rag        = False
 
-    logger.warning(
-        "chatbot_chat widget=%s capture_enabled=%s state=%s is_first=%s",
-        widget.id, capture_enabled, session.capture_state, is_first_exchange,
-    )
-
     if capture_enabled:
         try:
             if session.capture_state not in ("active", "skip"):
                 from .lead_capture import process_capture
                 capture_reply, skip_rag = process_capture(
                     session, message, is_first_exchange, widget.organization, widget,
-                )
-                logger.warning(
-                    "chatbot_chat capture result: new_state=%s skip_rag=%s reply_len=%s",
-                    session.capture_state, skip_rag,
-                    len(capture_reply) if capture_reply else 0,
                 )
         except Exception as exc:
             logger.error("lead_capture error (widget=%s): %s", widget.id, exc, exc_info=True)
