@@ -1782,10 +1782,20 @@ export const chatbotApi = {
   triggerEmbed: (token: string, orgId: string) =>
     api.post<{ ok: boolean; kb_id: string }>("/chatbot/embed/", {}, { token, orgId }),
 
-  listSessions: (token: string, orgId: string, page = 1) =>
-    api.get<{ sessions: ChatSession_[]; count: number; page: number; total_pages: number }>(
-      `/chatbot/sessions/?page=${page}`, { token, orgId },
-    ),
+  listSessions: (
+    token: string,
+    orgId: string,
+    page = 1,
+    pageSize = 20,
+    filters?: { hasLead?: "true" | "false"; intentLevel?: "high" | "medium" | "low" },
+  ) => {
+    const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+    if (filters?.hasLead)     params.set("has_lead",      filters.hasLead);
+    if (filters?.intentLevel) params.set("intent_level",  filters.intentLevel);
+    return api.get<{ sessions: ChatSession_[]; count: number; page: number; page_size: number; total_pages: number }>(
+      `/chatbot/sessions/?${params}`, { token, orgId },
+    );
+  },
 
   getSession: (token: string, orgId: string, sessionId: string) =>
     api.get<ChatSessionDetail>(`/chatbot/sessions/${sessionId}/`, { token, orgId }),

@@ -327,7 +327,18 @@ def chatbot_sessions(request):
     except (ValueError, TypeError):
         page, page_size = 1, 20
 
-    qs     = ChatSession.objects.filter(widget=widget).order_by("-started_at")
+    qs = ChatSession.objects.filter(widget=widget).order_by("-started_at")
+
+    has_lead = request.GET.get("has_lead")
+    if has_lead == "true":
+        qs = qs.filter(lead_id__isnull=False)
+    elif has_lead == "false":
+        qs = qs.filter(lead_id__isnull=True)
+
+    intent = request.GET.get("intent_level")
+    if intent in ("high", "medium", "low"):
+        qs = qs.filter(intent_level=intent)
+
     count  = qs.count()
     offset = (page - 1) * page_size
     items  = qs[offset: offset + page_size]
