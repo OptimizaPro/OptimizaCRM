@@ -317,15 +317,18 @@ function LeadPanel({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-bold text-slate-100">{lead.full_name || lead.email}</h2>
+            <h2 className="font-bold text-slate-100">{lead.full_name || lead.email}</h2>
+            <p className="mt-0.5 text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
               {lead.lead_ref_id && (
-                <span className="rounded-full bg-orange-500/15 px-2.5 py-0.5 text-xs font-semibold text-orange-400 font-mono">
-                  {lead.lead_ref_id}
-                </span>
+                <>
+                  <span className="text-slate-500">ID de Lead:</span>
+                  <span className="font-mono font-semibold text-orange-400">{lead.lead_ref_id}</span>
+                  <span className="text-slate-700">·</span>
+                </>
               )}
-            </div>
-            <p className="text-xs text-slate-500">{lead.company || "Sin empresa"}</p>
+              <span className="text-slate-500">Empresa:</span>
+              <span className="text-slate-300">{lead.company || "—"}</span>
+            </p>
           </div>
           <div className="flex items-center gap-2">
             {!editing ? (
