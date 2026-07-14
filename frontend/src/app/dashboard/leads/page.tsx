@@ -100,7 +100,7 @@ function getSLA(lead: Lead): SLAInfo | null {
   };
 
   const deadlineStr = deadline.toLocaleString("es-GT", {
-    weekday: "short", day: "numeric", month: "short",
+    timeZone: "America/Guatemala", weekday: "short", day: "numeric", month: "short",
     hour: "2-digit", minute: "2-digit",
   });
   const action = SLA_LABEL[lead.status] ?? "Actuar en";
@@ -113,15 +113,23 @@ function getSLA(lead: Lead): SLAInfo | null {
   };
 }
 
+const GT = "America/Guatemala";
+
 function formatRelativeDate(iso: string): string {
-  const d    = new Date(iso);
-  const now  = new Date();
+  const d     = new Date(iso);
+  const now   = new Date();
   const diffH = (now.getTime() - d.getTime()) / (1000 * 60 * 60);
   if (diffH < 1)  return `hace ${Math.round(diffH * 60)} min`;
   if (diffH < 24) return `hace ${Math.floor(diffH)}h`;
   const diffD = Math.floor(diffH / 24);
   if (diffD < 7)  return `hace ${diffD}d`;
-  return d.toLocaleDateString("es-GT", { day: "numeric", month: "short", year: diffD > 365 ? "numeric" : undefined });
+  return d.toLocaleDateString("es-GT", { timeZone: GT, day: "numeric", month: "short", year: diffD > 365 ? "numeric" : undefined });
+}
+
+function formatFullDate(iso: string): string {
+  return new Date(iso).toLocaleString("es-GT", {
+    timeZone: GT, dateStyle: "medium", timeStyle: "short",
+  });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -362,7 +370,7 @@ function LeadPanel({
             <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-3 py-2">
               <Clock className="h-3.5 w-3.5 text-slate-400" />
               <span className="text-xs text-slate-400">Registro:</span>
-              <span className="text-xs text-slate-200" title={new Date(lead.created_at).toLocaleString("es-GT")}>
+              <span className="text-xs text-slate-200" title={formatFullDate(lead.created_at)}>
                 {formatRelativeDate(lead.created_at)}
               </span>
             </div>
@@ -493,7 +501,7 @@ function LeadPanel({
                     {consentMutation.isPending
                       ? "Guardando…"
                       : consent
-                        ? `Activo${consentDate ? ` · ${new Date(consentDate).toLocaleDateString("es-GT")}` : ""}`
+                        ? `Activo${consentDate ? ` · ${new Date(consentDate).toLocaleDateString("es-GT", { timeZone: "America/Guatemala" })}` : ""}`
                         : "Toca para activar"}
                   </p>
                 </div>
@@ -675,7 +683,7 @@ export default function LeadsPage() {
       accessorKey: "created_at",
       header: "Registro",
       cell: ({ getValue }) => (
-        <span className="flex items-center gap-1 text-xs text-slate-400 cursor-help" title={new Date(getValue() as string).toLocaleString("es-GT")}>
+        <span className="flex items-center gap-1 text-xs text-slate-400 cursor-help" title={formatFullDate(getValue() as string)}>
           <Clock className="h-3 w-3 shrink-0" />
           {formatRelativeDate(getValue() as string)}
           <Info className="h-3 w-3 opacity-60" />
