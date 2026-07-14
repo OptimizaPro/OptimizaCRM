@@ -440,7 +440,7 @@ def voice_tool_book_appointment(request):
         )
 
         # Create or update Lead
-        appt_lead = _upsert_lead(
+        appt_lead, _ = _upsert_lead(
             org=org,
             first_name=caller_name.split(" ", 1)[0],
             last_name=caller_name.split(" ", 1)[1] if " " in caller_name else "",
@@ -603,7 +603,7 @@ def voice_tool_qualify(request):
     org = widget.organization
 
     name_parts = caller_name.split(" ", 1) if caller_name else ["", ""]
-    lead = _upsert_lead(
+    lead, is_returning = _upsert_lead(
         org        = org,
         first_name = name_parts[0],
         last_name  = name_parts[1] if len(name_parts) > 1 else "",
@@ -642,16 +642,29 @@ def voice_tool_qualify(request):
         link="/dashboard/leads/",
     )
 
-    # Return client_id so the agent can communicate it to the caller
     client_id_value = (lead.client_id if lead else "") or ""
-    if client_id_value:
+    lead_name = (lead.first_name if lead else "") or caller_name or ""
+
+    if is_returning:
+        # Returning lead — agent must skip remaining data collection and killer questions
         result_msg = (
-            f"Datos registrados correctamente. "
-            f"El número de identificación del cliente es: {' '.join(client_id_value)}. "
-            f"Comunícaselo al cliente y pídele que lo guarde para futuras consultas."
+            f"CLIENTE EXISTENTE IDENTIFICADO. "
+            f"Nombre registrado: {lead_name}. "
+            f"NO repitas preguntas de datos ni preguntas de calificación — ya están registradas. "
+            f"Saluda por su nombre y atiende directamente su consulta."
         )
     else:
-        result_msg = "Datos registrados correctamente."
+        # New lead — give client_id so caller can use it in future calls
+        if client_id_value:
+            result_msg = (
+                f"NUEVO CLIENTE REGISTRADO. "
+                f"Su número de cliente es: {' '.join(client_id_value)}. "
+                f"Léelo dígito a dígito: \"{' — '.join(client_id_value)}\". "
+                f"Pídele que lo anote para identificarse en futuras llamadas. "
+                f"Continúa con las preguntas de calificación si aún no las has realizado."
+            )
+        else:
+            result_msg = "NUEVO CLIENTE REGISTRADO. Continúa con las preguntas de calificación."
 
     r = JsonResponse({"result": result_msg})
     return _cors(r, request)
@@ -1242,7 +1255,7 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
       4. create new
     vapi_caller_phone is stored in custom_fields["vapi_caller_phone"] so it persists
     across calls even if the caller gives a different contact number.
-    Returns the Lead instance or None.
+    Returns (lead, is_returning) where is_returning=True means an existing lead was found.
     """
     from apps.crm.models import Lead
 
@@ -1291,7 +1304,7 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
             ).first()
             if lead:
                 _apply_updates(lead)
-                return lead
+                return lead, True
 
         # ── 1. Match by real Vapi caller phone (stable PSTN number) ─────────
         if vapi_caller_phone:
@@ -1301,7 +1314,7 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
             ).first()
             if lead:
                 _apply_updates(lead)
-                return lead
+                return lead, True
 
         # Ensure new leads always get a client_id
         new_client_id = client_id or _generate_client_id(org)
@@ -1326,6 +1339,7 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
                 },
             )
             _apply_updates(lead, created)
+            return lead, not created
 
         # ── 3. Match by agent-extracted phone ────────────────────────────────
         elif phone:
@@ -1346,6 +1360,7 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
                 },
             )
             _apply_updates(lead, created)
+            return lead, not created
 
         # ── 4. No identifier — create new ────────────────────────────────────
         else:
@@ -1364,10 +1379,10 @@ def _upsert_lead(org, first_name, email="", phone="", last_name="", company="",
                 notes         = notes,
                 custom_fields = cf,
             )
+            return lead, False
 
-        return lead
     except Exception:
-        return None
+        return None, False
 
 
 # ─── Multi-agent CRUD ─────────────────────────────────────────────────────────
