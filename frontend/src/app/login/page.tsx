@@ -13,8 +13,8 @@ import { useAuthStore } from "@/store/auth";
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const [email, setEmail] = useState("demo@optimizacrm.com");
-  const [password, setPassword] = useState("Demo123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [unverified, setUnverified] = useState(false);
   const [loading, setLoading] = useState(false);
