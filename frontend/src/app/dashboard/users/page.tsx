@@ -588,10 +588,11 @@ export default function UsersPage() {
   const meRole    = me?.role ?? "";
   const canAccess = isStaff || ["org_admin", "sales_manager"].includes(meRole);
 
-  if (meLoaded && !canAccess) {
-    router.replace("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    if (meLoaded && !canAccess) {
+      router.replace("/dashboard");
+    }
+  }, [meLoaded, canAccess, router]);
 
   // List query
   const { data, isLoading, refetch, isFetching } = useQuery({
