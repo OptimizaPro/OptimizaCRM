@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ArrowRight } from "lucide-react";
@@ -26,8 +27,7 @@ export function PublicHeader() {
 
         {/* Logo */}
         <Link href="/" className="flex items-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="OptimizaCRM" className="h-10 w-auto" />
+          <Image src="/logo.png" alt="OptimizaCRM" width={160} height={40} priority className="h-10 w-auto" />
         </Link>
 
         {/* Desktop nav */}
@@ -110,8 +110,7 @@ export function PublicFooter() {
         <div className="grid grid-cols-2 gap-10 md:grid-cols-5">
           <div className="col-span-2">
             <div className="max-w-[420px]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="OptimizaCRM" className="block w-full" />
+              <Image src="/logo.png" alt="OptimizaCRM" width={420} height={105} className="block w-full" />
               <p className="mt-4 text-sm leading-relaxed text-slate-400">
                 CRM con inteligencia artificial para PYMEs latinoamericanas. Gestiona leads, automatiza seguimientos y cierra más negocios desde una sola plataforma diseñada para tu equipo.
               </p>

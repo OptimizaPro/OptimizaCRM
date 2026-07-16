@@ -147,8 +147,8 @@ export default function AboutPage() {
                 </div>
                 <blockquote className="relative">
                   <p className="text-2xl font-bold leading-relaxed text-white sm:text-3xl">
-                    "Las PYMEs de LATAM merecen las mismas herramientas de ventas que las grandes
-                    empresas — sin la complejidad ni los precios en dólares."
+                    "Las grandes empresas llevan años cerrando negocios con IA. Tus competidores más grandes también. 
+                    OptimizaCRM te da las mismas herramientas, a un precio que una PYME puede pagar."
                   </p>
                   <footer className="mt-6 flex items-center gap-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-orange-600 bg-orange-600">

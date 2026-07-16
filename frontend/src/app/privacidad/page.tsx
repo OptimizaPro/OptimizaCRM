@@ -8,8 +8,9 @@ import {
 const LAST_UPDATED = "23 de junio de 2026";
 
 export const metadata = {
-  title: "Política de Privacidad | OptimizaCRM",
+  title: "Política de Privacidad",
   description: "Cómo recopilamos, usamos y protegemos tus datos en OptimizaCRM.",
+  alternates: { canonical: "https://optimizacrm.com/privacidad" },
 };
 
 const RIGHTS = [

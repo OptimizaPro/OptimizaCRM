@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Contacto",
+  title: "Contactar con OptimizaCRM — Respuesta en 24 h",
   description:
     "Habla con el equipo de OptimizaCRM. Respuesta en menos de 24 h. Demo personalizada, soporte en español y sin presión de ventas.",
   alternates: { canonical: "https://optimizacrm.com/contacto" },

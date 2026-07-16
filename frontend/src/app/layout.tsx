@@ -78,7 +78,7 @@ const organizationSchema = {
   foundingLocation: { "@type": "Place", name: "Guatemala" },
 };
 
-// WebSite — habilita Sitelinks Search Box en Google y define la estructura del sitio para crawlers de IA
+// WebSite — define la estructura del sitio para crawlers de IA
 const webSiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -87,14 +87,6 @@ const webSiteSchema = {
   description:
     "CRM con inteligencia artificial para equipos de ventas de PYMEs en Guatemala y LATAM. Agente de voz IA 24/7, WhatsApp integrado, pipeline visual y FEL.",
   inLanguage: "es",
-  potentialAction: {
-    "@type": "SearchAction",
-    target: {
-      "@type": "EntryPoint",
-      urlTemplate: "https://optimizacrm.com/caracteristicas?q={search_term_string}",
-    },
-    "query-input": "required name=search_term_string",
-  },
 };
 
 const geistSans = Geist({
@@ -110,7 +102,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://optimizacrm.com"),
   title: {
-    default: "OptimizaCRM · CRM con IA para PYMEs",
+    default: "OptimizaCRM: CRM con IA para Ventas — Cierra Más en LATAM",
     template: "%s | OptimizaCRM",
   },
   description:

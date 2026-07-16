@@ -37,100 +37,30 @@ async function fetchSection<T>(key: string): Promise<T | null> {
 
 // ─── Generador del contenido ──────────────────────────────────────────────────
 
-function buildLlmsTxt(general: GeneralSection, pricing: PricingSection): string {
-  const siteName    = general.site_name    ?? "OptimizaCRM";
-  const tagline     = general.tagline      ?? "El CRM con IA que cierra más negocios.";
-  const contactMail = general.contact_email ?? "hola@optimizacrm.com";
-  const supportMail = general.support_email ?? "soporte@optimizacrm.com";
+function buildLlmsTxt(_general: GeneralSection, _pricing: PricingSection): string {
+  return `# OptimizaCRM
 
-  const pricingTagline =
-    pricing.subheadline ??
-    "Planes desde $19/mes por organización. Sin permanencia. Cancela cuando quieras.";
+> CRM con inteligencia artificial para equipos de ventas de PYMEs en Guatemala y LATAM.
+> Pipeline visual, lead scoring automático, WhatsApp integrado, agente de voz IA 24/7.
+> Precios desde $19/mes. Sin tarjeta de crédito. Prueba gratuita 14 días.
 
-  return `# ${siteName}
-
-> ${tagline}
-
-${siteName} es una plataforma SaaS que combina CRM empresarial con inteligencia artificial.
-Diseñada para PYMEs en Guatemala y LATAM que necesitan gestionar leads, cerrar negocios y aumentar
-ingresos sin la complejidad ni los precios de Salesforce o HubSpot.
-
-Desarrollado por OptimizaPro (Nelson Alvarez). Fundado en Guatemala.
-Mercado objetivo: PYMEs en Guatemala, México, Colombia y Centroamérica.
-
-Palabras clave principales: CRM Guatemala, CRM con IA Guatemala, CRM con inteligencia artificial
-Guatemala, CRM WhatsApp Guatemala, agente de voz Guatemala, agente de voz IA Guatemala,
-agente de voz con inteligencia artificial Guatemala, software CRM Guatemala.
-
-## Páginas principales
-
-- [Inicio](https://optimizacrm.com): Descripción del producto, propuesta de valor y CTA de prueba gratis
-- [Características](https://optimizacrm.com/caracteristicas): CRM con IA, WhatsApp, pipeline, automatizaciones — funciones completas para Guatemala y LATAM
-- [Precios](https://optimizacrm.com/precios): ${pricingTagline}. CRM con IA para Guatemala desde $19/mes con FEL incluida
-- [Agente de Voz IA](https://optimizacrm.com/voz-ia): Agente de voz con inteligencia artificial 24/7 para empresas en Guatemala. Atiende llamadas, califica leads y agenda citas en español
-- [Nosotros](https://optimizacrm.com/nosotros): Historia, fundador Nelson Alvarez (Guatemala), misión y valores
-- [Contacto](https://optimizacrm.com/contacto): Soporte en español, demo personalizada, WhatsApp
-- [Privacidad](https://optimizacrm.com/privacidad): Política de privacidad y protección de datos
-- [Términos](https://optimizacrm.com/terminos): Términos y condiciones de uso
-
-## Funcionalidades clave
-
-- Lead Scoring automático con IA (rango 0–100, 4 factores: fuente, estado, contacto, engagement)
-- Predicción de Churn con IA (probabilidad 0.0–1.0 con recomendaciones de retención)
-- Pipeline Kanban visual con drag & drop y etapas personalizables
-- Automatizaciones de ventas (reglas si/entonces para seguimientos automáticos)
-- Inbox multicanal unificado (Email + WhatsApp en una sola bandeja)
-- Previsión de ingresos con modelos de IA
-- Widget web embebible para captura de leads desde cualquier sitio
-- Gestión de tareas y calendario de equipo
-- Multi-tenant con aislamiento completo de datos por organización
-- Soporte completo en español latino americano
-
-## Agente de Voz con Inteligencia Artificial
-
-OptimizaCRM incluye un agente de voz IA para empresas en Guatemala y LATAM:
-- Atiende llamadas telefónicas automáticamente, 24 horas al día, 7 días a la semana
-- Habla en español natural optimizado para Guatemala y Centroamérica
-- Califica leads y registra la información directamente en el CRM
-- Agenda citas automáticamente en el calendario del equipo
-- Transfiere conversaciones a humanos vía WhatsApp cuando es necesario
-- Disponible desde $149 USD/mes (Voz Starter: 1 agente, 300 min/mes)
-
-## Mercado Guatemala — Características locales
-
-- Factura Electrónica en Línea (FEL) incluida en todos los planes, cumpliendo requisitos SAT Guatemala
-- Soporte en español guatemalteco
-- Precios en USD accesibles para PYMEs guatemaltecas
-- WhatsApp Business como canal principal (el más usado en Guatemala)
-- Integración con flujos de trabajo locales: cotizaciones, seguimientos, cierre
-
-## Planes y precios
-
-- **Básico**: $19/mes — 2 usuarios, hasta 500 leads, 2 pipelines, widget web, importación CSV, FEL Guatemala
-- **Pro**: $51/mes — hasta 6 usuarios, hasta 3.000 leads, lead scoring con IA, automatizaciones, inbox multicanal (WhatsApp + Email), reportes
-- **Equipo**: $95/mes — hasta 12 usuarios, hasta 12.000 leads, predicción de churn con IA, automatizaciones avanzadas, Google Drive
-- **Enterprise**: precio personalizado — usuarios ilimitados, SLA dedicado, onboarding asistido, SSO
-- Prueba gratuita de 14 días sin tarjeta de crédito en todos los planes
-
-## Integraciones y canales
-
-- WhatsApp Business API (principal canal de ventas en Guatemala)
-- Email (SMTP/IMAP)
-- Widget embebible (JavaScript)
-- API REST para integraciones personalizadas
-- Proveedores de IA: Groq, OpenAI, Google Gemini
+## Producto
+- [Características](https://optimizacrm.com/caracteristicas): Pipeline Kanban, lead scoring con IA, inbox multicanal, automatizaciones de ventas, Factura Electrónica FEL.
+- [Precios](https://optimizacrm.com/precios): Planes desde $19/mes (Básico), $51/mes (Pro), $95/mes (Equipo). Sin permanencia.
+- [Agente de Voz IA](https://optimizacrm.com/voz-ia): Agente conversacional 24/7. Califica leads, agenda citas, escala a humano. Starter $149/mes.
+- [Guatemala CRM](https://optimizacrm.com/guatemala): CRM con IA para empresas en Guatemala. FEL, soporte en español, precios en USD.
 
 ## Empresa
+- [Nosotros](https://optimizacrm.com/nosotros): OptimizaPro, fundada en Guatemala. Plataforma SaaS de optimización empresarial para PYMEs.
+- [Contacto](https://optimizacrm.com/contacto): Consultas comerciales y soporte técnico.
 
-- **Nombre legal**: OptimizaPro
-- **Producto**: ${siteName}
-- **Fundador**: Nelson Alvarez
-- **País de origen**: Guatemala
-- **Mercados**: Guatemala, México, Colombia, Centroamérica, LATAM
-- **Email de contacto**: ${contactMail}
-- **Email de soporte**: ${supportMail}
-- **URL**: https://optimizacrm.com
-`.trimEnd();
+## Servicios de implementación
+- [Setup WhatsApp Business](https://optimizacrm.com/servicios/whatsapp-business): Configuración e integración de WhatsApp Business API. Precio fijo $199.
+- [Implementación CRM](https://optimizacrm.com/servicios/implementacion): Implementación guiada del CRM con migración de datos y capacitación.
+
+## Legal
+- [Política de Privacidad](https://optimizacrm.com/privacidad)
+- [Términos y Condiciones](https://optimizacrm.com/terminos)`.trimEnd();
 }
 
 // ─── Route Handler ────────────────────────────────────────────────────────────

@@ -8,8 +8,9 @@ import {
 const LAST_UPDATED = "23 de junio de 2026";
 
 export const metadata = {
-  title: "Términos y Condiciones | OptimizaCRM",
+  title: "Términos y Condiciones",
   description: "Términos y condiciones de uso de OptimizaCRM.",
+  alternates: { canonical: "https://optimizacrm.com/terminos" },
 };
 
 const SECTIONS = [
