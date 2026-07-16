@@ -325,7 +325,7 @@ function UserDrawer({
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-800 bg-slate-950 shadow-2xl">
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full sm:max-w-md flex-col border-l border-slate-800 bg-slate-950 shadow-2xl overflow-y-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4 flex-shrink-0">
@@ -907,6 +907,7 @@ export default function UsersPage() {
 
             /* ── List / Table view ── */
             <div className="rounded-2xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/20 overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-800 bg-slate-900/80">
                   <tr>
@@ -1010,6 +1011,7 @@ export default function UsersPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
 
               {/* Table footer */}
               <div className="flex items-center justify-between border-t border-slate-800 px-5 py-3 bg-slate-900/40">

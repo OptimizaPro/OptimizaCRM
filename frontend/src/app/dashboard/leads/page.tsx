@@ -320,7 +320,7 @@ function LeadPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative flex h-full w-full max-w-md flex-col bg-slate-950 border-l border-slate-800 shadow-2xl overflow-y-auto">
+      <div className="relative flex h-full w-full sm:max-w-md flex-col bg-slate-950 border-l border-slate-800 shadow-2xl overflow-y-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">

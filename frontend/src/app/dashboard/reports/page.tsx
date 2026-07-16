@@ -379,7 +379,7 @@ export default function ReportsPage() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(stages?.close_rates ?? []).slice(-3).map((r: CloseRateData) => (
               <div key={r.period} className="rounded-xl border border-slate-800 bg-slate-900 p-3 text-center">
                 <p className="text-[10px] text-slate-500">{r.period}</p>
@@ -466,7 +466,7 @@ export default function ReportsPage() {
             const teamAttPct    = goalRev > 0 ? Math.round(totalRev / goalRev * 100) : null;
             return (
               <>
-                <div className="mb-6 grid gap-3 sm:grid-cols-4">
+                <div className="mb-6 grid gap-3 grid-cols-2 lg:grid-cols-4">
                   {[
                     { label: "Ingresos del equipo", value: formatCurrency(totalRev),  goal: goalRev   ? `Meta: ${formatCurrency(goalRev)}`  : null, color: "text-slate-100" },
                     { label: "Tratos cerrados",      value: String(totalDeals),         goal: goalDeals ? `Meta: ${goalDeals}`               : null, color: "text-orange-400" },

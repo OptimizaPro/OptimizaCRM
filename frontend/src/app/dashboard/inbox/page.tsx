@@ -62,6 +62,7 @@ export default function InboxPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
   const token = tokens?.access ?? "";
   const orgId = organization?.id ?? "";
@@ -191,6 +192,7 @@ export default function InboxPage() {
     setShowReply(false);
     setReplyBody("");
     setConfirmDelete(false);
+    setMobileDetailOpen(true);
     if (!message.is_read) markReadMutation.mutate(message.id);
   };
 
@@ -410,7 +412,14 @@ export default function InboxPage() {
           </div>
 
           {/* Right panel — message detail */}
-          <div className="hidden flex-1 flex-col overflow-hidden bg-slate-900 lg:flex">
+          <div className={`flex-1 flex-col overflow-hidden bg-slate-900 ${mobileDetailOpen ? "fixed inset-0 z-50 flex flex-col" : "hidden"} lg:static lg:flex lg:z-auto`}>
+            {/* Mobile back button */}
+            <button
+              onClick={() => setMobileDetailOpen(false)}
+              className="flex items-center gap-2 border-b border-slate-800 bg-slate-950 px-4 py-2 text-sm text-slate-400 hover:text-slate-200 lg:hidden"
+            >
+              ← Volver
+            </button>
             {!selectedMessage ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
                 <Mail className="h-12 w-12 text-slate-300" />

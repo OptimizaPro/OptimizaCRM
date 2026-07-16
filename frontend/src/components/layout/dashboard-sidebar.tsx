@@ -470,7 +470,7 @@ export function DashboardHeader({ title }: { title: string }) {
         <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggle}>
           <Menu className="h-5 w-5" />
         </Button>
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <h1 className="text-base font-semibold truncate sm:text-xl">{title}</h1>
       </div>
       <div className="flex items-center gap-1">
         <NotificationsPanel />

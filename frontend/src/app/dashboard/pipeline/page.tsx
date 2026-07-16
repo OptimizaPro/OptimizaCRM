@@ -1054,6 +1054,9 @@ export default function PipelinePage() {
                     })}
                   </div>
                 </div>
+                <p className="mt-2 text-center text-xs text-slate-500 lg:hidden">
+                  ← Desliza horizontalmente para ver todas las etapas →
+                </p>
 
               ) : (
 

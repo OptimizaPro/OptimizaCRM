@@ -92,7 +92,7 @@ function OpportunityPanel({ opp, onClose, onSave, onDelete, isSaving, isDeleting
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* panel */}
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col bg-slate-900 shadow-2xl border-l border-slate-800">
+      <div className="relative z-10 flex h-full w-full sm:max-w-md flex-col bg-slate-900 shadow-2xl border-l border-slate-800 overflow-y-auto">
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-800 px-5 py-4">
           <div className="flex-1 min-w-0 pr-3">
