@@ -448,11 +448,26 @@ export const authApi = {
   acceptInvite: (data: { token: string; password: string; first_name: string; last_name: string }) =>
     api.post<{ user: User; organization: Organization; tokens: AuthTokens; membership: Membership | null }>("/auth/accept-invite/", data),
 
-  verifyEmail: (token: string) =>
-    api.get<{ message: string }>(`/auth/verify-email/?token=${encodeURIComponent(token)}`),
+  verifyEmail: async (token: string): Promise<{ message: string }> => {
+    const res = await fetch(
+      `${API_URL}/auth/verify-email/?token=${encodeURIComponent(token)}`,
+      { method: "GET", headers: { "Content-Type": "application/json" } },
+    );
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    return data;
+  },
 
-  resendVerification: (email: string) =>
-    api.post<{ message: string }>("/auth/resend-verification/", { email }),
+  resendVerification: async (email: string): Promise<{ message: string }> => {
+    const res = await fetch(`${API_URL}/auth/resend-verification/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    return data;
+  },
 };
 
 export interface SalesGoal {
