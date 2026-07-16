@@ -441,6 +441,12 @@ export const authApi = {
 
   forgotPassword: (email: string) =>
     api.post<{ message: string }>("/auth/forgot-password/", { email }),
+
+  validateInvite: (token: string) =>
+    api.get<{ email: string; organization_name: string; role: string }>(`/auth/accept-invite/?token=${token}`),
+
+  acceptInvite: (data: { token: string; password: string; first_name: string; last_name: string }) =>
+    api.post<{ user: User; organization: Organization; tokens: AuthTokens; membership: Membership | null }>("/auth/accept-invite/", data),
 };
 
 export interface SalesGoal {
@@ -1490,6 +1496,9 @@ export const adminApi = {
 
   listAdminOrgs: (token: string, orgId: string) =>
     api.get<{ id: string; name: string; plan: string; slug: string }[]>("/admin/organizations/", { token, orgId }),
+
+  updateOrgPlan: (token: string, orgId: string, targetOrgId: string, data: { plan: string; status?: string }) =>
+    api.patch<{ id: string; name: string; plan: string }>(`/admin/organizations/${targetOrgId}/`, data, { token, orgId }),
 };
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────

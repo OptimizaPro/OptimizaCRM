@@ -4,8 +4,10 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 """
 
 import uuid
+import secrets
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.utils import timezone
 
 
 class UserManager(BaseUserManager):
@@ -56,7 +58,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Organization(models.Model):
     PLAN_CHOICES = [
         ("free",       "Free"),
+        ("basico",     "Básico"),
         ("pro",        "Professional"),
+        ("equipo",     "Equipo"),
         ("enterprise", "Enterprise"),
     ]
 
@@ -101,6 +105,28 @@ class Membership(models.Model):
 
     def __str__(self):
         return f"{self.user.email} @ {self.organization.name} ({self.role})"
+
+
+class InviteToken(models.Model):
+    id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invite_tokens")
+    email        = models.EmailField()
+    role         = models.CharField(max_length=50, default="sales_executive")
+    token        = models.CharField(max_length=64, unique=True, default=secrets.token_urlsafe)
+    invited_by   = models.ForeignKey("User", on_delete=models.SET_NULL, null=True, related_name="sent_invites")
+    created_at   = models.DateTimeField(auto_now_add=True)
+    expires_at   = models.DateTimeField()
+    used_at      = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "invite_tokens"
+
+    @property
+    def is_valid(self):
+        return self.used_at is None and self.expires_at > timezone.now()
+
+    def __str__(self):
+        return f"Invite {self.email} → {self.organization.name}"
 
 
 class AuditLog(models.Model):

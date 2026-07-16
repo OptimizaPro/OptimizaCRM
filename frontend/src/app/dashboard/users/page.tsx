@@ -20,9 +20,19 @@ import { toast } from "sonner";
 // Keys mirror Organization.PLAN_CHOICES in backend/apps/accounts/models.py
 const PLAN_LABELS: Record<string, { label: string; color: string }> = {
   free:       { label: "Free",       color: "bg-slate-800 text-slate-400" },
+  basico:     { label: "Básico",     color: "bg-slate-700 text-slate-300" },
   pro:        { label: "Pro",        color: "bg-orange-900/40 text-orange-400" },
+  equipo:     { label: "Equipo",     color: "bg-blue-900/40 text-blue-400" },
   enterprise: { label: "Enterprise", color: "bg-amber-900/40 text-amber-400" },
 };
+
+const PLAN_OPTIONS = [
+  { value: "free",       label: "Free" },
+  { value: "basico",     label: "Básico" },
+  { value: "pro",        label: "Pro" },
+  { value: "equipo",     label: "Equipo" },
+  { value: "enterprise", label: "Enterprise" },
+];
 
 const ROLE_LABELS: Record<string, string> = {
   org_admin:       "Admin",
@@ -267,15 +277,29 @@ function UserFormModal({ mode, initial, onClose, onSave, saving, apiError }: Use
 // ─── Detail drawer ────────────────────────────────────────────────────────────
 
 function UserDrawer({
-  user, onClose, onEdit, onToggle, isStaff, toggling,
+  user, onClose, onEdit, onToggle, onPlanChange, isStaff, toggling,
 }: {
   user: AdminUser;
   onClose: () => void;
   onEdit: () => void;
   onToggle: (field: "is_active" | "is_staff") => void;
+  onPlanChange: (orgId: string, plan: string) => Promise<void>;
   isStaff: boolean;
   toggling: boolean;
 }) {
+  const [selectedPlan, setSelectedPlan] = useState(user.organization?.plan ?? "");
+  const [planSaving, setPlanSaving]     = useState(false);
+
+  const handlePlanSave = async () => {
+    if (!user.organization || !selectedPlan) return;
+    setPlanSaving(true);
+    try {
+      await onPlanChange(user.organization.id, selectedPlan);
+    } finally {
+      setPlanSaving(false);
+    }
+  };
+
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -359,6 +383,40 @@ function UserDrawer({
                     <span className="text-sm text-slate-200">{value}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Plan override (staff only) */}
+          {isStaff && user.organization && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+              <div className="border-b border-slate-800 px-4 py-2.5 flex items-center gap-2">
+                <Crown className="h-3.5 w-3.5 text-amber-400" />
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Override de plan</p>
+              </div>
+              <div className="p-4 space-y-3">
+                <p className="text-xs text-slate-500">
+                  Cambia el plan de <span className="text-slate-300 font-medium">{user.organization.name}</span> manualmente.
+                </p>
+                <div className="flex gap-2">
+                  <select
+                    value={selectedPlan}
+                    onChange={e => setSelectedPlan(e.target.value)}
+                    className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none"
+                  >
+                    {PLAN_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handlePlanSave}
+                    disabled={planSaving || selectedPlan === user.organization.plan}
+                    className="flex items-center gap-1.5 rounded-xl border border-amber-700/50 bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-400 hover:bg-amber-950/40 disabled:opacity-40 transition-all"
+                  >
+                    {planSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crown className="h-3.5 w-3.5" />}
+                    Aplicar
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -644,6 +702,21 @@ export default function UsersPage() {
     }
   };
 
+  const handlePlanChange = async (targetOrgId: string, plan: string) => {
+    try {
+      await adminApi.updateOrgPlan(token, orgId, targetOrgId, { plan, status: "active" });
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+      // Update drawer user's org plan optimistically
+      if (viewUser?.organization?.id === targetOrgId) {
+        setViewUser(prev => prev ? { ...prev, organization: { ...prev.organization!, plan } } : prev);
+      }
+      toast.success(`Plan actualizado a ${plan}`);
+    } catch (e) {
+      toast.error("Error al cambiar plan", { description: (e as Error).message });
+      throw e;
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -747,8 +820,8 @@ export default function UsersPage() {
                 className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 focus:border-orange-500 focus:outline-none"
               >
                 <option value="">Todos los planes</option>
-                {Object.entries(PLAN_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
+                {PLAN_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
               <select
@@ -987,6 +1060,7 @@ export default function UsersPage() {
           onClose={() => setViewUser(null)}
           onEdit={() => { setFormError(""); setEditUser(viewUser); }}
           onToggle={(field) => handleToggle(viewUser, field)}
+          onPlanChange={handlePlanChange}
           isStaff={isStaff}
           toggling={toggling}
         />

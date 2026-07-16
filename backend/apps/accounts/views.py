@@ -10,12 +10,18 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, get_user_model
+import logging
+import requests as http_requests
+from django.conf import settings as django_settings
 from django.db.models import Q
+
+_email_logger = logging.getLogger(__name__)
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from core.permissions import IsOrgAdmin, IsReadOnlyOrAbove
 from core.middleware import get_current_organization
-from .models import Organization, Membership, AuditLog
+from .models import Organization, Membership, AuditLog, InviteToken
 from .serializers import (
     UserSerializer, RegisterSerializer, LoginSerializer,
     OrganizationSerializer, MembershipSerializer, AuditLogSerializer,
@@ -23,6 +29,38 @@ from .serializers import (
 )
 
 User = get_user_model()
+
+
+def _send_invite_email(to_email: str, subject: str, body: str) -> None:
+    """Send transactional email via Brevo REST API."""
+    from email.utils import parseaddr as _parseaddr
+    api_key = getattr(django_settings, "BREVO_API_KEY", "")
+    if not api_key:
+        print(f"[INVITE] BREVO_API_KEY not set — email not sent to {to_email}", flush=True)
+        return
+    sender_name, sender_email = _parseaddr(django_settings.DEFAULT_FROM_EMAIL)
+    if not sender_email:
+        sender_email = django_settings.DEFAULT_FROM_EMAIL
+    if not sender_name:
+        sender_name = "OptimizaCRM"
+    try:
+        resp = http_requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json={
+                "sender":      {"name": sender_name, "email": sender_email},
+                "to":          [{"email": to_email}],
+                "subject":     subject,
+                "textContent": body,
+            },
+            headers={"api-key": api_key, "Content-Type": "application/json"},
+            timeout=10,
+        )
+        if resp.ok:
+            print(f"[INVITE] Email sent OK to {to_email}", flush=True)
+        else:
+            print(f"[INVITE] Brevo error to {to_email}: {resp.status_code} {resp.text}", flush=True)
+    except Exception as exc:
+        print(f"[INVITE] Exception sending to {to_email}: {exc}", flush=True)
 
 
 class RegisterView(APIView):
@@ -154,8 +192,12 @@ class OrganizationViewSet(viewsets.ModelViewSet):
         if not IsOrgAdmin().has_permission(request, self):
             return Response({"error": "Sin permisos."}, status=403)
 
-        email = request.data.get("email")
+        email = request.data.get("email", "").strip().lower()
         role  = request.data.get("role", "sales_executive")
+
+        if not email:
+            return Response({"error": "El email es requerido."}, status=400)
+
         user, created = User.objects.get_or_create(
             email=email,
             defaults={
@@ -174,6 +216,32 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             membership.role      = role
             membership.is_active = True
             membership.save()
+
+        # Create magic link invite token (invalidate previous ones for same email+org)
+        InviteToken.objects.filter(
+            organization=organization, email=email, used_at__isnull=True
+        ).update(expires_at=timezone.now())
+
+        invite = InviteToken.objects.create(
+            organization=organization,
+            email=email,
+            role=role,
+            invited_by=request.user,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+        )
+
+        frontend_url = getattr(django_settings, "FRONTEND_URL", "https://optimizacrm.com")
+        invite_url   = f"{frontend_url}/accept-invite?token={invite.token}"
+
+        subject = f"Te han invitado a unirte a {organization.name} en OptimizaCRM"
+        body    = (
+            f"Hola,\n\n"
+            f"{request.user.full_name} te ha invitado a unirte a {organization.name} en OptimizaCRM.\n\n"
+            f"Haz clic en el siguiente enlace para activar tu cuenta:\n{invite_url}\n\n"
+            f"Este enlace expira en 7 días.\n\n"
+            f"Si no esperabas esta invitación, puedes ignorar este mensaje."
+        )
+        _send_invite_email(email, subject, body)
 
         return Response(MembershipSerializer(membership).data, status=201)
 
@@ -352,7 +420,10 @@ class AdminUsersView(APIView):
 
 
 class AdminOrganizationsView(APIView):
-    """GET /admin/organizations/ — staff-only list of all organizations."""
+    """
+    GET  /admin/organizations/           — staff-only list of all organizations.
+    PATCH /admin/organizations/<org_id>/ — staff-only plan override.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -360,6 +431,102 @@ class AdminOrganizationsView(APIView):
             return Response({"error": "Sin permisos."}, status=403)
         orgs = Organization.objects.filter(is_active=True).order_by("name")
         return Response(OrganizationSerializer(orgs, many=True).data)
+
+    def patch(self, request, org_id=None):
+        if not request.user.is_staff:
+            return Response({"error": "Sin permisos."}, status=403)
+
+        org = get_object_or_404(Organization, id=org_id)
+
+        new_plan   = request.data.get("plan")
+        new_status = request.data.get("status", "active")
+
+        VALID_PLANS = {"free", "basico", "pro", "equipo", "enterprise"}
+        VALID_STATUSES = {"trialing", "active", "past_due", "canceled", "unpaid"}
+
+        if new_plan and new_plan not in VALID_PLANS:
+            return Response({"error": f"Plan inválido: {new_plan}"}, status=400)
+        if new_status not in VALID_STATUSES:
+            return Response({"error": f"Estado inválido: {new_status}"}, status=400)
+
+        if new_plan:
+            org.plan = new_plan
+            org.save(update_fields=["plan", "updated_at"])
+
+            # Sync subscription
+            try:
+                from apps.billing.models import Subscription
+                sub, _ = Subscription.objects.get_or_create(organization=org)
+                sub.plan   = new_plan
+                sub.status = new_status
+                sub.save(update_fields=["plan", "status", "updated_at"])
+            except Exception as exc:
+                print(f"[ADMIN] Could not sync subscription for org {org_id}: {exc}", flush=True)
+
+        return Response(OrganizationSerializer(org).data)
+
+
+class AcceptInviteView(APIView):
+    """POST /auth/accept-invite/ — activate account from magic link token."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        """Validate token without activating — used to prefill email on the form."""
+        token = request.query_params.get("token", "")
+        invite = InviteToken.objects.filter(token=token).select_related("organization").first()
+        if not invite or not invite.is_valid:
+            return Response({"error": "El enlace es inválido o ha expirado."}, status=400)
+        return Response({
+            "email":             invite.email,
+            "organization_name": invite.organization.name,
+            "role":              invite.role,
+        })
+
+    def post(self, request):
+        token      = request.data.get("token", "")
+        password   = request.data.get("password", "")
+        first_name = request.data.get("first_name", "").strip()
+        last_name  = request.data.get("last_name", "").strip()
+
+        if not token or not password:
+            return Response({"error": "Token y contraseña son requeridos."}, status=400)
+        if len(password) < 8:
+            return Response({"error": "La contraseña debe tener al menos 8 caracteres."}, status=400)
+
+        invite = InviteToken.objects.filter(token=token).select_related("organization").first()
+        if not invite or not invite.is_valid:
+            return Response({"error": "El enlace es inválido o ha expirado."}, status=400)
+
+        user = User.objects.filter(email=invite.email).first()
+        if not user:
+            return Response({"error": "Usuario no encontrado."}, status=400)
+
+        user.set_password(password)
+        if first_name:
+            user.first_name = first_name
+        if last_name:
+            user.last_name = last_name
+        user.save()
+
+        # Mark token as used
+        invite.used_at = timezone.now()
+        invite.save(update_fields=["used_at"])
+
+        # Auto-login: return JWT tokens
+        refresh = RefreshToken.for_user(user)
+        membership = user.memberships.filter(
+            organization=invite.organization, is_active=True
+        ).first()
+
+        return Response({
+            "user":         UserSerializer(user).data,
+            "organization": OrganizationSerializer(invite.organization).data,
+            "tokens": {
+                "access":  str(refresh.access_token),
+                "refresh": str(refresh),
+            },
+            "membership": MembershipSerializer(membership).data if membership else None,
+        })
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
