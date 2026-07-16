@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 import { teamsApi, settingsApi, billingApi, type Team, type TeamRole } from "@/lib/api";
 import {
   Users, Plus, X, Pencil, Trash2, Loader2, Check,
@@ -527,6 +528,12 @@ export default function TeamsPage() {
   };
 
   return (
+    <FeatureGate
+      minPlan="pro"
+      featureName="Equipos"
+      featureDescription="Organiza tu equipo de ventas en grupos con metas, roles y métricas individuales y colectivas."
+      highlights={["Grupos y subgrupos de vendedores", "Metas mensuales por equipo", "Métricas individuales y colectivas", "Asignación automática de leads por equipo"]}
+    >
     <div className="flex h-screen flex-col overflow-hidden">
       <DashboardHeader title="Equipos" />
 
@@ -632,5 +639,6 @@ export default function TeamsPage() {
         />
       )}
     </div>
+    </FeatureGate>
   );
 }

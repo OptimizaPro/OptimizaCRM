@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 import {
   chatbotApi, type ChatbotWidget, type ChatSession_, type ChatSessionDetail,
 } from "@/lib/api";
@@ -568,6 +569,12 @@ export default function ChatbotPage() {
   }
 
   return (
+    <FeatureGate
+      minPlan="pro"
+      featureName="Chatbot RAG"
+      featureDescription="Despliega un chatbot inteligente en tu web con respuestas basadas en tu base de conocimiento, entrenado con tus propios datos."
+      highlights={["Widget embebible en tu sitio web", "Respuestas con IA generativa", "Captura automática de leads", "Integrado con tu Base de Conocimiento"]}
+    >
     <div className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <DashboardHeader title="Chatbot RAG" />
 
@@ -1021,5 +1028,6 @@ export default function ChatbotPage() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 }

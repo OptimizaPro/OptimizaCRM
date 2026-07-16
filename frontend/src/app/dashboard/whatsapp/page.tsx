@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { writingAssistantApi, type WritingAction } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 import Link from "next/link";
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -216,6 +217,12 @@ export default function WhatsAppPage() {
   );
 
   return (
+    <FeatureGate
+      minPlan="pro"
+      featureName="WhatsApp"
+      featureDescription="Conecta tu número de WhatsApp Business y gestiona todas las conversaciones con leads y clientes directamente desde el CRM."
+      highlights={["Bandeja unificada de WhatsApp", "Respuestas rápidas y plantillas", "Historial de conversaciones en el CRM", "Asignación de chats a agentes"]}
+    >
     <div className="flex h-screen flex-col overflow-hidden">
       <DashboardHeader title="WhatsApp" />
 
@@ -539,5 +546,6 @@ export default function WhatsAppPage() {
         </div>
       )}
     </div>
+    </FeatureGate>
   );
 }

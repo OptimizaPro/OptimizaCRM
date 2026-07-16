@@ -8,13 +8,14 @@ import {
   Calendar, BarChart3, Brain, Settings, LogOut, Menu,
   Plug, Inbox, MessageCircle, ChevronDown, MessagesSquare,
   TrendingUp, ListTodo, LineChart, ShieldCheck, FileText,
-  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound, BookOpen, Bot,
+  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound, BookOpen, Bot, Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, useSidebarStore } from "@/store/auth";
 import { Button } from "@/components/ui/button";
 import { NotificationsPanel } from "@/components/ui/notifications-panel";
 import { cmsApi } from "@/lib/api";
+import { meetsMinPlan } from "@/components/dashboard/feature-gate";
 
 // ─── Shared logo hook ─────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ function useSiteLogo() {
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
-type NavItem  = { href: string; label: string; icon: React.ElementType; staffOnly?: boolean };
+type NavItem  = { href: string; label: string; icon: React.ElementType; staffOnly?: boolean; minPlan?: string; requireVoz?: boolean };
 type NavGroup = { key: string; label: string; icon: React.ElementType; items: NavItem[] };
 type NavEntry = { type: "item"; item: NavItem } | { type: "group"; group: NavGroup };
 
@@ -54,8 +55,8 @@ const NAV: NavEntry[] = [
       icon: MessagesSquare,
       items: [
         { href: "/dashboard/inbox",     label: "Bandeja de entrada", icon: Inbox },
-        { href: "/dashboard/whatsapp",  label: "WhatsApp",           icon: MessageCircle },
-        { href: "/dashboard/campaigns", label: "Campañas de email",  icon: Mail },
+        { href: "/dashboard/whatsapp",  label: "WhatsApp",           icon: MessageCircle, minPlan: "pro" },
+        { href: "/dashboard/campaigns", label: "Campañas de email",  icon: Mail,          minPlan: "pro" },
       ],
     },
   },
@@ -105,12 +106,12 @@ const NAV: NavEntry[] = [
       icon: ShieldCheck,
       items: [
         { href: "/dashboard/users",           label: "Usuarios",              icon: Users },
-        { href: "/dashboard/teams",           label: "Equipos",               icon: UsersRound },
-        { href: "/dashboard/automation",      label: "Automatizaciones",      icon: Zap },
-        { href: "/dashboard/knowledge-base",  label: "Base de Conocimiento",  icon: BookOpen },
-        { href: "/dashboard/voice-plans",     label: "Agente de Voz IA",      icon: Mic      },
-        { href: "/dashboard/chatbot",         label: "Chatbot RAG",           icon: Bot      },
-        { href: "/dashboard/hub",             label: "Hub de Contacto",       icon: LayoutGrid  },
+        { href: "/dashboard/teams",           label: "Equipos",               icon: UsersRound, minPlan: "pro" },
+        { href: "/dashboard/automation",      label: "Automatizaciones",      icon: Zap,        minPlan: "pro" },
+        { href: "/dashboard/knowledge-base",  label: "Base de Conocimiento",  icon: BookOpen,   minPlan: "pro" },
+        { href: "/dashboard/voice-plans",     label: "Agente de Voz IA",      icon: Mic,        requireVoz: true },
+        { href: "/dashboard/chatbot",         label: "Chatbot RAG",           icon: Bot,        minPlan: "pro" },
+        { href: "/dashboard/hub",             label: "Hub de Contacto",       icon: LayoutGrid, minPlan: "pro" },
         { href: "/dashboard/forms",           label: "Formularios",           icon: FormInput   },
         { href: "/dashboard/cms",             label: "Contenido Web",         icon: FileText,   staffOnly: true },
         { href: "/dashboard/integrations",    label: "Integraciones",         icon: Plug },
@@ -146,7 +147,17 @@ export function DashboardSidebar() {
   const router    = useRouter();
   const { isOpen, toggle, isCollapsed, toggleCollapsed } = useSidebarStore();
   const { user, organization, logout } = useAuthStore();
-  const logoUrl = useSiteLogo();
+  const logoUrl    = useSiteLogo();
+  const orgPlan    = organization?.plan ?? "free";
+  const orgSettings = (organization?.settings ?? {}) as Record<string, unknown>;
+  const hasVoz     = !!orgSettings.voice_plan_slug;
+
+  const isItemLocked = (item: NavItem) => {
+    if (user?.is_staff) return false;
+    if (item.minPlan && !meetsMinPlan(orgPlan, item.minPlan as never)) return true;
+    if (item.requireVoz && !hasVoz) return true;
+    return false;
+  };
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
     () => getDefaultOpenGroups(pathname)
@@ -263,6 +274,7 @@ export function DashboardSidebar() {
 
               const { key, label, icon: GroupIcon, items: rawItems } = entry.group;
               const items       = rawItems.filter((it) => !it.staffOnly || user?.is_staff);
+              if (items.length === 0) return null;
               const expanded    = openGroups[key] ?? false;
               const groupActive = items.some((it) => isActive(it.href));
 
@@ -289,8 +301,10 @@ export function DashboardSidebar() {
 
                   {expanded && (
                     <div className="ml-3 mt-0.5 border-l border-slate-700 pl-3 pb-0.5">
-                      {items.map(({ href, label: subLabel, icon: SubIcon }) => {
-                        const active = isActive(href);
+                      {items.map((subItem) => {
+                        const { href, label: subLabel, icon: SubIcon } = subItem;
+                        const active  = isActive(href);
+                        const locked  = isItemLocked(subItem);
                         return (
                           <Link
                             key={href}
@@ -304,6 +318,7 @@ export function DashboardSidebar() {
                           >
                             <SubIcon className="h-3.5 w-3.5 flex-shrink-0" />
                             <span className="flex-1">{subLabel}</span>
+                            {locked && !active && <Lock className="h-3 w-3 flex-shrink-0 text-slate-600" />}
                             {active && <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-orange-500" />}
                           </Link>
                         );

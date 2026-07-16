@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -2803,6 +2804,14 @@ export default function VoicePlansPage() {
   const visibleTabs = ALL_TABS.filter(t => !t.staffOnly || isStaff);
 
   return (
+    <FeatureGate
+      requireVoz
+      featureName="Agente de Voz IA"
+      featureDescription="Activa un agente de voz con IA que atiende llamadas 24/7, califica leads y agenda citas sin intervención humana."
+      highlights={["Disponible 24/7 sin intervención humana", "Calificación automática de leads por voz", "Agendamiento de citas", "Escalación a agente humano cuando sea necesario"]}
+      ctaHref="/voz-ia"
+      ctaLabel="Ver planes de Voz IA"
+    >
     <div className="flex h-screen flex-col overflow-hidden">
       <DashboardHeader title="Agente de Voz IA" />
 
@@ -2878,5 +2887,6 @@ export default function VoicePlansPage() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 }

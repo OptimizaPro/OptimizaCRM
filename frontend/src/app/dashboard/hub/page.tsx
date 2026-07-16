@@ -6,6 +6,7 @@ import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { WebWidgetPanel } from "@/components/dashboard/web-widget-panel";
 import { widgetApi, chatbotApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 import {
   LayoutGrid, Users, MessageCircle, Mic, ExternalLink,
   Copy, Check, Zap, Globe, TrendingUp, ChevronDown, ChevronUp, Bot,
@@ -91,6 +92,12 @@ export default function HubPage() {
   const activeChannels = [formActive, waActive, chatbotActive].filter(Boolean).length;
 
   return (
+    <FeatureGate
+      minPlan="pro"
+      featureName="Hub de Contacto"
+      featureDescription="Gestiona todos tus canales de comunicación en un solo lugar: WhatsApp, email, chat web y más."
+      highlights={["Vista unificada de todos los canales", "Asignación de conversaciones a agentes", "Etiquetas y prioridades", "Historial completo por contacto"]}
+    >
     <div className="flex h-full flex-col overflow-hidden">
       <DashboardHeader title="Hub de Contacto" />
 
@@ -270,5 +277,6 @@ export default function HubPage() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 }

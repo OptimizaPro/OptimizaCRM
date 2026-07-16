@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { automationApi, type AutomationRule } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -493,6 +494,12 @@ export default function AutomationPage() {
   const totalRuns     = rules.reduce((s, r) => s + r.run_count, 0);
 
   return (
+    <FeatureGate
+      minPlan="pro"
+      featureName="Automatizaciones"
+      featureDescription="Automatiza tareas repetitivas, flujos de seguimiento y acciones basadas en eventos de tu pipeline de ventas."
+      highlights={["Flujos de trabajo visuales", "Triggers por eventos del CRM", "Acciones automáticas sobre leads", "Notificaciones y asignaciones automáticas"]}
+    >
     <>
       <DashboardHeader title="Automatizaciones" />
 
@@ -621,5 +628,6 @@ export default function AutomationPage() {
         />
       )}
     </>
+    </FeatureGate>
   );
 }

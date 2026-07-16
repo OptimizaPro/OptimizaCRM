@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 import { kbApi, type KnowledgeBase, type KBSource } from "@/lib/api";
 import {
   BookOpen, Save, Plus, Trash2, Link2, FileUp, Loader2,
@@ -265,6 +266,12 @@ export default function KnowledgeBasePage() {
   const importing = scrapeMut.isPending || importFileMut.isPending;
 
   return (
+    <FeatureGate
+      minPlan="pro"
+      featureName="Base de Conocimiento"
+      featureDescription="Crea y organiza documentos, FAQs y contenido que potencia tu agente de IA y sirve como base del Chatbot RAG."
+      highlights={["Documentos indexados para IA", "FAQs y respuestas predefinidas", "Fuentes URL y archivos PDF", "Sincronización con el Chatbot RAG"]}
+    >
     <div className="flex h-full flex-col bg-slate-950">
       <DashboardHeader title="Base de Conocimiento" />
 
@@ -473,5 +480,6 @@ export default function KnowledgeBasePage() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 }

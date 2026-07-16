@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/auth";
+import { FeatureGate } from "@/components/dashboard/feature-gate";
 import { campaignsApi, type EmailCampaign } from "@/lib/api";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { CampaignEditor } from "@/components/dashboard/campaign-editor";
@@ -206,6 +207,12 @@ export default function CampaignsPage() {
   const totalSent  = campaigns.reduce((acc, c) => acc + c.recipient_count, 0);
 
   return (
+    <FeatureGate
+      minPlan="pro"
+      featureName="Campañas de Email"
+      featureDescription="Crea, programa y envía campañas de email a tus contactos segmentados. Analiza aperturas, clics y conversiones."
+      highlights={["Editor de plantillas HTML", "Segmentación por etiquetas y plan", "Estadísticas de apertura y clics", "Programación automática de envíos"]}
+    >
     <>
       {editorCampaign !== null && (
         <CampaignEditor
@@ -305,5 +312,6 @@ export default function CampaignsPage() {
         )}
       </div>
     </>
+    </FeatureGate>
   );
 }
