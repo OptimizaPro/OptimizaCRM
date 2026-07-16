@@ -199,6 +199,18 @@ export default async function GuatemalaPage() {
         </div>
       </section>
 
+      {/* ── GEO: Question intro ── */}
+      <section className="border-b border-slate-800/60 bg-slate-950/60">
+        <div className="mx-auto max-w-4xl px-6 py-12 text-center">
+          <h2 className="text-2xl font-bold text-white leading-snug sm:text-3xl">
+            ¿Por qué OptimizaCRM es el CRM ideal para empresas en Guatemala?
+          </h2>
+          <p className="mt-4 text-slate-400 leading-relaxed max-w-2xl mx-auto">
+            OptimizaCRM es el único CRM diseñado para el mercado guatemalteco con Factura Electrónica FEL integrada, soporte completo en español y precios desde $19/mes por organización — sin pago por usuario. Configuración en menos de 5 minutos, sin consultores externos.
+          </p>
+        </div>
+      </section>
+
       {/* ── Intro ── */}
       <section className="border-b border-slate-800/60 bg-slate-900/30">
         <div className="mx-auto max-w-6xl px-6 py-14">

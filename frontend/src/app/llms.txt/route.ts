@@ -58,6 +58,8 @@ function buildLlmsTxt(_general: GeneralSection, _pricing: PricingSection): strin
 - [Setup WhatsApp Business](https://optimizacrm.com/servicios/whatsapp-business): Configuración e integración de WhatsApp Business API. Precio fijo $199.
 - [Implementación CRM](https://optimizacrm.com/servicios/implementacion): Implementación guiada del CRM con migración de datos y capacitación.
 
+> Optional
+
 ## Legal
 - [Política de Privacidad](https://optimizacrm.com/privacidad)
 - [Términos y Condiciones](https://optimizacrm.com/terminos)`.trimEnd();

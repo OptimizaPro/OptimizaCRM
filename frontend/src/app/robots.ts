@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "ClaudeBot",       allow: ["/"], disallow: PRIVATE_ROUTES },
       { userAgent: "PerplexityBot",   allow: ["/"], disallow: PRIVATE_ROUTES },
       { userAgent: "Google-Extended", allow: ["/"], disallow: PRIVATE_ROUTES },
+      { userAgent: "Bingbot",         allow: ["/"], disallow: PRIVATE_ROUTES },
       // Regla general para el resto de crawlers
       { userAgent: "*",               allow: ["/"], disallow: PRIVATE_ROUTES },
     ],

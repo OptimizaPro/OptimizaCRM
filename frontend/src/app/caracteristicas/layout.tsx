@@ -91,6 +91,40 @@ const itemListSchema = {
   ],
 };
 
+const softwareApplicationSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "OptimizaCRM",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: "https://optimizacrm.com",
+  offers: {
+    "@type": "AggregateOffer",
+    lowPrice: "19",
+    highPrice: "95",
+    priceCurrency: "USD",
+    offerCount: "4",
+  },
+  featureList: [
+    "Pipeline visual de ventas con drag & drop",
+    "Lead scoring automático con IA",
+    "Agente de voz IA 24/7 en español",
+    "WhatsApp Business integrado",
+    "Chatbot RAG con base de conocimiento",
+    "Automatizaciones de flujo de trabajo",
+    "Campañas de email marketing",
+    "Reportes y analítica avanzada",
+    "Hub de contacto multicanal",
+    "Gestión de equipos y roles",
+    "Bandeja de entrada unificada",
+    "Integración con Google Drive",
+    "Factura Electrónica FEL (Guatemala)",
+    "API REST",
+  ],
+  inLanguage: "es",
+  availableOnDevice: "Desktop, Mobile",
+};
+
 const webPageSchema = {
   "@context": "https://schema.org",
   "@type": "WebPage",
@@ -116,6 +150,10 @@ const webPageSchema = {
 export default function CaracteristicasLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationSchema) }}
+      />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}

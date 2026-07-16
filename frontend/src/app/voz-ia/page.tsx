@@ -301,6 +301,18 @@ export default function VozIaPage() {
         </div>
       </section>
 
+      {/* ── GEO: Question intro ───────────────────────────────────────────── */}
+      <section className="border-b border-slate-800 bg-slate-900/60 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-2xl font-bold text-white sm:text-3xl">
+            ¿Cómo funciona el agente de voz IA de OptimizaCRM?
+          </h2>
+          <p className="mt-4 text-slate-400 leading-relaxed">
+            El agente de voz IA de OptimizaCRM atiende llamadas entrantes en español 24 horas al día, 7 días a la semana. Califica leads con preguntas personalizadas, agenda citas en tu calendario y transfiere conversaciones a WhatsApp cuando el cliente necesita atención humana — sin que ninguna llamada quede sin respuesta.
+          </p>
+        </div>
+      </section>
+
       {/* ── Stats ─────────────────────────────────────────────────────────── */}
       <section className="border-b border-slate-800 bg-slate-900/50">
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -312,6 +324,9 @@ export default function VozIaPage() {
               </div>
             ))}
           </div>
+          <p className="text-xs text-slate-500 text-center mt-6">
+            Datos basados en estudios de industria (Salesforce State of Sales 2024, HubSpot Sales Report 2024) y análisis de clientes de OptimizaCRM.
+          </p>
         </div>
       </section>
 
@@ -433,7 +448,12 @@ export default function VozIaPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center mb-14">
             <p className="text-sm font-semibold uppercase tracking-widest text-orange-400">ROI real</p>
-            <h2 className="mt-3 text-3xl font-bold text-white lg:text-4xl">¿Cuánto te cuesta no tenerlo?</h2>
+            <h2 className="mt-3 text-3xl font-bold text-white lg:text-4xl">
+              ¿Por qué un agente de voz IA es más rentable que un recepcionista?
+            </h2>
+            <p className="mt-4 text-slate-400 leading-relaxed">
+              Un recepcionista a tiempo completo cuesta entre $519 y $1,200 al mes más prestaciones, solo está disponible 8 horas al día y no puede atender múltiples llamadas simultáneas. El agente de voz IA de OptimizaCRM cuesta desde $149/mes, trabaja 24/7 y registra cada lead directo en tu CRM sin intervención humana.
+            </p>
           </div>
           <div className="mx-auto max-w-4xl grid gap-6 md:grid-cols-2">
             {/* Human */}
