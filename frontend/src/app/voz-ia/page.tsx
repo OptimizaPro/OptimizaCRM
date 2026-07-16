@@ -18,7 +18,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 const DEFAULT_PLANS = [
   {
     id: 1, slug: "voz-starter", name: "Voz Starter",
-    price_monthly: "49.00", annual_price: 39,
+    price_monthly: "149.00", annual_price: 119,
     agents: 1, minutes_included: 300, overage_per_minute: "0.100",
     overage_display: "$0.10", is_popular: false, sort_order: 0,
     cta_text: "Empezar prueba gratis",
@@ -474,7 +474,7 @@ export default function VozIaPage() {
               </div>
               <div className="space-y-3 text-sm">
                 {[
-                  ["Plan Voz Starter",      `$${Math.round(parseFloat(plans[0]?.price_monthly ?? "49"))}/mes`],
+                  ["Plan Voz Starter",      `$${Math.round(parseFloat(plans[0]?.price_monthly ?? "149"))}/mes`],
                   ["Prestaciones",          "$0"],
                   ["Vacaciones y bajas",    "$0"],
                   ["Horas cubiertas",       "24h/día, 7 días"],
@@ -488,7 +488,7 @@ export default function VozIaPage() {
                 ))}
                 <div className="border-t border-orange-700/50 pt-3 flex justify-between">
                   <span className="font-semibold text-white">Total mensual</span>
-                  <span className="font-bold text-orange-300 text-base">desde ${Math.round(parseFloat(plans[0]?.price_monthly ?? "49"))}/mes</span>
+                  <span className="font-bold text-orange-300 text-base">desde ${Math.round(parseFloat(plans[0]?.price_monthly ?? "149"))}/mes</span>
                 </div>
               </div>
             </div>
