@@ -1006,6 +1006,7 @@ export default function PipelinePage() {
               ) : view === "kanban" ? (
 
                 /* ── KANBAN ── */
+                <>
                 <div className="overflow-x-auto pb-4">
                   <div className="flex gap-3" style={{ minWidth: `${STAGE_KEYS.length * 272}px` }}>
                     {STAGE_KEYS.map(stageKey => {
@@ -1057,6 +1058,7 @@ export default function PipelinePage() {
                 <p className="mt-2 text-center text-xs text-slate-500 lg:hidden">
                   ← Desliza horizontalmente para ver todas las etapas →
                 </p>
+                </>
 
               ) : (
 
