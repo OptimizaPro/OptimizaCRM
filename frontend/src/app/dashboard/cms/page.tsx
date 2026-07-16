@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
@@ -1380,9 +1381,16 @@ const EDITORS: Record<SectionKey, React.ComponentType<{ data: Record<string, unk
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CmsPage() {
-  const { tokens, organization } = useAuthStore();
+  const router = useRouter();
+  const { tokens, organization, user } = useAuthStore();
   const token = tokens?.access ?? "";
   const orgId = organization?.id ?? "";
+
+  useEffect(() => {
+    if (user !== undefined && !user?.is_staff) {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
 
   const [activeSection, setActiveSection] = useState<SectionKey>("hero");
   const [content, setContent] = useState<Record<SectionKey, Record<string, unknown>>>(

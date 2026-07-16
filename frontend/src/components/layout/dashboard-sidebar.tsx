@@ -33,7 +33,7 @@ function useSiteLogo() {
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
-type NavItem  = { href: string; label: string; icon: React.ElementType };
+type NavItem  = { href: string; label: string; icon: React.ElementType; staffOnly?: boolean };
 type NavGroup = { key: string; label: string; icon: React.ElementType; items: NavItem[] };
 type NavEntry = { type: "item"; item: NavItem } | { type: "group"; group: NavGroup };
 
@@ -112,7 +112,7 @@ const NAV: NavEntry[] = [
         { href: "/dashboard/chatbot",         label: "Chatbot RAG",           icon: Bot      },
         { href: "/dashboard/hub",             label: "Hub de Contacto",       icon: LayoutGrid  },
         { href: "/dashboard/forms",           label: "Formularios",           icon: FormInput   },
-        { href: "/dashboard/cms",             label: "Contenido Web",         icon: FileText    },
+        { href: "/dashboard/cms",             label: "Contenido Web",         icon: FileText,   staffOnly: true },
         { href: "/dashboard/integrations",    label: "Integraciones",         icon: Plug },
         { href: "/dashboard/settings",        label: "Ajustes",               icon: Settings },
       ],
@@ -120,7 +120,7 @@ const NAV: NavEntry[] = [
   },
 ];
 
-// All leaf items flattened — used in collapsed icon-only mode
+// All leaf items flattened — used in collapsed icon-only mode (filtered at render time)
 const ALL_ITEMS: NavItem[] = NAV.flatMap((entry) =>
   entry.type === "item" ? [entry.item] : entry.group.items
 );
@@ -219,7 +219,7 @@ export function DashboardSidebar() {
         <nav className={cn("flex-1 overflow-y-auto scrollbar-hide p-2 space-y-0.5", isCollapsed && "overflow-x-hidden")}>
           {isCollapsed ? (
             /* ── Collapsed: icon-only list ── */
-            ALL_ITEMS.map(({ href, label, icon: Icon }) => {
+            ALL_ITEMS.filter((it) => !it.staffOnly || user?.is_staff).map(({ href, label, icon: Icon }) => {
               const active = isActive(href);
               return (
                 <Link
@@ -261,7 +261,8 @@ export function DashboardSidebar() {
                 );
               }
 
-              const { key, label, icon: GroupIcon, items } = entry.group;
+              const { key, label, icon: GroupIcon, items: rawItems } = entry.group;
+              const items       = rawItems.filter((it) => !it.staffOnly || user?.is_staff);
               const expanded    = openGroups[key] ?? false;
               const groupActive = items.some((it) => isActive(it.href));
 
