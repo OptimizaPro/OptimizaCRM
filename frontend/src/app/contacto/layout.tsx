@@ -75,12 +75,37 @@ const faqSchema = {
   ],
 };
 
+const localBusinessSchema = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  name: "OptimizaCRM",
+  telephone: "+50257122606",
+  email: "soluciones@optimizacrm.com",
+  url: "https://optimizacrm.com",
+  address: {
+    "@type": "PostalAddress",
+    addressCountry: "GT",
+  },
+  openingHours: "Mo-Fr 09:00-18:00",
+  contactPoint: {
+    "@type": "ContactPoint",
+    telephone: "+50257122606",
+    contactType: "customer support",
+    availableLanguage: "Spanish",
+    areaServed: ["GT", "MX", "CO", "PE", "CL", "AR"],
+  },
+};
+
 export default function ContactoLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
       />
       {children}
     </>
