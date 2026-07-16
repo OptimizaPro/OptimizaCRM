@@ -192,58 +192,69 @@ function UserFormModal({ mode, initial, isStaff, onClose, onSave, saving, apiErr
 
             {/* Org + Role — only for non-staff users */}
             {!form.is_staff && (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Organización</label>
-                    <select
-                      className={inputCls}
-                      value={form.org_id}
-                      onChange={e => set("org_id", e.target.value)}
-                    >
-                      <option value="">Sin organización</option>
-                      {(orgs ?? []).map(o => (
-                        <option key={o.id} value={o.id}>{o.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Rol</label>
-                    <select
-                      className={inputCls}
-                      value={form.role}
-                      onChange={e => set("role", e.target.value)}
-                      disabled={!form.org_id}
-                    >
-                      <option value="sales_executive">Ejecutivo</option>
-                      <option value="sales_manager">Manager</option>
-                      <option value="org_admin">Admin</option>
-                      <option value="viewer">Viewer</option>
-                    </select>
-                  </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-300">Organización</label>
+                  <select
+                    className={inputCls}
+                    value={form.org_id}
+                    onChange={e => set("org_id", e.target.value)}
+                  >
+                    <option value="">Sin organización</option>
+                    {(orgs ?? []).map(o => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
                 </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-300">Rol</label>
+                  <select
+                    className={inputCls}
+                    value={form.role}
+                    onChange={e => set("role", e.target.value)}
+                    disabled={!form.org_id}
+                  >
+                    <option value="sales_executive">Ejecutivo</option>
+                    <option value="sales_manager">Manager</option>
+                    <option value="org_admin">Admin</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
-                {/* Plan override — superadmin only */}
-                {isStaff && form.org_id && (
-                  <div>
-                    <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-300">
-                      <Crown className="h-3.5 w-3.5 text-amber-400" />
-                      Plan de la organización
-                    </label>
-                    <select
-                      className={inputCls}
-                      value={form.plan}
-                      onChange={e => set("plan", e.target.value)}
-                    >
-                      <option value="">— Sin cambiar —</option>
-                      {PLAN_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-xs text-slate-600">Override manual — solo superadmin.</p>
-                  </div>
-                )}
-              </>
+            {/* Plan override — superadmin only, always visible when editing */}
+            {isStaff && (
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-300">
+                  <Crown className="h-3.5 w-3.5 text-amber-400" />
+                  Plan de la organización
+                </label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <select
+                    className={inputCls}
+                    value={form.org_id}
+                    onChange={e => set("org_id", e.target.value)}
+                  >
+                    <option value="">— Seleccionar organización —</option>
+                    {(orgs ?? []).map(o => (
+                      <option key={o.id} value={o.id}>{o.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    className={inputCls}
+                    value={form.plan}
+                    onChange={e => set("plan", e.target.value)}
+                    disabled={!form.org_id}
+                  >
+                    <option value="">— Sin cambiar —</option>
+                    {PLAN_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-1 text-xs text-slate-600">Override manual — solo superadmin.</p>
+              </div>
             )}
 
             <div className="flex items-center gap-6 pt-1">
