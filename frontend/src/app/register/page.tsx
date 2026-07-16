@@ -8,11 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff } from "lucide-react";
 import { authApi } from "@/lib/api";
-import { useAuthStore } from "@/store/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const setAuth = useAuthStore((s) => s.setAuth);
   const [form, setForm] = useState({
     email: "", password: "", first_name: "", last_name: "", organization_name: "",
   });
@@ -26,8 +24,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const data = await authApi.register(form);
-      setAuth(data.user, data.organization, data.tokens);
-      router.push("/dashboard");
+      router.push(`/verify-email/pending?email=${encodeURIComponent(data.email)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear la cuenta");
     } finally {

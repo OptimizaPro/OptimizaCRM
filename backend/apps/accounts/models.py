@@ -36,6 +36,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     avatar     = models.ImageField(upload_to="avatars/", blank=True, null=True)
     is_active  = models.BooleanField(default=True)
     is_staff   = models.BooleanField(default=False)
+    email_verified            = models.BooleanField(default=False)
+    email_verification_token  = models.CharField(max_length=64, blank=True, null=True)
+    email_verification_sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

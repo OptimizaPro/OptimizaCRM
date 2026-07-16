@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { PublicHeader, PublicFooter } from "@/components/layout/public-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, MailWarning } from "lucide-react";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
@@ -16,12 +16,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("demo@optimizacrm.com");
   const [password, setPassword] = useState("Demo123!");
   const [error, setError] = useState("");
+  const [unverified, setUnverified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setUnverified(false);
     setLoading(true);
     try {
       const data = await authApi.login({ email, password });
@@ -34,7 +36,12 @@ export default function LoginPage() {
         setError("No organization found for this account.");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const msg = err instanceof Error ? err.message : "Login failed";
+      if (msg.includes("verificar tu email")) {
+        setUnverified(true);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -51,6 +58,20 @@ export default function LoginPage() {
             {error && (
               <div className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-400">
                 {error}
+              </div>
+            )}
+            {unverified && (
+              <div className="rounded-lg border border-amber-800 bg-amber-950/40 p-3 text-sm text-amber-300 flex items-start gap-2">
+                <MailWarning className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  Debes verificar tu email antes de iniciar sesión.{" "}
+                  <Link
+                    href={`/verify-email/pending?email=${encodeURIComponent(email)}`}
+                    className="underline hover:text-amber-200"
+                  >
+                    Reenviar enlace de verificación
+                  </Link>
+                </span>
               </div>
             )}
             <div>

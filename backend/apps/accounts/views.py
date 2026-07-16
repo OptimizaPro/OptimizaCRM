@@ -36,6 +36,52 @@ def _send_invite_email(to_email: str, subject: str, body: str, org=None) -> None
     send_org_email(org, to_email, subject, body)
 
 
+def _generate_verification_token(user) -> str:
+    """Generate a new email verification token, save it, and return the token."""
+    import secrets as _secrets
+    token = _secrets.token_urlsafe(32)
+    user.email_verification_token   = token
+    user.email_verification_sent_at = timezone.now()
+    user.save(update_fields=["email_verification_token", "email_verification_sent_at"])
+    return token
+
+
+def _send_verification_email(user, org=None) -> None:
+    """Send the email verification link to the user."""
+    from django.conf import settings as _s
+    from apps.integrations.brevo import send_org_email
+
+    token        = _generate_verification_token(user)
+    frontend_url = getattr(_s, "FRONTEND_URL", "https://optimizacrm.com")
+    verify_url   = f"{frontend_url}/verify-email?token={token}"
+    name         = user.first_name or user.email
+
+    subject = "Verifica tu cuenta de OptimizaCRM"
+    body_text = (
+        f"Hola {name},\n\n"
+        "Gracias por registrarte en OptimizaCRM. Para activar tu cuenta, visita el siguiente enlace:\n\n"
+        f"{verify_url}\n\n"
+        "Este enlace expira en 24 horas.\n\n"
+        "Si no creaste esta cuenta, ignora este mensaje.\n\n"
+        "— El equipo de OptimizaCRM"
+    )
+    body_html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#0f172a;color:#e2e8f0;border-radius:12px">
+  <h2 style="color:#fb923c;margin-top:0">Verifica tu cuenta</h2>
+  <p>Hola <strong>{name}</strong>,</p>
+  <p>Gracias por registrarte en <strong>OptimizaCRM</strong>. Haz clic en el botón para activar tu cuenta:</p>
+  <a href="{verify_url}"
+     style="display:inline-block;margin:20px 0;padding:14px 28px;background:#ea580c;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">
+    Verificar mi cuenta
+  </a>
+  <p style="color:#94a3b8;font-size:13px">Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este mensaje.</p>
+  <hr style="border-color:#1e293b;margin:24px 0">
+  <p style="color:#475569;font-size:12px">© OptimizaCRM · OptimizaPro</p>
+</div>
+"""
+    send_org_email(org, user.email, subject, body_text, body_html)
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -43,15 +89,12 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        refresh    = RefreshToken.for_user(user)
         membership = user.memberships.select_related("organization").first()
+        org = membership.organization if membership else None
+        _send_verification_email(user, org=org)
         return Response({
-            "user":         UserSerializer(user).data,
-            "organization": OrganizationSerializer(membership.organization).data if membership else None,
-            "tokens": {
-                "access":  str(refresh.access_token),
-                "refresh": str(refresh),
-            },
+            "email_verified": False,
+            "email":          user.email,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -70,6 +113,11 @@ class LoginView(APIView):
             return Response({"error": "Credenciales incorrectas."}, status=status.HTTP_401_UNAUTHORIZED)
         if not user.is_active:
             return Response({"error": "Cuenta desactivada."}, status=status.HTTP_403_FORBIDDEN)
+        if not user.email_verified and not user.is_staff:
+            return Response(
+                {"error": "Debes verificar tu email antes de iniciar sesión.", "code": "email_not_verified"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         refresh     = RefreshToken.for_user(user)
         memberships = MembershipSerializer(
@@ -479,6 +527,9 @@ class AcceptInviteView(APIView):
             user.first_name = first_name
         if last_name:
             user.last_name = last_name
+        # Email ownership proven via invite link — mark as verified
+        user.email_verified           = True
+        user.email_verification_token = None
         user.save()
 
         # Mark token as used
@@ -500,6 +551,58 @@ class AcceptInviteView(APIView):
             },
             "membership": MembershipSerializer(membership).data if membership else None,
         })
+
+
+class VerifyEmailView(APIView):
+    """GET /auth/verify-email/?token=<token> — confirm email and activate account."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token = request.query_params.get("token", "").strip()
+        if not token:
+            return Response({"error": "Token requerido."}, status=400)
+
+        user = User.objects.filter(email_verification_token=token).first()
+        if not user:
+            return Response({"error": "El enlace es inválido o ya fue utilizado."}, status=400)
+
+        # Check expiry (24 hours)
+        if user.email_verification_sent_at:
+            delta = timezone.now() - user.email_verification_sent_at
+            if delta.total_seconds() > 86400:
+                return Response({"error": "El enlace ha expirado. Solicita un nuevo correo de verificación."}, status=400)
+
+        user.email_verified           = True
+        user.email_verification_token = None
+        user.save(update_fields=["email_verified", "email_verification_token"])
+
+        return Response({"message": "Email verificado correctamente. Ya puedes iniciar sesión."})
+
+
+class ResendVerificationView(APIView):
+    """POST /auth/resend-verification/ — resend verification email."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get("email", "").strip().lower()
+        if not email:
+            return Response({"error": "El email es requerido."}, status=400)
+
+        user = User.objects.filter(email=email).first()
+        # Always return 200 to avoid email enumeration
+        if not user or user.email_verified:
+            return Response({"message": "Si el email existe y no está verificado, recibirás un nuevo enlace."})
+
+        # Rate limit: minimum 60 seconds between resends
+        if user.email_verification_sent_at:
+            delta = timezone.now() - user.email_verification_sent_at
+            if delta.total_seconds() < 60:
+                return Response({"error": "Espera al menos 60 segundos antes de solicitar otro correo."}, status=429)
+
+        membership = user.memberships.select_related("organization").first()
+        org = membership.organization if membership else None
+        _send_verification_email(user, org=org)
+        return Response({"message": "Si el email existe y no está verificado, recibirás un nuevo enlace."})
 
 
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):

@@ -429,7 +429,7 @@ export const authApi = {
     first_name: string;
     last_name: string;
     organization_name: string;
-  }) => api.post<{ user: User; organization: Organization; tokens: AuthTokens }>("/auth/register/", data),
+  }) => api.post<{ email_verified: boolean; email: string }>("/auth/register/", data),
 
   login: (data: { email: string; password: string }) =>
     api.post<{ user: User; memberships: Membership[]; tokens: AuthTokens }>("/auth/login/", data),
@@ -447,6 +447,12 @@ export const authApi = {
 
   acceptInvite: (data: { token: string; password: string; first_name: string; last_name: string }) =>
     api.post<{ user: User; organization: Organization; tokens: AuthTokens; membership: Membership | null }>("/auth/accept-invite/", data),
+
+  verifyEmail: (token: string) =>
+    api.get<{ message: string }>(`/auth/verify-email/?token=${encodeURIComponent(token)}`),
+
+  resendVerification: (email: string) =>
+    api.post<{ message: string }>("/auth/resend-verification/", { email }),
 };
 
 export interface SalesGoal {
