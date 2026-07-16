@@ -88,13 +88,14 @@ function formatDate(iso: string) {
 interface UserFormModalProps {
   mode: "create" | "edit";
   initial?: AdminUser;
+  isStaff?: boolean;
   onClose: () => void;
   onSave: (data: Record<string, unknown>) => Promise<void>;
   saving: boolean;
   apiError: string;
 }
 
-function UserFormModal({ mode, initial, onClose, onSave, saving, apiError }: UserFormModalProps) {
+function UserFormModal({ mode, initial, isStaff, onClose, onSave, saving, apiError }: UserFormModalProps) {
   const { tokens, organization } = useAuthStore();
   const token = tokens?.access ?? "";
   const orgId = String(organization?.id ?? "");
@@ -109,6 +110,7 @@ function UserFormModal({ mode, initial, onClose, onSave, saving, apiError }: Use
     is_active:  initial?.is_active  ?? true,
     org_id:     initial?.organization?.id   ?? orgId,
     role:       initial?.organization?.role ?? "sales_executive",
+    plan:       initial?.organization?.plan ?? "",
   });
 
   const set = (k: keyof typeof form, v: string | boolean) =>
@@ -190,35 +192,58 @@ function UserFormModal({ mode, initial, onClose, onSave, saving, apiError }: Use
 
             {/* Org + Role — only for non-staff users */}
             {!form.is_staff && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-300">Organización</label>
-                  <select
-                    className={inputCls}
-                    value={form.org_id}
-                    onChange={e => set("org_id", e.target.value)}
-                  >
-                    <option value="">Sin organización</option>
-                    {(orgs ?? []).map(o => (
-                      <option key={o.id} value={o.id}>{o.name}</option>
-                    ))}
-                  </select>
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Organización</label>
+                    <select
+                      className={inputCls}
+                      value={form.org_id}
+                      onChange={e => set("org_id", e.target.value)}
+                    >
+                      <option value="">Sin organización</option>
+                      {(orgs ?? []).map(o => (
+                        <option key={o.id} value={o.id}>{o.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-300">Rol</label>
+                    <select
+                      className={inputCls}
+                      value={form.role}
+                      onChange={e => set("role", e.target.value)}
+                      disabled={!form.org_id}
+                    >
+                      <option value="sales_executive">Ejecutivo</option>
+                      <option value="sales_manager">Manager</option>
+                      <option value="org_admin">Admin</option>
+                      <option value="viewer">Viewer</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-300">Rol</label>
-                  <select
-                    className={inputCls}
-                    value={form.role}
-                    onChange={e => set("role", e.target.value)}
-                    disabled={!form.org_id}
-                  >
-                    <option value="sales_executive">Ejecutivo</option>
-                    <option value="sales_manager">Manager</option>
-                    <option value="org_admin">Admin</option>
-                    <option value="viewer">Viewer</option>
-                  </select>
-                </div>
-              </div>
+
+                {/* Plan override — superadmin only */}
+                {isStaff && form.org_id && (
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-1.5 text-sm font-medium text-slate-300">
+                      <Crown className="h-3.5 w-3.5 text-amber-400" />
+                      Plan de la organización
+                    </label>
+                    <select
+                      className={inputCls}
+                      value={form.plan}
+                      onChange={e => set("plan", e.target.value)}
+                    >
+                      <option value="">— Sin cambiar —</option>
+                      {PLAN_OPTIONS.map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-slate-600">Override manual — solo superadmin.</p>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="flex items-center gap-6 pt-1">
@@ -277,29 +302,15 @@ function UserFormModal({ mode, initial, onClose, onSave, saving, apiError }: Use
 // ─── Detail drawer ────────────────────────────────────────────────────────────
 
 function UserDrawer({
-  user, onClose, onEdit, onToggle, onPlanChange, isStaff, toggling,
+  user, onClose, onEdit, onToggle, isStaff, toggling,
 }: {
   user: AdminUser;
   onClose: () => void;
   onEdit: () => void;
   onToggle: (field: "is_active" | "is_staff") => void;
-  onPlanChange: (orgId: string, plan: string) => Promise<void>;
   isStaff: boolean;
   toggling: boolean;
 }) {
-  const [selectedPlan, setSelectedPlan] = useState(user.organization?.plan ?? "");
-  const [planSaving, setPlanSaving]     = useState(false);
-
-  const handlePlanSave = async () => {
-    if (!user.organization || !selectedPlan) return;
-    setPlanSaving(true);
-    try {
-      await onPlanChange(user.organization.id, selectedPlan);
-    } finally {
-      setPlanSaving(false);
-    }
-  };
-
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -383,40 +394,6 @@ function UserDrawer({
                     <span className="text-sm text-slate-200">{value}</span>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* Plan override (staff only) */}
-          {isStaff && user.organization && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
-              <div className="border-b border-slate-800 px-4 py-2.5 flex items-center gap-2">
-                <Crown className="h-3.5 w-3.5 text-amber-400" />
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Override de plan</p>
-              </div>
-              <div className="p-4 space-y-3">
-                <p className="text-xs text-slate-500">
-                  Cambia el plan de <span className="text-slate-300 font-medium">{user.organization.name}</span> manualmente.
-                </p>
-                <div className="flex gap-2">
-                  <select
-                    value={selectedPlan}
-                    onChange={e => setSelectedPlan(e.target.value)}
-                    className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none"
-                  >
-                    {PLAN_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handlePlanSave}
-                    disabled={planSaving || selectedPlan === user.organization.plan}
-                    className="flex items-center gap-1.5 rounded-xl border border-amber-700/50 bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-400 hover:bg-amber-950/40 disabled:opacity-40 transition-all"
-                  >
-                    {planSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Crown className="h-3.5 w-3.5" />}
-                    Aplicar
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -651,10 +628,16 @@ export default function UsersPage() {
     if (!editUser) return;
     setFormSaving(true); setFormError("");
     try {
-      await adminApi.updateUser(token, orgId, editUser.id, data as Parameters<typeof adminApi.updateUser>[3]);
+      const { plan, ...userFields } = data;
+      await adminApi.updateUser(token, orgId, editUser.id, userFields as Parameters<typeof adminApi.updateUser>[3]);
+
+      // If plan changed and org exists, update it separately
+      const targetOrgId = (data.org_id as string) || editUser.organization?.id;
+      if (plan && targetOrgId) {
+        await adminApi.updateOrgPlan(token, orgId, targetOrgId, { plan: plan as string, status: "active" });
+      }
+
       qc.invalidateQueries({ queryKey: ["admin-users"] });
-      // refresh drawer if open on same user
-      if (viewUser?.id === editUser.id) setViewUser(prev => prev ? { ...prev, ...(data as Partial<AdminUser>) } : prev);
       setEditUser(null);
       toast.success("Usuario actualizado");
     } catch (e) {
@@ -699,21 +682,6 @@ export default function UsersPage() {
       toast.error("Error", { description: (e as Error).message });
     } finally {
       setToggling(false);
-    }
-  };
-
-  const handlePlanChange = async (targetOrgId: string, plan: string) => {
-    try {
-      await adminApi.updateOrgPlan(token, orgId, targetOrgId, { plan, status: "active" });
-      qc.invalidateQueries({ queryKey: ["admin-users"] });
-      // Update drawer user's org plan optimistically
-      if (viewUser?.organization?.id === targetOrgId) {
-        setViewUser(prev => prev ? { ...prev, organization: { ...prev.organization!, plan } } : prev);
-      }
-      toast.success(`Plan actualizado a ${plan}`);
-    } catch (e) {
-      toast.error("Error al cambiar plan", { description: (e as Error).message });
-      throw e;
     }
   };
 
@@ -1060,7 +1028,6 @@ export default function UsersPage() {
           onClose={() => setViewUser(null)}
           onEdit={() => { setFormError(""); setEditUser(viewUser); }}
           onToggle={(field) => handleToggle(viewUser, field)}
-          onPlanChange={handlePlanChange}
           isStaff={isStaff}
           toggling={toggling}
         />
@@ -1071,6 +1038,7 @@ export default function UsersPage() {
         <UserFormModal
           mode="edit"
           initial={editUser}
+          isStaff={isStaff}
           onClose={() => setEditUser(null)}
           onSave={handleEdit}
           saving={formSaving}
@@ -1082,6 +1050,7 @@ export default function UsersPage() {
       {showCreate && (
         <UserFormModal
           mode="create"
+          isStaff={isStaff}
           onClose={() => setShowCreate(false)}
           onSave={handleCreate}
           saving={formSaving}
