@@ -11,7 +11,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate, get_user_model
 import logging
-import requests as http_requests
 from django.conf import settings as django_settings
 from django.db.models import Q
 
@@ -31,36 +30,10 @@ from .serializers import (
 User = get_user_model()
 
 
-def _send_invite_email(to_email: str, subject: str, body: str) -> None:
-    """Send transactional email via Brevo REST API."""
-    from email.utils import parseaddr as _parseaddr
-    api_key = getattr(django_settings, "BREVO_API_KEY", "")
-    if not api_key:
-        print(f"[INVITE] BREVO_API_KEY not set — email not sent to {to_email}", flush=True)
-        return
-    sender_name, sender_email = _parseaddr(django_settings.DEFAULT_FROM_EMAIL)
-    if not sender_email:
-        sender_email = django_settings.DEFAULT_FROM_EMAIL
-    if not sender_name:
-        sender_name = "OptimizaCRM"
-    try:
-        resp = http_requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json={
-                "sender":      {"name": sender_name, "email": sender_email},
-                "to":          [{"email": to_email}],
-                "subject":     subject,
-                "textContent": body,
-            },
-            headers={"api-key": api_key, "Content-Type": "application/json"},
-            timeout=10,
-        )
-        if resp.ok:
-            print(f"[INVITE] Email sent OK to {to_email}", flush=True)
-        else:
-            print(f"[INVITE] Brevo error to {to_email}: {resp.status_code} {resp.text}", flush=True)
-    except Exception as exc:
-        print(f"[INVITE] Exception sending to {to_email}: {exc}", flush=True)
+def _send_invite_email(to_email: str, subject: str, body: str, org=None) -> None:
+    """Send invite email via Brevo, using org's own key when configured."""
+    from apps.integrations.brevo import send_org_email
+    send_org_email(org, to_email, subject, body)
 
 
 class RegisterView(APIView):
@@ -241,7 +214,7 @@ class OrganizationViewSet(viewsets.ModelViewSet):
             f"Este enlace expira en 7 días.\n\n"
             f"Si no esperabas esta invitación, puedes ignorar este mensaje."
         )
-        _send_invite_email(email, subject, body)
+        _send_invite_email(email, subject, body, org=organization)
 
         return Response(MembershipSerializer(membership).data, status=201)
 
