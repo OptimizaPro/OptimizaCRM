@@ -149,7 +149,11 @@ export function DashboardSidebar() {
   const { user, organization, logout } = useAuthStore();
   const logoUrl    = useSiteLogo();
   const orgPlan    = organization?.plan ?? "free";
-  const orgSettings = (organization?.settings ?? {}) as Record<string, unknown>;
+  const orgSettings = (
+    organization && typeof organization === "object" && "settings" in organization
+      ? (organization as any).settings
+      : {}
+  ) as Record<string, unknown>;
   const hasVoz     = !!orgSettings.voice_plan_slug;
 
   const isItemLocked = (item: NavItem) => {
