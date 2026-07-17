@@ -746,7 +746,7 @@ export default function LeadsPage() {
   return (
     <>
       <DashboardHeader title="Leads" />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
 
         {/* Toolbar */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -846,16 +846,67 @@ export default function LeadsPage() {
           </Card>
         )}
 
-        {/* Table */}
-        <DataTable
-          columns={columns}
-          data={data?.results ?? []}
-          isLoading={isLoading}
-          emptyMessage="No hay leads. Crea el primero arriba."
-          renderSubRow={(row: Row<Lead>) =>
-            scoreResults[row.original.id] ? <ScoreBreakdown result={scoreResults[row.original.id]} /> : null
-          }
-        />
+        {/* Mobile card list */}
+        <div className="md:hidden space-y-2 mb-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4 animate-pulse">
+                  <div className="h-4 w-32 rounded bg-slate-700 mb-2" />
+                  <div className="h-3 w-24 rounded bg-slate-800" />
+                </div>
+              ))}
+            </div>
+          ) : (data?.results ?? []).length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate-500">No hay leads. Crea el primero arriba.</p>
+          ) : (
+            (data?.results ?? []).map((lead) => (
+              <button
+                key={lead.id}
+                type="button"
+                onClick={() => setSelectedLead(lead)}
+                className="w-full text-left rounded-xl border border-slate-800 bg-slate-950 p-4 hover:border-orange-500/40 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-100 truncate">{lead.full_name || lead.email}</p>
+                    {lead.company && <p className="text-xs text-slate-400 truncate mt-0.5">{lead.company}</p>}
+                    {lead.lead_ref_id && (
+                      <span className="inline-block mt-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-[10px] font-semibold text-orange-400 font-mono">
+                        {lead.lead_ref_id}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <Badge variant={statusVariant(lead.status)}>
+                      {STATUS_LABELS[lead.status] ?? lead.status}
+                    </Badge>
+                    {lead.score > 0 && (
+                      <span className={`text-xs font-bold ${scoreColor(lead.score)}`}>{lead.score}/100</span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center gap-3 flex-wrap">
+                  <SLABadge lead={lead} />
+                  <span className="text-xs text-slate-500">{formatRelativeDate(lead.created_at)}</span>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block">
+          <DataTable
+            columns={columns}
+            data={data?.results ?? []}
+            isLoading={isLoading}
+            emptyMessage="No hay leads. Crea el primero arriba."
+            renderSubRow={(row: Row<Lead>) =>
+              scoreResults[row.original.id] ? <ScoreBreakdown result={scoreResults[row.original.id]} /> : null
+            }
+          />
+        </div>
 
         {/* Legends row */}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
