@@ -1009,7 +1009,69 @@ export default function PipelinePage() {
 
                 /* ── KANBAN ── */
                 <>
-                <div className="overflow-x-auto pb-4">
+                {/* Mobile card list — replaces kanban on small screens */}
+                <div className="md:hidden space-y-3">
+                  {STAGE_KEYS.flatMap(stageKey => {
+                    const col  = kanbanData[stageKey];
+                    const meta = STAGE_META[stageKey];
+                    if (!col || col.opportunities.length === 0) return [];
+                    return col.opportunities.map(opp => {
+                      const amount    = parseFloat(String(opp.amount));
+                      const closeOver = opp.stage !== "won" && opp.stage !== "lost" && isOverdue(opp.expected_close_date);
+                      return (
+                        <div key={opp.id}
+                          onClick={() => { setFormError(""); setEditOpp(opp); }}
+                          className={`rounded-xl border bg-slate-950 p-4 cursor-pointer transition-colors hover:border-slate-600 ${
+                            opp.stage === "lost" ? "border-slate-800 opacity-70" : closeOver ? "border-red-800/40" : "border-slate-800"
+                          }`}>
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <p className={`font-medium text-sm leading-snug ${opp.stage === "lost" ? "line-through text-slate-500" : "text-slate-100"}`}>
+                              {opp.title}
+                            </p>
+                            <span className={`flex items-center gap-1.5 shrink-0 text-xs font-semibold ${meta.color}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                              {meta.label}
+                            </span>
+                          </div>
+                          {opp.customer_name && (
+                            <p className="text-xs text-slate-500 mb-2 truncate">{opp.customer_name}</p>
+                          )}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-bold text-orange-500">{formatCurrency(amount)}</span>
+                            <div className="flex items-center gap-2">
+                              <KanbanSLABadge opp={opp} slaMap={slaMap} />
+                              <div className="flex items-center gap-1.5">
+                                <div className="h-1 w-12 rounded-full bg-slate-800">
+                                  <div className="h-1 rounded-full bg-orange-500" style={{ width: `${opp.probability}%` }} />
+                                </div>
+                                <span className="text-[10px] text-slate-500">{opp.probability}%</span>
+                              </div>
+                            </div>
+                          </div>
+                          {opp.expected_close_date && (
+                            <p className={`text-xs mt-2 flex items-center gap-1 ${closeOver ? "text-red-400" : "text-slate-600"}`}>
+                              {closeOver && <AlertTriangle className="h-3 w-3" />}
+                              Cierre: {fmtDate(opp.expected_close_date)}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    });
+                  })}
+                  {STAGE_KEYS.every(k => !kanbanData[k] || kanbanData[k]!.opportunities.length === 0) && (
+                    <div className="flex flex-col items-center gap-3 py-16">
+                      <TrendingUp className="h-10 w-10 text-slate-700" />
+                      <p className="text-slate-400 text-sm">No hay oportunidades.</p>
+                      <Button size="sm" onClick={() => { setDefaultStage("new"); setFormError(""); setShowCreate(true); }}
+                        className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white">
+                        <Plus className="h-4 w-4" /> Nueva oportunidad
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop kanban — hidden on mobile */}
+                <div className="hidden md:block overflow-x-auto pb-4">
                   <div className="flex gap-3" style={{ minWidth: `${STAGE_KEYS.length * 272}px` }}>
                     {STAGE_KEYS.map(stageKey => {
                       const col  = kanbanData[stageKey];
@@ -1057,7 +1119,7 @@ export default function PipelinePage() {
                     })}
                   </div>
                 </div>
-                <p className="mt-2 text-center text-xs text-slate-500 lg:hidden">
+                <p className="hidden md:block lg:hidden mt-2 text-center text-xs text-slate-500">
                   ← Desliza horizontalmente para ver todas las etapas →
                 </p>
                 </>

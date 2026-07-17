@@ -704,15 +704,15 @@ export default function UsersPage() {
       <DashboardHeader title="Usuarios" />
 
       <div className="flex-1 overflow-y-auto bg-slate-900/30">
-        <div className="mx-auto max-w-[1440px] px-8 py-10">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-8 py-6 sm:py-10">
 
           {/* ── Page header ── */}
-          <div className="relative mb-10 overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/10 px-8 py-8 shadow-2xl shadow-black/30">
+          <div className="relative mb-8 overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/10 px-4 sm:px-8 py-5 sm:py-8 shadow-2xl shadow-black/30">
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-orange-600/6 blur-3xl" />
-            <div className="relative flex items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-orange-600 shadow-xl shadow-orange-900/50 ring-1 ring-orange-500/40">
-                  <Users className="h-8 w-8 text-white" />
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="flex h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-orange-600 shadow-xl shadow-orange-900/50 ring-1 ring-orange-500/40">
+                  <Users className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2.5 mb-1">
@@ -722,17 +722,17 @@ export default function UsersPage() {
                       <span className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest text-slate-400">Tu organización</span>
                     )}
                   </div>
-                  <h1 className="text-2xl font-black text-slate-100 leading-tight">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-100 leading-tight">
                     {isStaff ? "Gestión de Usuarios" : "Miembros del equipo"}
                   </h1>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-slate-400 hidden sm:block">
                     {isStaff
                       ? "Todos los usuarios registrados en la plataforma — activos, planes y permisos."
                       : "Usuarios vinculados a tu organización — roles y estado de cuenta."}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2">
                 <Button
                   size="sm"
                   variant="outline"
@@ -741,7 +741,7 @@ export default function UsersPage() {
                   className="gap-1.5 border-slate-700 text-slate-400 hover:border-orange-600 hover:text-orange-400"
                 >
                   <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-                  Actualizar
+                  <span className="hidden sm:inline">Actualizar</span>
                 </Button>
                 {isStaff && (
                   <Button
@@ -749,7 +749,9 @@ export default function UsersPage() {
                     onClick={() => { setFormError(""); setShowCreate(true); }}
                     className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-900/30"
                   >
-                    <Plus className="h-4 w-4" /> Crear usuario
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Crear usuario</span>
+                    <span className="sm:hidden">Crear</span>
                   </Button>
                 )}
               </div>

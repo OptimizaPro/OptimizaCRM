@@ -1445,8 +1445,8 @@ export default function CmsPage() {
 
       <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Sidebar ────────────────────────────────────────────── */}
-        <aside className="flex w-64 flex-shrink-0 flex-col border-r border-slate-800 bg-slate-950">
+        {/* ── Sidebar — desktop only ──────────────────────────────── */}
+        <aside className="hidden lg:flex w-64 flex-shrink-0 flex-col border-r border-slate-800 bg-slate-950">
 
           {/* Sidebar header */}
           <div className="border-b border-slate-800 px-4 py-4">
@@ -1507,27 +1507,40 @@ export default function CmsPage() {
         {/* ── Editor area ────────────────────────────────────────── */}
         <div className="flex flex-1 flex-col overflow-hidden">
 
+          {/* Mobile section selector — hidden on desktop */}
+          <div className="lg:hidden border-b border-slate-800 bg-slate-950 px-4 py-2.5">
+            <select
+              value={activeSection}
+              onChange={e => setActiveSection(e.target.value as SectionKey)}
+              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none"
+            >
+              {SECTIONS.map(({ key, label }) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Editor top bar */}
-          <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-6 py-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-950/40 text-orange-400">
+          <div className="flex flex-wrap gap-2 items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-orange-950/40 text-orange-400">
                 <ActiveIcon className="h-4 w-4" />
               </div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-100">{activeMeta.label}</h2>
-                <p className="text-xs text-slate-400">{activeMeta.description}</p>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold text-slate-100 truncate">{activeMeta.label}</h2>
+                <p className="text-xs text-slate-400 truncate hidden sm:block">{activeMeta.description}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {saveStatus === "success" && (
-                <div className="flex items-center gap-1.5 rounded-lg bg-green-950/40 px-3 py-1.5 text-xs font-medium text-green-400">
-                  <CheckCircle className="h-3.5 w-3.5" /> Cambios guardados
+                <div className="hidden sm:flex items-center gap-1.5 rounded-lg bg-green-950/40 px-3 py-1.5 text-xs font-medium text-green-400">
+                  <CheckCircle className="h-3.5 w-3.5" /> Guardado
                 </div>
               )}
               {saveStatus === "error" && (
-                <div className="flex items-center gap-1.5 rounded-lg bg-red-950/40 px-3 py-1.5 text-xs font-medium text-red-400" title={saveError}>
-                  <AlertCircle className="h-3.5 w-3.5" /> {saveError || "Error al guardar"}
+                <div className="hidden sm:flex items-center gap-1.5 rounded-lg bg-red-950/40 px-3 py-1.5 text-xs font-medium text-red-400" title={saveError}>
+                  <AlertCircle className="h-3.5 w-3.5" /> Error
                 </div>
               )}
               <Button
@@ -1538,7 +1551,7 @@ export default function CmsPage() {
                 className="gap-1.5"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                Recargar
+                <span className="hidden sm:inline">Recargar</span>
               </Button>
               <Button
                 size="sm"
@@ -1547,13 +1560,13 @@ export default function CmsPage() {
                 className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
               >
                 <Save className="h-3.5 w-3.5" />
-                {saving ? "Guardando…" : "Guardar cambios"}
+                {saving ? "Guardando…" : "Guardar"}
               </Button>
             </div>
           </div>
 
           {/* Form body */}
-          <div className="flex-1 overflow-y-auto bg-slate-900/30 p-6">
+          <div className="flex-1 overflow-y-auto bg-slate-900/30 p-4 sm:p-6">
             {loading ? (
               <div className="mx-auto max-w-3xl space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -1563,7 +1576,7 @@ export default function CmsPage() {
             ) : (
               <div className="mx-auto max-w-3xl">
                 {/* Section card */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-950 p-6 shadow-sm">
+                <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 sm:p-6 shadow-sm">
                   <Editor
                     data={content[activeSection] ?? {}}
                     onChange={(d) => setContent((prev) => ({ ...prev, [activeSection]: d }))}

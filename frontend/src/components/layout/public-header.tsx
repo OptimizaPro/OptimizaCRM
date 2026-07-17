@@ -53,7 +53,7 @@ export function PublicHeader() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <Link href="/login">
+          <Link href="/login" className="hidden md:flex">
             <Button variant="ghost" className="text-slate-300 hover:text-white hover:bg-slate-800 text-sm px-3">
               Iniciar sesión
             </Button>

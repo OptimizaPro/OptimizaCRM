@@ -230,7 +230,7 @@ function EventModal({ initial, defaultDate, token, orgId, onClose, onSave, onDel
             )}
 
             {/* Location + Responsable (side by side) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-400">Lugar</label>
                 <input className={inputCls} value={form.location} onChange={e => set("location", e.target.value)}
@@ -254,7 +254,7 @@ function EventModal({ initial, defaultDate, token, orgId, onClose, onSave, onDel
             </div>
 
             {/* Notes + Status (side by side) */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-400">Notas</label>
                 <textarea className={`${inputCls} resize-none`} rows={2} value={form.description}
@@ -452,16 +452,16 @@ export default function CalendarPage() {
     <>
       <DashboardHeader title="Calendario" />
 
-      <div className="flex-1 overflow-y-auto bg-slate-900/30 p-6">
+      <div className="flex-1 overflow-y-auto bg-slate-900/30 p-4 sm:p-6">
         <div className="mx-auto max-w-6xl space-y-4">
 
           {/* ── Top bar ─────────────────────────────────────────────────── */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap gap-2 items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-600/15 text-orange-500">
                 <CalendarIcon className="h-4 w-4" />
               </div>
-              <h2 className="text-lg font-bold text-slate-100 tracking-tight">{monthLabel}</h2>
+              <h2 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">{monthLabel}</h2>
               {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-600" />}
             </div>
             <div className="flex items-center gap-2">
@@ -482,12 +482,13 @@ export default function CalendarPage() {
               <Button size="sm"
                 onClick={() => setModalDate(toDateKey(now))}
                 className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-900/30">
-                <Plus className="h-4 w-4" /> Nuevo evento
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Nuevo evento</span>
               </Button>
             </div>
           </div>
 
-          <div className="flex gap-4 items-start">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
 
             {/* ── Calendar grid ───────────────────────────────────────── */}
             <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-black/40 overflow-hidden">
@@ -495,9 +496,9 @@ export default function CalendarPage() {
               {/* Weekday headers */}
               <div className="grid grid-cols-7 border-b border-slate-800/60">
                 {WEEKDAYS.map((d, i) => (
-                  <div key={d} className={`py-3 text-center text-[11px] font-semibold uppercase tracking-widest
+                  <div key={d} className={`py-2 sm:py-3 text-center text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider sm:tracking-widest
                     ${i >= 5 ? "text-slate-600" : "text-slate-500"}`}>
-                    {d}
+                    {d.slice(0, 1)}<span className="hidden sm:inline">{d.slice(1)}</span>
                   </div>
                 ))}
               </div>
@@ -523,7 +524,7 @@ export default function CalendarPage() {
                         key={i}
                         onClick={() => inMonth && setModalDate(dateKey)}
                         className={`
-                          relative min-h-[100px] p-2 transition-colors cursor-pointer group
+                          relative min-h-[60px] sm:min-h-[100px] p-1.5 sm:p-2 transition-colors cursor-pointer group
                           ${!isLastRow ? "border-b border-slate-800/50" : ""}
                           ${!isLastCol ? "border-r border-slate-800/50" : ""}
                           ${isToday
@@ -542,13 +543,13 @@ export default function CalendarPage() {
                         )}
 
                         {/* Date number + add button */}
-                        <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-1">
                           {isToday ? (
-                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-600 text-xs font-black text-white shadow-lg shadow-orange-900/50 ring-2 ring-orange-400/30">
+                            <span className="flex h-5 w-5 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-orange-600 text-[10px] sm:text-xs font-black text-white shadow-lg shadow-orange-900/50 ring-2 ring-orange-400/30">
                               {date.getDate()}
                             </span>
                           ) : (
-                            <span className={`text-sm font-medium
+                            <span className={`text-[10px] sm:text-sm font-medium
                               ${!inMonth  ? "text-slate-700"
                               : isWeekend ? "text-slate-500"
                               :             "text-slate-400"}
@@ -559,23 +560,38 @@ export default function CalendarPage() {
                           {inMonth && (
                             <button
                               onClick={e => { e.stopPropagation(); setModalDate(dateKey); }}
-                              className="opacity-0 group-hover:opacity-100 flex h-5 w-5 items-center justify-center rounded-full text-slate-600 hover:bg-orange-600 hover:text-white transition-all"
+                              className="hidden sm:flex opacity-0 group-hover:opacity-100 h-5 w-5 items-center justify-center rounded-full text-slate-600 hover:bg-orange-600 hover:text-white transition-all"
                             >
                               <Plus className="h-3 w-3" />
                             </button>
                           )}
                         </div>
 
-                        {/* Events */}
-                        <div className="space-y-1">
-                          {dayEvents.slice(0, 3).map(ev => (
-                            <EventChip key={ev.id} event={ev} onClick={() => setEditEvent(ev)} />
-                          ))}
-                          {dayEvents.length > 3 && (
-                            <p className="text-[10px] font-medium text-slate-600 pl-1">
-                              +{dayEvents.length - 3} más
-                            </p>
+                        {/* Events — desktop shows chips, mobile shows dot count */}
+                        <div className="space-y-0.5">
+                          {/* Mobile: dot indicators only */}
+                          {dayEvents.length > 0 && (
+                            <div className="sm:hidden flex gap-0.5 flex-wrap">
+                              {dayEvents.slice(0, 3).map(ev => {
+                                const m = getEventTypeMeta(ev.event_type);
+                                return <span key={ev.id} className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${m.dot}`} />;
+                              })}
+                              {dayEvents.length > 3 && (
+                                <span className="text-[8px] text-slate-600">+{dayEvents.length - 3}</span>
+                              )}
+                            </div>
                           )}
+                          {/* Desktop: full chips */}
+                          <div className="hidden sm:block space-y-1">
+                            {dayEvents.slice(0, 3).map(ev => (
+                              <EventChip key={ev.id} event={ev} onClick={() => setEditEvent(ev)} />
+                            ))}
+                            {dayEvents.length > 3 && (
+                              <p className="text-[10px] font-medium text-slate-600 pl-1">
+                                +{dayEvents.length - 3} más
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -584,23 +600,56 @@ export default function CalendarPage() {
               )}
             </div>
 
+            {/* ── Mobile agenda (below calendar, above sidebar) ───────── */}
+            {events.length > 0 && (
+              <div className="sm:hidden rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Este mes</p>
+                <div className="space-y-2">
+                  {events.slice(0, 8).map(ev => {
+                    const meta = getEventTypeMeta(ev.event_type);
+                    return (
+                      <button key={ev.id} onClick={() => setEditEvent(ev)}
+                        className="w-full flex items-start gap-3 text-left group">
+                        <span className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${meta.dot}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-slate-200 group-hover:text-orange-400 transition-colors">
+                            {ev.title}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {new Date(ev.start_time).toLocaleDateString("es-GT", { weekday: "short", day: "numeric", month: "short" })}
+                            {!ev.is_all_day && ` · ${fmtTime(ev.start_time)}`}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 text-[10px] font-semibold ${meta.color.split(" ")[1]}`}>{meta.label}</span>
+                      </button>
+                    );
+                  })}
+                  {events.length > 8 && (
+                    <p className="text-xs text-slate-600 text-center">+{events.length - 8} eventos más</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* ── Sidebar ─────────────────────────────────────────────── */}
-            <div className="w-56 flex-shrink-0 space-y-3">
+            <div className="w-full lg:w-56 lg:flex-shrink-0 space-y-3">
 
               {/* This month stats */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Este mes</p>
+              <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-3">Este mes</p>
+                <div className="grid grid-cols-2 gap-2 lg:block lg:space-y-3">
                 {[
                   { label: "Total eventos", value: stats.total,    color: "text-slate-300" },
                   { label: "Hoy",           value: stats.today,    color: "text-orange-400" },
                   { label: "Reuniones",     value: stats.meetings, color: "text-blue-400"   },
                   { label: "Llamadas",      value: stats.calls,    color: "text-orange-400" },
                 ].map(({ label, value, color }) => (
-                  <div key={label} className="flex items-center justify-between">
+                  <div key={label} className="flex items-center justify-between lg:flex">
                     <span className="text-xs text-slate-500">{label}</span>
                     <span className={`text-sm font-bold ${color}`}>{value}</span>
                   </div>
                 ))}
+                </div>
               </div>
 
               {/* Legend */}

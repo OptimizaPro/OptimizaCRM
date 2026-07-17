@@ -177,6 +177,7 @@ export default function SettingsPage() {
   const checkoutMutation = useMutation({
     mutationFn: (plan: string) => billingApi.createCheckout(tokens!.access, organization!.id, plan),
     onSuccess:  ({ checkout_url }) => { window.location.href = checkout_url; },
+    onError:    (err: Error) => setPaymentBanner({ type: "err", text: err.message || "No se pudo iniciar el pago. Intenta de nuevo." }),
   });
 
   // ── Mutations ──
@@ -303,8 +304,8 @@ export default function SettingsPage() {
       <DashboardHeader title="Configuración" />
 
       <div className="flex-1 overflow-y-auto bg-slate-900/30">
-        <div className="mx-auto max-w-5xl px-6 py-8">
-          <div className="flex gap-8">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex flex-col md:flex-row gap-4 md:gap-8">
 
             {/* ── Sidebar nav ─────────────────────────────────────────────── */}
             <nav className="hidden md:flex flex-col gap-1 w-52 flex-shrink-0">
@@ -405,7 +406,7 @@ export default function SettingsPage() {
 
                     <div className="px-6 py-5 space-y-4">
                       {profileMsg && <Alert {...profileMsg} />}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label>Nombre</Label>
                           <Input value={profileForm.first_name} onChange={(e) => setProfileForm((p) => ({ ...p, first_name: e.target.value }))} />
@@ -501,7 +502,7 @@ export default function SettingsPage() {
                   <Section icon={<Users className="h-4 w-4" />} title="Añadir miembro" description="El miembro recibirá acceso inmediato">
                     {inviteMsg && <Alert {...inviteMsg} />}
                     <div className="space-y-4 mt-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label>Nombre</Label>
                           <Input placeholder="Ana" value={inviteForm.first_name} onChange={(e) => setInviteForm((p) => ({ ...p, first_name: e.target.value }))} />

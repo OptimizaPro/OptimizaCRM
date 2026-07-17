@@ -2816,16 +2816,16 @@ export default function VoicePlansPage() {
       <DashboardHeader title="Agente de Voz IA" />
 
       <div className="flex-1 overflow-y-auto bg-slate-900/30">
-        <div className="mx-auto max-w-[1440px] px-8 py-10">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-8 py-6 sm:py-10">
 
           {/* Page header — premium */}
-          <div className="relative mb-10 overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/20 px-8 py-8 shadow-2xl shadow-black/30">
+          <div className="relative mb-8 overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/20 px-4 sm:px-8 py-5 sm:py-8 shadow-2xl shadow-black/30">
             <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-orange-600/8 blur-3xl" />
             <div className="pointer-events-none absolute left-0 bottom-0 h-40 w-40 -translate-x-1/2 translate-y-1/2 rounded-full bg-orange-600/5 blur-2xl" />
-            <div className="relative flex items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-orange-600 shadow-xl shadow-orange-900/50 ring-1 ring-orange-500/40">
-                  <Mic className="h-8 w-8 text-white" />
+            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <div className="flex items-center gap-4 sm:gap-5">
+                <div className="flex h-12 w-12 sm:h-16 sm:w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-orange-600 shadow-xl shadow-orange-900/50 ring-1 ring-orange-500/40">
+                  <Mic className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2.5 mb-1">
@@ -2835,8 +2835,8 @@ export default function VoicePlansPage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
                     <span className="text-xs text-green-400 font-medium">Activo</span>
                   </div>
-                  <h1 className="text-2xl font-black text-slate-100 leading-tight">Agente de Voz IA</h1>
-                  <p className="mt-1 text-sm text-slate-400 max-w-xl">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-100 leading-tight">Agente de Voz IA</h1>
+                  <p className="mt-1 text-sm text-slate-400 hidden sm:block max-w-xl">
                     {isStaff
                       ? <>Gestiona agentes, planes y contenido de la landing <code className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-300 font-mono">/voz-ia</code></>
                       : "Gestiona tus agentes de voz IA y consulta tu plan activo."}
@@ -2847,7 +2847,7 @@ export default function VoicePlansPage() {
                 <Link
                   href="/voz-ia"
                   target="_blank"
-                  className="flex flex-shrink-0 items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-4 py-2.5 text-sm font-medium text-slate-300 transition-all hover:border-orange-600 hover:bg-orange-950/30 hover:text-orange-400"
+                  className="flex items-center gap-2 self-start sm:self-auto rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 sm:px-4 sm:py-2.5 text-sm font-medium text-slate-300 transition-all hover:border-orange-600 hover:bg-orange-950/30 hover:text-orange-400"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Ver landing
@@ -2857,24 +2857,26 @@ export default function VoicePlansPage() {
           </div>
 
           {/* Tabs */}
-          <div className="mb-8 flex items-center gap-1 rounded-xl border border-slate-800 bg-slate-950 p-1">
+          <div className="mb-6 sm:mb-8 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-1">
+            <div className="flex min-w-max gap-1">
             {visibleTabs.map(({ id, label, icon: Icon }) => {
               const active = activeTab === id;
               return (
                 <button
                   key={id}
                   onClick={() => setActiveTab(id)}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                  className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
                     active
                       ? "bg-orange-600 text-white shadow-sm shadow-orange-900/40"
                       : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                   {label}
                 </button>
               );
             })}
+            </div>
           </div>
 
           {/* Tab content */}
