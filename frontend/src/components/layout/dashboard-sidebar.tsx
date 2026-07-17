@@ -169,7 +169,7 @@ export function DashboardSidebar() {
 
   // Auto-close sidebar on mobile when navigating
   useEffect(() => {
-    if (window.innerWidth < 1024) setOpen(false);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) setOpen(false);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGroup = (key: string) =>
