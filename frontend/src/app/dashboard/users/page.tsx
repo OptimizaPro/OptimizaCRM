@@ -906,7 +906,39 @@ export default function UsersPage() {
           ) : (
 
             /* ── List / Table view ── */
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/20 overflow-hidden">
+            <>
+              {/* Mobile card list */}
+              <div className="md:hidden space-y-2 mb-4">
+                {users.map((user) => (
+                  <button key={user.id} type="button" onClick={() => setViewUser(user)}
+                    className="w-full text-left rounded-xl border border-slate-800 bg-slate-950 p-4 hover:border-orange-500/40 transition-colors">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Avatar user={user} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-slate-100 truncate">
+                            {user.full_name || "—"}
+                          </p>
+                          {user.is_staff && <Shield className="h-3 w-3 text-orange-400 flex-shrink-0" />}
+                        </div>
+                        <p className="text-xs text-slate-400 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusDot active={user.is_active} />
+                      {user.organization && <PlanBadge plan={user.organization.plan} />}
+                      {user.organization && (
+                        <span className="rounded-full border border-slate-700 bg-slate-800/60 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                          {ROLE_LABELS[user.organization.role] ?? user.organization.role}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+            <div className="hidden md:block rounded-2xl border border-slate-800 bg-slate-950 shadow-xl shadow-black/20 overflow-hidden">
               <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-800 bg-slate-900/80">
@@ -1030,6 +1062,7 @@ export default function UsersPage() {
                 </div>
               </div>
             </div>
+            </>
           )}
 
         </div>

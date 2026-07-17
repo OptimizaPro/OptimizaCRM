@@ -275,7 +275,7 @@ export default function KnowledgeBasePage() {
     <div className="flex h-full flex-col bg-slate-950">
       <DashboardHeader title="Base de Conocimiento" />
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto max-w-4xl space-y-6">
 
           {/* ── Sources panel ──────────────────────────────────────────── */}

@@ -711,7 +711,61 @@ export default function TasksPage() {
           ) : (
 
             /* ── LIST con selector de estado inline ── */
-            <div className="rounded-2xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden">
+            <>
+              {/* Mobile card list (list view only) */}
+              <div className="md:hidden space-y-2 mb-4">
+                {listTasks.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 py-16">
+                    <CheckCircle2 className="h-10 w-10 text-slate-700" />
+                    <p className="text-slate-400">{hasFilters ? "Sin resultados para los filtros aplicados." : "No hay tareas."}</p>
+                    {hasFilters
+                      ? <button onClick={clearFilters} className="text-xs text-orange-400 hover:text-orange-300">Limpiar filtros</button>
+                      : <Button size="sm" onClick={() => { setCreateStatus("pending"); setShowCreate(true); }} className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white"><Plus className="h-4 w-4" /> Nueva tarea</Button>
+                    }
+                  </div>
+                ) : (
+                  listTasks.map((task) => {
+                    const overdue = isOverdue(task);
+                    const done    = task.status === "completed";
+                    return (
+                      <button key={task.id} type="button" onClick={() => { setFormError(""); setEditTask(task); }}
+                        className={`w-full text-left rounded-xl border bg-slate-950 p-4 transition-colors
+                          ${overdue ? "border-red-700/50 hover:border-red-600/60" : "border-slate-800 hover:border-orange-500/40"}
+                        `}>
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <p className={`font-semibold truncate ${done ? "line-through text-slate-500" : "text-slate-100"}`}>
+                            {task.title}
+                          </p>
+                          <PriorityBadge priority={task.priority} />
+                        </div>
+                        {task.description && (
+                          <p className="text-xs text-slate-500 truncate mb-2">{task.description}</p>
+                        )}
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {task.due_date && (
+                            <span className={`flex items-center gap-1 text-xs font-medium ${overdue ? "text-red-400" : "text-slate-500"}`}>
+                              {overdue ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+                              {formatDue(task.due_date)}
+                            </span>
+                          )}
+                          {task.assigned_to_detail && (
+                            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                              <Initials name={task.assigned_to_detail.full_name || task.assigned_to_detail.email} />
+                              {task.assigned_to_detail.full_name || task.assigned_to_detail.email}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+                {listTasks.length > 0 && (
+                  <Pagination page={page} totalPages={totalPages} total={listTotal} onPage={setPage} />
+                )}
+              </div>
+
+              {/* Desktop table */}
+            <div className="hidden md:block rounded-2xl border border-slate-800 bg-slate-950 shadow-xl overflow-hidden">
               {listTasks.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 py-24">
                   <CheckCircle2 className="h-10 w-10 text-slate-700" />
@@ -826,6 +880,7 @@ export default function TasksPage() {
                 </>
               )}
             </div>
+            </>
           )}
 
         </div>

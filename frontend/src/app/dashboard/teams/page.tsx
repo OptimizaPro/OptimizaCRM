@@ -538,7 +538,7 @@ export default function TeamsPage() {
       <DashboardHeader title="Equipos" />
 
       <div className="flex-1 overflow-y-auto bg-slate-900/30">
-        <div className="mx-auto max-w-6xl px-8 py-8">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 py-6 sm:py-8">
 
           {/* Header */}
           <div className="relative mb-8 overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/10 px-8 py-7 shadow-2xl shadow-black/30">

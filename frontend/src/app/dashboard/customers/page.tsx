@@ -428,7 +428,7 @@ export default function CustomersPage() {
   return (
     <>
       <DashboardHeader title="Clientes" />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
 
         {/* Toolbar */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -522,12 +522,54 @@ export default function CustomersPage() {
           </Card>
         )}
 
-        <DataTable
-          columns={columns}
-          data={data?.results ?? []}
-          isLoading={isLoading}
-          emptyMessage="No hay clientes aún."
-        />
+        {/* Mobile card list */}
+        <div className="md:hidden space-y-2 mb-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4 animate-pulse">
+                  <div className="h-4 w-32 rounded bg-slate-700 mb-2" />
+                  <div className="h-3 w-24 rounded bg-slate-800" />
+                </div>
+              ))}
+            </div>
+          ) : (data?.results ?? []).length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate-500">No hay clientes aún.</p>
+          ) : (
+            (data?.results ?? []).map((customer) => (
+              <button key={customer.id} type="button" onClick={() => setSelected(customer)}
+                className="w-full text-left rounded-xl border border-slate-800 bg-slate-950 p-4 hover:border-orange-500/40 transition-colors">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <p className="font-semibold text-slate-100 truncate">{customer.name}</p>
+                  <Badge variant={statusVariant(customer.status)} className="flex-shrink-0 text-xs">
+                    {STATUS_LABELS[customer.status] ?? customer.status}
+                  </Badge>
+                </div>
+                {customer.company && (
+                  <p className="text-xs text-slate-400 truncate mb-1">{customer.company}</p>
+                )}
+                <p className="text-xs text-slate-500 truncate mb-2">{customer.email || "—"}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    {formatRelativeDate(customer.created_at)}
+                  </span>
+                  <CustomerSLABadge customer={customer} />
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block">
+          <DataTable
+            columns={columns}
+            data={data?.results ?? []}
+            isLoading={isLoading}
+            emptyMessage="No hay clientes aún."
+          />
+        </div>
 
         {/* SLA legend */}
         <div className="mt-4 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">

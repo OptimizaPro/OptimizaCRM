@@ -507,7 +507,7 @@ export default function OpportunitiesPage() {
   return (
     <>
       <DashboardHeader title="Oportunidades" />
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
 
         {/* Toolbar */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -605,12 +605,57 @@ export default function OpportunitiesPage() {
           </div>
         )}
 
-        <DataTable
-          columns={columns}
-          data={data?.results ?? []}
-          isLoading={isLoading}
-          emptyMessage="No hay oportunidades aún."
-        />
+        {/* Mobile card list */}
+        <div className="md:hidden space-y-2 mb-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4 animate-pulse">
+                  <div className="h-4 w-32 rounded bg-slate-700 mb-2" />
+                  <div className="h-3 w-24 rounded bg-slate-800" />
+                </div>
+              ))}
+            </div>
+          ) : (data?.results ?? []).length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate-500">No hay oportunidades aún.</p>
+          ) : (
+            (data?.results ?? []).map((opp) => (
+              <button key={opp.id} type="button" onClick={() => setSelected(opp)}
+                className="w-full text-left rounded-xl border border-slate-800 bg-slate-950 p-4 hover:border-orange-500/40 transition-colors">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <p className="font-semibold text-slate-100 truncate">{opp.title}</p>
+                  <Badge variant={STAGE_VARIANT[opp.stage]} className="flex-shrink-0 text-xs">
+                    {STAGE_LABELS[opp.stage] ?? opp.stage}
+                  </Badge>
+                </div>
+                {opp.customer_name && (
+                  <p className="text-xs text-slate-400 truncate mb-1">{opp.customer_name}</p>
+                )}
+                <div className="flex items-center justify-between gap-2 mt-2">
+                  <span className="text-sm font-bold text-orange-400">
+                    {formatCurrency(parseFloat(String(opp.amount ?? 0)))}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-1.5 w-12 rounded-full bg-slate-700">
+                      <div className="h-1.5 rounded-full bg-orange-500" style={{ width: `${opp.probability}%` }} />
+                    </div>
+                    <span className="text-xs text-slate-500">{opp.probability}%</span>
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block">
+          <DataTable
+            columns={columns}
+            data={data?.results ?? []}
+            isLoading={isLoading}
+            emptyMessage="No hay oportunidades aún."
+          />
+        </div>
 
         {/* SLA legend */}
         <div className="mt-4 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">

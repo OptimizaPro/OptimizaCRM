@@ -269,7 +269,7 @@ export default function ReportsPage() {
   return (
     <>
       <DashboardHeader title="Informes y análisis" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 print:p-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 print:p-4">
 
         {/* ── Top bar ─────────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
@@ -304,7 +304,39 @@ export default function ReportsPage() {
 
         {/* ── Pipeline by stage ───────────────────────────────────────── */}
         <Section title="Pipeline por etapa" icon={BarChart3}>
-          <div className="overflow-x-auto">
+          {/* Mobile stacked stat rows */}
+          <div className="md:hidden space-y-2 mb-4">
+            {(stages?.stages ?? []).map((s: StageData) => (
+              <div key={s.stage} className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: STAGE_COLORS[s.stage] }} />
+                  <span className="font-semibold text-slate-200 text-sm">{STAGE_LABELS[s.stage]}</span>
+                  <span className="ml-auto text-xs text-slate-500">{s.count} oport.</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <p className="text-slate-500">Valor total</p>
+                    <p className="font-semibold text-slate-200">{formatCurrency(s.value)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Valor ponderado</p>
+                    <p className="font-semibold text-orange-400">{s.count ? formatCurrency(s.weighted_value) : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Ticket medio</p>
+                    <p className="text-slate-300">{s.count ? formatCurrency(s.avg_deal_size) : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Prob. media</p>
+                    <p className="text-slate-300">{s.count ? `${s.avg_probability}%` : "—"}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-slate-800 text-xs text-slate-400">
