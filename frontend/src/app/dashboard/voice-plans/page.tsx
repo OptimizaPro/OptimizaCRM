@@ -2856,26 +2856,37 @@ export default function VoicePlansPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="-mx-4 sm:-mx-8 mb-6 sm:mb-8 overflow-x-auto">
-            <div className="flex min-w-max gap-1 mx-4 sm:mx-8 rounded-xl border border-slate-800 bg-slate-950 p-1">
-            {visibleTabs.map(({ id, label, icon: Icon }) => {
-              const active = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
-                    active
-                      ? "bg-orange-600 text-white shadow-sm shadow-orange-900/40"
-                      : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
-                  {label}
-                </button>
-              );
-            })}
+          {/* Tabs — select on mobile, pill bar on sm+ */}
+          <div className="mb-6 sm:mb-8">
+            {/* Mobile: dropdown */}
+            <select
+              className="sm:hidden w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-200 focus:border-orange-400 focus:outline-none"
+              value={activeTab}
+              onChange={e => setActiveTab(e.target.value as Tab)}
+            >
+              {visibleTabs.map(({ id, label }) => (
+                <option key={id} value={id}>{label}</option>
+              ))}
+            </select>
+            {/* Desktop: pill bar */}
+            <div className="hidden sm:flex gap-1 rounded-xl border border-slate-800 bg-slate-950 p-1">
+              {visibleTabs.map(({ id, label, icon: Icon }) => {
+                const active = activeTab === id;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id)}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-all ${
+                      active
+                        ? "bg-orange-600 text-white shadow-sm shadow-orange-900/40"
+                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

@@ -339,23 +339,16 @@ export default function SettingsPage() {
             </nav>
 
             {/* ── Mobile nav ──────────────────────────────────────────────── */}
-            <div className="md:hidden -mx-4 sm:-mx-6 mb-6 overflow-x-auto">
-              <div className="flex min-w-max gap-1.5 mx-4 sm:mx-6 pb-1">
-              {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
-                    tab === t.id
-                      ? "bg-orange-600 text-white shadow-md shadow-orange-900/30"
-                      : "bg-slate-800/60 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-                  }`}
-                >
-                  {t.icon}
-                  {t.label}
-                </button>
-              ))}
-              </div>
+            <div className="md:hidden mb-6">
+              <select
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-200 focus:border-orange-400 focus:outline-none"
+                value={tab}
+                onChange={e => setTab(e.target.value as Tab)}
+              >
+                {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
             </div>
 
             {/* ── Content ─────────────────────────────────────────────────── */}
