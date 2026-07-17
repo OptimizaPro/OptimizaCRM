@@ -305,7 +305,7 @@ export default function ReportsPage() {
         {/* ── Pipeline by stage ───────────────────────────────────────── */}
         <Section title="Pipeline por etapa" icon={BarChart3}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-slate-800 text-xs text-slate-400">
                   <th className="pb-3 text-left">Etapa</th>
@@ -415,12 +415,12 @@ export default function ReportsPage() {
           <div className="mb-6 flex flex-wrap items-center gap-3 print:hidden">
             {/* Team selector */}
             <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400">Equipo</label>
+              <label className="text-xs text-slate-400 flex-shrink-0">Equipo</label>
               <div className="relative">
                 <select
                   value={teamId}
                   onChange={e => setTeamId(e.target.value)}
-                  className="appearance-none rounded-lg border border-slate-700 bg-slate-900 py-1.5 pl-3 pr-7 text-sm text-slate-200 focus:border-orange-400 focus:outline-none"
+                  className="appearance-none rounded-lg border border-slate-700 bg-slate-900 py-1.5 pl-3 pr-7 text-sm text-slate-200 focus:border-orange-400 focus:outline-none max-w-[160px]"
                 >
                   <option value="">Todos los colaboradores</option>
                   {(teamsData ?? []).map(t => (
@@ -432,7 +432,7 @@ export default function ReportsPage() {
             </div>
             {/* Period */}
             <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400">Mes</label>
+              <label className="text-xs text-slate-400 flex-shrink-0">Mes</label>
               <div className="relative">
                 <select value={month} onChange={e => setMonth(Number(e.target.value))}
                   className="appearance-none rounded-lg border border-slate-700 bg-slate-900 py-1.5 pl-3 pr-7 text-sm text-slate-200 focus:border-orange-400 focus:outline-none">
@@ -442,7 +442,7 @@ export default function ReportsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400">Año</label>
+              <label className="text-xs text-slate-400 flex-shrink-0">Año</label>
               <div className="relative">
                 <select value={year} onChange={e => setYear(Number(e.target.value))}
                   className="appearance-none rounded-lg border border-slate-700 bg-slate-900 py-1.5 pl-3 pr-7 text-sm text-slate-200 focus:border-orange-400 focus:outline-none">

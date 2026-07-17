@@ -59,7 +59,7 @@ export function DataTable<TData>({
   return (
     <div className="flex flex-col gap-3">
       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-slate-50 dark:bg-slate-900">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>

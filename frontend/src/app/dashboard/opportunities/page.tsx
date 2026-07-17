@@ -514,7 +514,7 @@ export default function OpportunitiesPage() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input className="pl-9 w-52" placeholder="Buscar oportunidades..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input className="pl-9 w-full sm:w-52" placeholder="Buscar oportunidades..." value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Filter className="h-4 w-4 text-slate-500 flex-shrink-0" />
             <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className={selectCls}>
@@ -528,13 +528,13 @@ export default function OpportunitiesPage() {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
               className="gap-2 border-slate-700 text-slate-300 hover:border-orange-600 hover:bg-orange-600 hover:text-white"
               onClick={() => csvApi.exportOpportunities(tokens!.access, organization!.id)}
             >
-              <Download className="h-4 w-4" /> Exportar CSV
+              <Download className="h-4 w-4" /><span className="hidden sm:inline">Exportar CSV</span>
             </Button>
             <Button
               className="gap-2 bg-orange-600 hover:bg-orange-700 text-white"

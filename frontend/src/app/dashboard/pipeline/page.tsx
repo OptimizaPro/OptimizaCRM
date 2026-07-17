@@ -460,7 +460,7 @@ function StageEditor({ pipeline, token, orgId, onBack }: StageEditorProps) {
   };
 
   return (
-    <div className="max-w-2xl">
+    <div className="w-full max-w-2xl">
       <div className="mb-6 flex items-center gap-3">
         <button type="button" onClick={onBack}
           className="flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-100">
@@ -483,7 +483,7 @@ function StageEditor({ pipeline, token, orgId, onBack }: StageEditorProps) {
 
       <div className="mb-2">
         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Etapas del proceso</p>
-        <div className="flex items-center gap-3 px-4 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+        <div className="hidden sm:flex items-center gap-3 px-4 text-[10px] font-medium uppercase tracking-wide text-slate-500">
           <span className="w-4 shrink-0" /><span className="w-5 shrink-0">#</span>
           <span className="flex-1">Nombre</span><span className="w-16 text-center">Prob.</span>
           <span className="w-16 text-center" title="Horas máximas de atención (SLA)">SLA (h)</span>
@@ -491,7 +491,8 @@ function StageEditor({ pipeline, token, orgId, onBack }: StageEditorProps) {
         </div>
       </div>
 
-      <div className="space-y-2 mb-4">
+      <div className="overflow-x-auto">
+      <div className="space-y-2 mb-4 min-w-[480px]">
         {currentStages.length === 0 && (
           <p className="py-6 text-center text-sm text-slate-400">No hay etapas. Añade la primera.</p>
         )}
@@ -501,6 +502,7 @@ function StageEditor({ pipeline, token, orgId, onBack }: StageEditorProps) {
             onDragStart={handleDragStart} onDragOver={handleDragOver}
             onDrop={handleDrop} draggingIdx={draggingIdx} />
         ))}
+      </div>
       </div>
 
       <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900 px-4 py-3">

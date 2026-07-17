@@ -202,7 +202,7 @@ export default function InboxPage() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top action bar */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950 px-4 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-slate-950 px-4 py-2">
           <div className="flex items-center gap-2">
             <Inbox className="h-5 w-5 text-slate-500" />
             <span className="text-sm font-medium text-slate-300">
@@ -214,7 +214,7 @@ export default function InboxPage() {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {filter !== "sent" && (
               <Button
                 variant="outline"
@@ -223,7 +223,8 @@ export default function InboxPage() {
                 disabled={markAllReadMutation.isPending || unreadCount === 0}
               >
                 <CheckCheck className="mr-1.5 h-4 w-4" />
-                Marcar todo leído
+                <span className="hidden sm:inline">Marcar todo leído</span>
+                <span className="sm:hidden">Leído</span>
               </Button>
             )}
             <Button
@@ -232,7 +233,7 @@ export default function InboxPage() {
               disabled={fetchMutation.isPending || !emailIntegration}
             >
               <RefreshCw className={`mr-1.5 h-4 w-4 ${fetchMutation.isPending ? "animate-spin" : ""}`} />
-              Sincronizar
+              <span className="hidden sm:inline">Sincronizar</span>
             </Button>
           </div>
         </div>

@@ -92,7 +92,7 @@ function CampaignCard({
 
       {/* Stats (sent only) */}
       {isSent && campaign.stat_delivered > 0 && (
-        <div className="grid grid-cols-4 gap-2 mb-4 rounded-lg bg-slate-900 py-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 rounded-lg bg-slate-900 py-3">
           <Stat label="Entregados"  value={campaign.stat_delivered} />
           <Stat label="Aperturas"   value={`${campaign.open_rate}%`} />
           <Stat label="Clics"       value={`${campaign.click_rate}%`} />
@@ -226,7 +226,7 @@ export default function CampaignsPage() {
       <div className="flex-1 overflow-y-auto p-6">
 
         {/* Header row */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
           <div>
             <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
               <Mail className="h-5 w-5 text-orange-400" />
@@ -236,14 +236,14 @@ export default function CampaignsPage() {
               Crea y envía campañas a tus leads y clientes directamente desde Brevo.
             </p>
           </div>
-          <Button onClick={() => setEditorCampaign("new")} className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white">
+          <Button onClick={() => setEditorCampaign("new")} className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white self-start">
             <Plus className="h-4 w-4" /> Nueva campaña
           </Button>
         </div>
 
         {/* Summary KPIs */}
         {campaigns.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             {[
               { label: "Borradores",         value: draftCount,  icon: FileText,     color: "text-slate-400" },
               { label: "Campañas enviadas",  value: sentCount,   icon: CheckCircle2, color: "text-green-400" },

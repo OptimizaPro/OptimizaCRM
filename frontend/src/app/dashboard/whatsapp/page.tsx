@@ -161,6 +161,7 @@ export default function WhatsAppPage() {
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [newPhone, setNewPhone] = useState("");
   const [newBody, setNewBody] = useState("");
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -208,6 +209,7 @@ export default function WhatsAppPage() {
     const updated = conversations.map((c) => c.id === conv.id ? { ...c, unread: 0 } : c);
     setConversations(updated);
     setSelected({ ...conv, unread: 0 });
+    setMobileChatOpen(true);
   };
 
   const filtered = conversations.filter(
@@ -244,7 +246,7 @@ export default function WhatsAppPage() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Col 1: Conversation list ────────────────────────────────────── */}
-        <div className="flex w-[300px] flex-shrink-0 flex-col overflow-hidden border-r border-slate-800 bg-slate-950">
+        <div className={`flex flex-col overflow-hidden border-r border-slate-800 bg-slate-950 ${mobileChatOpen ? "hidden lg:flex lg:w-[300px] lg:flex-shrink-0" : "flex-1 lg:w-[300px] lg:flex-shrink-0"}`}>
 
           {/* Search + new message */}
           <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-3">
@@ -299,7 +301,15 @@ export default function WhatsAppPage() {
         </div>
 
         {/* ── Col 2: Chat ─────────────────────────────────────────────────── */}
-        <div className="flex flex-1 flex-col overflow-hidden bg-slate-900">
+        <div className={`flex flex-col overflow-hidden bg-slate-900 ${mobileChatOpen ? "flex-1" : "hidden lg:flex lg:flex-1"}`}>
+
+          {/* Mobile back button */}
+          <button
+            onClick={() => setMobileChatOpen(false)}
+            className="flex items-center gap-2 border-b border-slate-800 bg-slate-950 px-4 py-2 text-sm text-slate-400 hover:text-slate-200 lg:hidden"
+          >
+            ← Volver
+          </button>
 
           {/* Chat header */}
           <div className="flex items-center gap-3 border-b border-slate-800 bg-slate-950 px-4 py-3">
