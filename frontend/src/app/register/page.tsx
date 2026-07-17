@@ -48,16 +48,16 @@ export default function RegisterPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Nombre</label>
-                <Input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required />
+                <Input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required placeholder="Ana" />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-300">Apellido</label>
-                <Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required />
+                <Input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required placeholder="García" />
               </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-300">Email</label>
-              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required placeholder="ana@empresa.com" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-300">Contraseña</label>
@@ -68,6 +68,7 @@ export default function RegisterPage() {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
                   minLength={8}
+                  placeholder="Mínimo 8 caracteres"
                   className="pr-10"
                 />
                 <button
@@ -82,7 +83,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-300">Nombre de la organización</label>
-              <Input value={form.organization_name} onChange={(e) => setForm({ ...form, organization_name: e.target.value })} required />
+              <Input value={form.organization_name} onChange={(e) => setForm({ ...form, organization_name: e.target.value })} required placeholder="Mi Empresa S.A." />
             </div>
             <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-500 text-white" disabled={loading}>
               {loading ? "Creando cuenta..." : "Crear cuenta"}

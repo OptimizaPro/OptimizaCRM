@@ -76,7 +76,7 @@ export default function LoginPage() {
             )}
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-300">Email</label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="tu@empresa.com" />
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -89,6 +89,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  placeholder="••••••••"
                   className="pr-10"
                 />
                 <button
