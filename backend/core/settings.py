@@ -223,6 +223,7 @@ GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
 # ─── Recurrente – Payment gateway ─────────────────────────────────────────────
 
 RECURRENTE_API_KEY        = config("RECURRENTE_API_KEY",        default="")
+BREVO_API_KEY             = config("BREVO_API_KEY",             default="")
 RECURRENTE_SECRET_KEY     = config("RECURRENTE_SECRET_KEY",     default="")
 RECURRENTE_WEBHOOK_SECRET = config("RECURRENTE_WEBHOOK_SECRET", default="")
 RECURRENTE_ENV            = config("RECURRENTE_ENV",            default="sandbox")

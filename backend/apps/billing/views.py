@@ -96,10 +96,11 @@ class CreateCheckoutView(APIView):
             logger.error("Recurrente checkout error: %s", exc)
             return Response({"error": "No se pudo crear el checkout. Intenta de nuevo."}, status=502)
 
-        # Store the pending checkout id
+        # Store the pending checkout id and the target plan
         sub = _get_or_create_subscription(org)
         sub.recurrente_checkout_id = checkout["id"]
-        sub.save(update_fields=["recurrente_checkout_id", "updated_at"])
+        sub.plan = plan
+        sub.save(update_fields=["recurrente_checkout_id", "plan", "updated_at"])
 
         return Response({"checkout_url": checkout["checkout_url"]})
 

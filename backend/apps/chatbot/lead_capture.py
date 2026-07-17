@@ -25,6 +25,7 @@ Flow (when capture_lead enabled in widget.config):
 import random
 import logging
 import re
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,32 @@ def _next_killer_question(widget, answered_idx: int) -> str | None:
 def _first_killer_question(widget) -> str | None:
     questions = _get_killer_questions(widget)
     return questions[0] if questions else None
+
+
+# ── Killer Q&A notes ─────────────────────────────────────────────────────────
+
+def _append_killer_notes(lead, questions: list[str], answers: list[dict]) -> None:
+    """Append a formatted Q&A block to lead.notes (non-destructive)."""
+    if not lead or not questions or not answers:
+        return
+    try:
+        now_gt  = timezone.localtime(timezone.now())
+        date_str = now_gt.strftime("%-d %b. %Y %H:%M GT").lower().capitalize()
+        lines   = [f"--- Calificación Chatbot ({date_str}) ---"]
+        for item in answers:
+            idx = item.get("q_idx", 0)
+            ans = item.get("answer", "")
+            if idx < len(questions):
+                lines.append(f"P: {questions[idx]}")
+                lines.append(f"R: {ans}")
+                lines.append("")
+        lines.append("---")
+        block = "\n".join(lines)
+        existing = (lead.notes or "").strip()
+        lead.notes = f"{block}\n\n{existing}" if existing else block
+        lead.save(update_fields=["notes"])
+    except Exception as exc:
+        logger.warning("killer notes save error: %s", exc)
 
 
 # ── Intent analysis + score update ───────────────────────────────────────────
@@ -345,6 +372,10 @@ def process_capture(
             session.lead_data     = data
             session.capture_state = "active"
             session.save(update_fields=["lead_data", "capture_state"])
+            # Persist Q&A to lead notes so sales team sees the qualification
+            if session.lead and widget:
+                questions = _get_killer_questions(widget)
+                _append_killer_notes(session.lead, questions, answers)
             try:
                 if widget:
                     run_intent_and_score(session, widget)
