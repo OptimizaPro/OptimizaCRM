@@ -2857,8 +2857,8 @@ export default function VoicePlansPage() {
           </div>
 
           {/* Tabs */}
-          <div className="mb-6 sm:mb-8 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-1">
-            <div className="flex min-w-max gap-1">
+          <div className="mb-6 sm:mb-8 overflow-x-auto">
+            <div className="flex min-w-max gap-1 rounded-xl border border-slate-800 bg-slate-950 p-1">
             {visibleTabs.map(({ id, label, icon: Icon }) => {
               const active = activeTab === id;
               return (

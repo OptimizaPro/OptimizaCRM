@@ -339,8 +339,8 @@ export default function SettingsPage() {
             </nav>
 
             {/* ── Mobile nav ──────────────────────────────────────────────── */}
-            <div className="md:hidden mb-6 overflow-x-auto pb-1 scrollbar-hide w-full">
-              <div className="flex min-w-max gap-1.5">
+            <div className="md:hidden mb-6 overflow-x-auto w-full">
+              <div className="flex min-w-max gap-1.5 pb-1">
               {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => (
                 <button
                   key={t.id}
