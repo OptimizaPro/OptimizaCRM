@@ -370,7 +370,7 @@ export default function ReportsPage() {
 
           {/* Bar chart */}
           <div className="mt-6 h-52">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={(stages?.stages ?? []).filter(s => !["won","lost"].includes(s.stage))} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="stage" tickFormatter={(v) => STAGE_LABELS[v] ?? v} tick={{ fill: "#64748b", fontSize: 11 }} />
@@ -391,7 +391,7 @@ export default function ReportsPage() {
         {/* ── Close rate trend ────────────────────────────────────────── */}
         <Section title="Tasa de cierre mensual (últimos 6 meses)" icon={TrendingUp}>
           <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={stages?.close_rates ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />
@@ -425,7 +425,7 @@ export default function ReportsPage() {
         {/* ── Revenue trend ───────────────────────────────────────────── */}
         <Section title="Tendencia de ingresos (12 meses)" icon={TrendingUp}>
           <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <LineChart data={revenue?.data ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />

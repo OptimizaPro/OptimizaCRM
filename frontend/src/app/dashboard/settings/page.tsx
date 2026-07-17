@@ -339,12 +339,13 @@ export default function SettingsPage() {
             </nav>
 
             {/* ── Mobile nav ──────────────────────────────────────────────── */}
-            <div className="flex md:hidden gap-1.5 mb-6 overflow-x-auto pb-1 scrollbar-hide w-full">
+            <div className="md:hidden mb-6 overflow-x-auto pb-1 scrollbar-hide w-full">
+              <div className="flex min-w-max gap-1.5">
               {TABS.filter((t) => !t.adminOnly || isAdmin).map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap transition-all ${
                     tab === t.id
                       ? "bg-orange-600 text-white shadow-md shadow-orange-900/30"
                       : "bg-slate-800/60 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
@@ -354,6 +355,7 @@ export default function SettingsPage() {
                   {t.label}
                 </button>
               ))}
+              </div>
             </div>
 
             {/* ── Content ─────────────────────────────────────────────────── */}
