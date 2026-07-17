@@ -145,7 +145,7 @@ function getDefaultOpenGroups(pathname: string): Record<string, boolean> {
 export function DashboardSidebar() {
   const pathname  = usePathname();
   const router    = useRouter();
-  const { isOpen, toggle, isCollapsed, toggleCollapsed } = useSidebarStore();
+  const { isOpen, toggle, setOpen, isCollapsed, toggleCollapsed } = useSidebarStore();
   const { user, organization, logout } = useAuthStore();
   const logoUrl    = useSiteLogo();
   const orgPlan    = organization?.plan ?? "free";
