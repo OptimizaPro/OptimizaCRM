@@ -10,13 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { useAuthStore } from "@/store/auth";
-import { crmApi, aiApi, csvApi, outboundApi, voiceWidgetApi, type Lead } from "@/lib/api";
+import { crmApi, aiApi, csvApi, outboundApi, voiceWidgetApi, settingsApi, type Lead, type MembershipDetail } from "@/lib/api";
 import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import {
   Plus, Brain, Search, ChevronDown, ChevronUp, Loader2,
   Upload, Download, X, Pencil, Trash2, Phone, Mail,
   Building2, Tag, BarChart2, User, Clock, AlertTriangle, Info,
   MousePointerClick, Eye, AtSign, Filter, PhoneCall, ShieldCheck,
+  UserCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -224,9 +225,11 @@ function LeadPanel({
   isSaving: boolean;
   isDeleting: boolean;
 }) {
-  const { tokens, organization } = useAuthStore();
+  const { tokens, organization, user } = useAuthStore();
   const queryClient = useQueryClient();
+  const isAdmin = organization?.role === "org_admin" || user?.is_staff === true;
   const [editing, setEditing] = useState(false);
+  const [reassigning, setReassigning] = useState(false);
   const [form, setForm] = useState({
     first_name: lead.first_name ?? "",
     last_name:  lead.last_name  ?? "",
@@ -245,6 +248,14 @@ function LeadPanel({
   const [consentDate, setConsentDate] = useState<string | null>(lead.consent_date ?? null);
 
   const auth = { token: tokens!.access, orgId: String(organization!.id) };
+
+  // Members for reassignment dropdown
+  const { data: members = [] } = useQuery<MembershipDetail[]>({
+    queryKey: ["members", organization?.id],
+    queryFn:  () => settingsApi.getMembers(auth.token, auth.orgId),
+    enabled:  !!tokens && !!organization && isAdmin,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Check org voice plan for outbound access
   const { data: agentsData } = useQuery({
@@ -481,6 +492,64 @@ function LeadPanel({
             />
           </div>
 
+          {/* Asignado a */}
+          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
+              <UserCircle2 className="h-3.5 w-3.5 text-orange-400" /> Asignado a
+            </p>
+            {!reassigning ? (
+              <div className="flex items-center justify-between gap-2">
+                {lead.assigned_to_detail ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-full bg-orange-950/60 border border-orange-800/40 flex items-center justify-center text-[10px] font-bold text-orange-400 shrink-0">
+                      {(lead.assigned_to_detail.first_name?.[0] ?? "").toUpperCase()}{(lead.assigned_to_detail.last_name?.[0] ?? "").toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-200">
+                        {lead.assigned_to_detail.first_name} {lead.assigned_to_detail.last_name}
+                      </p>
+                      <p className="text-[10px] text-slate-500">{lead.assigned_to_detail.email}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-sm text-slate-500">Sin asignar</span>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => setReassigning(true)}
+                    className="text-xs text-slate-500 hover:text-orange-400 transition-colors shrink-0"
+                  >
+                    {lead.assigned_to_detail ? "Reasignar" : "Asignar"}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <select
+                  className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none"
+                  defaultValue={lead.assigned_to ?? ""}
+                  onChange={(e) => {
+                    onSave({ assigned_to: e.target.value || null } as Partial<Lead>);
+                    setReassigning(false);
+                  }}
+                >
+                  <option value="">Sin asignar</option>
+                  {members.filter(m => m.is_active).map(m => (
+                    <option key={m.user.id} value={m.user.id}>
+                      {m.user.first_name} {m.user.last_name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setReassigning(false)}
+                  className="text-slate-500 hover:text-slate-300"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Outbound voice AI */}
           <div className="relative rounded-xl border border-slate-700 bg-slate-900/60 p-4 space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
@@ -695,6 +764,25 @@ export default function LeadsPage() {
       header: "Atención",
       enableSorting: false,
       cell: ({ row }) => <SLABadge lead={row.original} />,
+    },
+    {
+      id: "assigned_to",
+      header: "Asignado a",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const d = row.original.assigned_to_detail;
+        if (!d) return <span className="text-slate-600 text-xs">—</span>;
+        const initials = `${d.first_name?.[0] ?? ""}${d.last_name?.[0] ?? ""}`.toUpperCase();
+        const name = `${d.first_name ?? ""} ${d.last_name ?? ""}`.trim() || d.email;
+        return (
+          <div className="flex items-center gap-1.5" title={name}>
+            <div className="h-6 w-6 rounded-full bg-orange-950/60 border border-orange-800/40 flex items-center justify-center text-[10px] font-bold text-orange-400 shrink-0">
+              {initials || "?"}
+            </div>
+            <span className="text-xs text-slate-300 truncate max-w-[80px]">{name}</span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "score",
