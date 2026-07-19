@@ -241,6 +241,15 @@ export interface Opportunity {
   description: string;
   lost_reason: string;
   customer_name?: string;
+  assigned_to: string | null;
+  assigned_to_detail: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    avatar?: string;
+  } | null;
   created_at: string;
   updated_at: string;
 }

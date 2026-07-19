@@ -315,12 +315,22 @@ function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting }:
 
       <div className="flex items-center justify-between gap-2">
         <KanbanSLABadge opp={opp} slaMap={slaMap} />
-        {opp.expected_close_date && (
-          <span className={`text-[10px] flex items-center gap-0.5 flex-shrink-0 ${closeOver ? "text-red-400" : "text-slate-600"}`}>
-            {closeOver && <AlertTriangle className="h-2.5 w-2.5" />}
-            {fmtDate(opp.expected_close_date)}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {opp.expected_close_date && (
+            <span className={`text-[10px] flex items-center gap-0.5 ${closeOver ? "text-red-400" : "text-slate-600"}`}>
+              {closeOver && <AlertTriangle className="h-2.5 w-2.5" />}
+              {fmtDate(opp.expected_close_date)}
+            </span>
+          )}
+          {opp.assigned_to_detail && (
+            <div
+              title={opp.assigned_to_detail.full_name || `${opp.assigned_to_detail.first_name} ${opp.assigned_to_detail.last_name}`}
+              className="h-5 w-5 rounded-full bg-orange-950/70 border border-orange-800/40 flex items-center justify-center text-[9px] font-bold text-orange-400"
+            >
+              {(opp.assigned_to_detail.first_name?.[0] ?? "").toUpperCase()}{(opp.assigned_to_detail.last_name?.[0] ?? "").toUpperCase()}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1048,12 +1058,22 @@ export default function PipelinePage() {
                               </div>
                             </div>
                           </div>
-                          {opp.expected_close_date && (
-                            <p className={`text-xs mt-2 flex items-center gap-1 ${closeOver ? "text-red-400" : "text-slate-600"}`}>
-                              {closeOver && <AlertTriangle className="h-3 w-3" />}
-                              Cierre: {fmtDate(opp.expected_close_date)}
-                            </p>
-                          )}
+                          <div className="flex items-center justify-between mt-2">
+                            {opp.expected_close_date ? (
+                              <p className={`text-xs flex items-center gap-1 ${closeOver ? "text-red-400" : "text-slate-600"}`}>
+                                {closeOver && <AlertTriangle className="h-3 w-3" />}
+                                Cierre: {fmtDate(opp.expected_close_date)}
+                              </p>
+                            ) : <span />}
+                            {opp.assigned_to_detail && (
+                              <div
+                                title={opp.assigned_to_detail.full_name || `${opp.assigned_to_detail.first_name} ${opp.assigned_to_detail.last_name}`}
+                                className="h-5 w-5 rounded-full bg-orange-950/70 border border-orange-800/40 flex items-center justify-center text-[9px] font-bold text-orange-400"
+                              >
+                                {(opp.assigned_to_detail.first_name?.[0] ?? "").toUpperCase()}{(opp.assigned_to_detail.last_name?.[0] ?? "").toUpperCase()}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     });
