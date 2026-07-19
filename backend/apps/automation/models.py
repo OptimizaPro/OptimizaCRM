@@ -22,6 +22,7 @@ class AutomationRule(TenantModel):
         ("send_email",    "Enviar email"),
         ("create_task",   "Crear tarea"),
         ("notify_user",   "Notificar al usuario"),
+        ("assign_lead",   "Asignar lead automáticamente"),
     ]
 
     name          = models.CharField(max_length=255)

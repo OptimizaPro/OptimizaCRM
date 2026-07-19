@@ -181,6 +181,7 @@ export interface Organization {
   name: string;
   slug: string;
   plan: string;
+  settings?: Record<string, unknown>;
 }
 
 export interface Membership {
@@ -1083,12 +1084,42 @@ export interface AutomationRule {
   trigger_type_display: string;
   action_type: string;
   action_type_display: string;
-  action_config: Record<string, string>;
+  action_config: Record<string, unknown>;
   is_active: boolean;
   run_count: number;
   last_run_at: string | null;
   created_at: string;
 }
+
+// ─── Lead assignment types ────────────────────────────────────────────────────
+
+export type LeadFieldSchema = {
+  key: string;
+  label: string;
+  type: "text" | "number" | "select";
+  options?: string[];
+};
+
+export type SegmentCondition = {
+  field: string;
+  op: "eq" | "neq" | "contains" | "starts_with" | "gte" | "lte";
+  value: string;
+};
+
+export type AssignmentSegment = {
+  conditions: SegmentCondition[];
+  logic: "AND" | "OR";
+  user_id: string;
+};
+
+// ─── Organization API (alias — used for settings PATCH) ──────────────────────
+export const organizationApi = {
+  update: (token: string, orgId: string, data: Partial<Organization>) =>
+    api.patch<Organization>(`/organizations/${orgId}/`, data, { token, orgId }),
+
+  getMembers: (token: string, orgId: string) =>
+    api.get<MembershipDetail[]>(`/organizations/${orgId}/members/`, { token, orgId }),
+};
 
 export const csvApi = {
   importLeads: (token: string, orgId: string, file: File) => {

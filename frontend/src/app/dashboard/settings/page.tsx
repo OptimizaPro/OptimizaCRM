@@ -7,11 +7,11 @@ import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/store/auth";
-import { settingsApi, type MembershipDetail } from "@/lib/api";
+import { settingsApi, organizationApi, type MembershipDetail, type LeadFieldSchema } from "@/lib/api";
 import {
   User, Building2, Users, CreditCard, Trash2, Shield,
   CheckCircle2, Loader2, ExternalLink, Lock, BanknoteX,
-  KeyRound, ChevronRight, Sparkles, Crown, Camera,
+  KeyRound, ChevronRight, Sparkles, Crown, Camera, Plus, ListChecks,
 } from "lucide-react";
 import { useRef } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -156,6 +156,12 @@ export default function SettingsPage() {
   const [orgForm, setOrgForm] = useState({ name: organization?.name ?? "", website: "", industry: "" });
   const [orgMsg,  setOrgMsg]  = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // ── Custom fields schema state ──
+  const [customFieldsSchema, setCustomFieldsSchema] = useState<LeadFieldSchema[]>(
+    (organization?.settings?.lead_custom_fields_schema as LeadFieldSchema[]) ?? []
+  );
+  const [schemaMsg, setSchemaMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   // ── Equipo state ──
   const [inviteForm, setInviteForm] = useState({ email: "", first_name: "", last_name: "", role: "sales_executive" });
   const [inviteMsg,  setInviteMsg]  = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -222,6 +228,19 @@ export default function SettingsPage() {
       setTimeout(() => setOrgMsg(null), 4000);
     },
     onError: (e: Error) => setOrgMsg({ type: "err", text: e.message }),
+  });
+
+  const saveSchemamutation = useMutation({
+    mutationFn: (schema: LeadFieldSchema[]) =>
+      organizationApi.update(tokens!.access, organization!.id, {
+        settings: { ...(organization?.settings ?? {}), lead_custom_fields_schema: schema },
+      }),
+    onSuccess: (updated) => {
+      setOrganization({ ...organization!, ...updated });
+      setSchemaMsg({ type: "ok", text: "Campos guardados correctamente." });
+      setTimeout(() => setSchemaMsg(null), 4000);
+    },
+    onError: (e: Error) => setSchemaMsg({ type: "err", text: e.message }),
   });
 
   const inviteMutation = useMutation({
@@ -459,36 +478,129 @@ export default function SettingsPage() {
 
               {/* ── ORGANIZACIÓN ── */}
               {tab === "organizacion" && isAdmin && (
-                <Section icon={<Building2 className="h-4 w-4" />} title="Datos de la organización" description="Información pública de tu empresa">
-                  {orgMsg && <Alert {...orgMsg} />}
-                  <div className="space-y-4 mt-4">
-                    <div>
-                      <Label>Nombre de la organización</Label>
-                      <Input value={orgForm.name} onChange={(e) => setOrgForm((p) => ({ ...p, name: e.target.value }))} />
+                <>
+                  <Section icon={<Building2 className="h-4 w-4" />} title="Datos de la organización" description="Información pública de tu empresa">
+                    {orgMsg && <Alert {...orgMsg} />}
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <Label>Nombre de la organización</Label>
+                        <Input value={orgForm.name} onChange={(e) => setOrgForm((p) => ({ ...p, name: e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label>Sitio web</Label>
+                        <Input placeholder="https://tuempresa.com" value={orgForm.website} onChange={(e) => setOrgForm((p) => ({ ...p, website: e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label>Sector</Label>
+                        <Input placeholder="Retail, Hospitality, Real Estate…" value={orgForm.industry} onChange={(e) => setOrgForm((p) => ({ ...p, industry: e.target.value }))} />
+                      </div>
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-xs text-slate-500">
+                          Slug:{" "}
+                          <code className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">{organization?.slug}</code>
+                        </span>
+                        <Button
+                          className="bg-orange-600 hover:bg-orange-500 text-white"
+                          onClick={() => updateOrgMutation.mutate(orgForm)}
+                          disabled={updateOrgMutation.isPending}
+                        >
+                          {updateOrgMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Guardando…</> : "Guardar cambios"}
+                        </Button>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Sitio web</Label>
-                      <Input placeholder="https://tuempresa.com" value={orgForm.website} onChange={(e) => setOrgForm((p) => ({ ...p, website: e.target.value }))} />
-                    </div>
-                    <div>
-                      <Label>Sector</Label>
-                      <Input placeholder="Retail, Hospitality, Real Estate…" value={orgForm.industry} onChange={(e) => setOrgForm((p) => ({ ...p, industry: e.target.value }))} />
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-xs text-slate-500">
-                        Slug:{" "}
-                        <code className="rounded bg-slate-800 px-1.5 py-0.5 text-slate-300">{organization?.slug}</code>
-                      </span>
-                      <Button
-                        className="bg-orange-600 hover:bg-orange-500 text-white"
-                        onClick={() => updateOrgMutation.mutate(orgForm)}
-                        disabled={updateOrgMutation.isPending}
+                  </Section>
+
+                  {/* ── Campos personalizados de Lead ── */}
+                  <Section icon={<ListChecks className="h-4 w-4" />} title="Campos personalizados de Lead" description="Define campos adicionales que se almacenarán en cada lead">
+                    {schemaMsg && <Alert {...schemaMsg} />}
+                    <div className="mt-4 space-y-3">
+                      {customFieldsSchema.map((field, idx) => (
+                        <div key={idx} className="rounded-xl border border-slate-800 bg-slate-900/50 p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-300">Campo {idx + 1}</span>
+                            <button
+                              type="button"
+                              onClick={() => setCustomFieldsSchema((prev) => prev.filter((_, i) => i !== idx))}
+                              className="rounded p-1 text-slate-500 hover:bg-red-950/30 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="mb-1 block text-xs text-slate-500">Clave (key)</label>
+                              <input
+                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                placeholder="ej. marca"
+                                value={field.key}
+                                onChange={(e) => setCustomFieldsSchema((prev) =>
+                                  prev.map((f, i) => i === idx ? { ...f, key: e.target.value } : f)
+                                )}
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs text-slate-500">Etiqueta</label>
+                              <input
+                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                placeholder="ej. Marca del vehículo"
+                                value={field.label}
+                                onChange={(e) => setCustomFieldsSchema((prev) =>
+                                  prev.map((f, i) => i === idx ? { ...f, label: e.target.value } : f)
+                                )}
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs text-slate-500">Tipo</label>
+                              <select
+                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                value={field.type}
+                                onChange={(e) => setCustomFieldsSchema((prev) =>
+                                  prev.map((f, i) => i === idx ? { ...f, type: e.target.value as LeadFieldSchema["type"], options: e.target.value === "select" ? (f.options ?? []) : undefined } : f)
+                                )}
+                              >
+                                <option value="text">Texto</option>
+                                <option value="number">Número</option>
+                                <option value="select">Opciones (select)</option>
+                              </select>
+                            </div>
+                          </div>
+                          {field.type === "select" && (
+                            <div>
+                              <label className="mb-1 block text-xs text-slate-500">Opciones (separadas por coma)</label>
+                              <input
+                                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                placeholder="ej. Toyota,Honda,Ford"
+                                value={(field.options ?? []).join(",")}
+                                onChange={(e) => setCustomFieldsSchema((prev) =>
+                                  prev.map((f, i) => i === idx ? { ...f, options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean) } : f)
+                                )}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setCustomFieldsSchema((prev) => [...prev, { key: "", label: "", type: "text" }])}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-700 py-2.5 text-xs text-slate-400 hover:border-orange-600/50 hover:text-orange-400 transition-colors"
                       >
-                        {updateOrgMutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Guardando…</> : "Guardar cambios"}
-                      </Button>
+                        <Plus className="h-3.5 w-3.5" />
+                        Añadir campo
+                      </button>
+
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          className="bg-orange-600 hover:bg-orange-500 text-white"
+                          onClick={() => saveSchemamutation.mutate(customFieldsSchema)}
+                          disabled={saveSchemamutation.isPending}
+                        >
+                          {saveSchemamutation.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Guardando…</> : "Guardar campos"}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </Section>
+                  </Section>
+                </>
               )}
 
               {/* ── EQUIPO ── */}

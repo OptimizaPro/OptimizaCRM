@@ -28,6 +28,8 @@ def execute_rule(rule, context: dict):
             _action_log_channel(rule, org, context, channel="WhatsApp")
         elif action == "send_email":
             _action_send_email(rule, org, context)
+        elif action == "assign_lead":
+            _action_assign_lead(rule, org, context)
         else:
             logger.warning("AutomationRule %s: unknown action_type '%s'", rule.id, action)
 
@@ -133,3 +135,139 @@ def _action_send_email(rule, org, context):
             message=body,
             notification_type="info",
         )
+
+
+def _action_assign_lead(rule, org, context):
+    """Assign a lead to a user via round-robin or segment matching."""
+    from apps.crm.models import Lead, TeamMembership  # noqa: PLC0415
+    from apps.automation.models import AutomationRule  # noqa: PLC0415
+    from django.db import transaction                  # noqa: PLC0415
+
+    # Resolve lead — context carries lead_id (string) from signal
+    lead_id = context.get("lead_id")
+    lead_obj = context.get("lead")  # fallback: direct lead instance
+    if lead_id:
+        try:
+            lead = Lead.objects.get(id=lead_id, organization=org)
+        except Lead.DoesNotExist:
+            logger.warning("assign_lead: Lead %s not found in org %s", lead_id, org.id)
+            return
+    elif lead_obj is not None:
+        lead = lead_obj
+    else:
+        logger.warning("assign_lead: no lead_id or lead in context for rule %s", rule.id)
+        return
+
+    config = rule.action_config
+    mode   = config.get("mode", "round_robin")
+
+    if mode == "segment":
+        user_id = _match_segment(lead, config.get("segments", []))
+        if user_id:
+            lead.assigned_to_id = user_id
+            lead.save(update_fields=["assigned_to"])
+            _notify_assignee(lead, user_id, org)
+            return
+        # Fall through to fallback
+        fallback = config.get("fallback", {})
+        if not fallback:
+            return
+        # Use fallback as round_robin config
+        config = fallback
+
+    # Round robin
+    team_id = config.get("team_id")
+    if not team_id:
+        logger.warning("assign_lead: no team_id in action_config for rule %s", rule.id)
+        return
+
+    members = list(
+        TeamMembership.objects.filter(team_id=team_id)
+        .order_by("joined_at")
+        .values_list("user_id", flat=True)
+    )
+    if not members:
+        logger.warning("assign_lead: team %s has no members", team_id)
+        return
+
+    with transaction.atomic():
+        locked_rule = AutomationRule.objects.select_for_update().get(pk=rule.pk)
+        cfg = locked_rule.action_config
+        # For segment fallback the root config holds current_index
+        idx = cfg.get("current_index", 0) % len(members)
+        user_id = members[idx]
+        cfg["current_index"] = idx + 1
+        locked_rule.action_config = cfg
+        locked_rule.save(update_fields=["action_config"])
+
+    lead.assigned_to_id = user_id
+    lead.save(update_fields=["assigned_to"])
+    _notify_assignee(lead, user_id, org)
+
+
+def _match_segment(lead, segments):
+    """Return user_id of the first matching segment, or None."""
+    for seg in segments:
+        conditions = seg.get("conditions", [])
+        logic      = seg.get("logic", "AND")
+        results    = [_eval_condition(lead, c) for c in conditions]
+        if not results:
+            continue
+        matched = all(results) if logic == "AND" else any(results)
+        if matched:
+            return seg.get("user_id")
+    return None
+
+
+def _eval_condition(lead, condition):
+    """Evaluate a single condition against a lead. Returns bool."""
+    field = condition.get("field", "")
+    op    = condition.get("op", "eq")
+    value = condition.get("value", "")
+
+    if field.startswith("custom_fields."):
+        key    = field[len("custom_fields."):]
+        actual = str(lead.custom_fields.get(key, "")).lower()
+    elif hasattr(lead, field):
+        actual = str(getattr(lead, field) or "").lower()
+    else:
+        return False
+
+    value_lower = str(value).lower()
+
+    if op == "eq":
+        return actual == value_lower
+    elif op == "neq":
+        return actual != value_lower
+    elif op == "contains":
+        return value_lower in actual
+    elif op == "starts_with":
+        return actual.startswith(value_lower)
+    elif op == "gte":
+        try:
+            return float(actual) >= float(value)
+        except (ValueError, TypeError):
+            return False
+    elif op == "lte":
+        try:
+            return float(actual) <= float(value)
+        except (ValueError, TypeError):
+            return False
+    return False
+
+
+def _notify_assignee(lead, user_id, org):
+    """Send an in-app notification to the newly assigned user."""
+    try:
+        from apps.notifications.models import Notification  # noqa: PLC0415
+        from apps.accounts.models import User               # noqa: PLC0415
+        user = User.objects.get(id=user_id)
+        Notification.objects.create(
+            organization=org,
+            user=user,
+            title="Nuevo lead asignado",
+            message=f"Se te ha asignado el lead {lead.full_name} ({lead.phone}).",
+            notification_type="info",
+        )
+    except Exception as exc:
+        logger.warning("assign_lead notify error: %s", exc)
