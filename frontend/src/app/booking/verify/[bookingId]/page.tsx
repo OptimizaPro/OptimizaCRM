@@ -217,11 +217,13 @@ export default function BookingVerifyPage({ params }: { params: { bookingId: str
                 {booking.location && (() => {
                   const locationIsUrl = isUrl(booking.location);
                   const platform      = locationIsUrl ? detectPlatform(booking.location) : null;
+                  const isConfirmed   = currentStatus === "confirmed" || currentStatus === "completed";
+
                   return (
                     <div className="flex items-start gap-4 py-5 border-b border-slate-800">
-                      <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${platform ? platform.bg + " border " + platform.border : "bg-slate-800"}`}>
+                      <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${platform && isConfirmed ? platform.bg + " border " + platform.border : "bg-slate-800"}`}>
                         {platform
-                          ? <Video className={`h-5 w-5 ${platform.text}`} />
+                          ? <Video className={`h-5 w-5 ${isConfirmed ? platform.text : "text-slate-600"}`} />
                           : <MapPin className="h-5 w-5 text-slate-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -229,19 +231,28 @@ export default function BookingVerifyPage({ params }: { params: { bookingId: str
                           {platform ? "Videollamada" : "Ubicación"}
                         </p>
                         {platform ? (
-                          <>
-                            <p className="text-sm font-semibold text-slate-200 mb-2">{platform.name}</p>
-                            <a
-                              href={booking.location}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all hover:brightness-110 ${platform.bg} ${platform.border} ${platform.text}`}
-                            >
-                              <span className={`h-2 w-2 rounded-full ${platform.dot}`} />
-                              {platform.label}
-                              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-                            </a>
-                          </>
+                          isConfirmed ? (
+                            <>
+                              <p className="text-sm font-semibold text-slate-200 mb-2">{platform.name}</p>
+                              <a
+                                href={booking.location}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all hover:brightness-110 ${platform.bg} ${platform.border} ${platform.text}`}
+                              >
+                                <span className={`h-2 w-2 rounded-full ${platform.dot}`} />
+                                {platform.label}
+                                <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                              </a>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm font-semibold text-slate-500 mb-1">{platform.name}</p>
+                              <p className="text-xs text-slate-600 leading-relaxed">
+                                El link de acceso se compartirá una vez que la reserva sea confirmada.
+                              </p>
+                            </>
+                          )
                         ) : (
                           <p className="text-sm font-medium text-slate-200">{booking.location}</p>
                         )}
