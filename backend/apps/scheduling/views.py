@@ -17,7 +17,7 @@ from apps.accounts.models import Organization
 from apps.crm.models import CalendarEvent
 from apps.crm.views import TenantViewSetMixin
 from core.middleware import get_current_organization
-from core.permissions import CanWriteCRM, IsReadOnlyOrAbove
+from core.permissions import IsReadOnlyOrAbove
 
 from .models import Booking, EventType, ScheduleAvailability
 from .serializers import (
@@ -35,11 +35,6 @@ class EventTypeViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset           = EventType.objects.all()
     serializer_class   = EventTypeSerializer
     permission_classes = [IsReadOnlyOrAbove]
-
-    def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [CanWriteCRM()]
-        return super().get_permissions()
 
     def perform_create(self, serializer):
         serializer.save(

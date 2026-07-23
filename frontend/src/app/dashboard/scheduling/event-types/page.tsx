@@ -200,14 +200,14 @@ function EventTypeForm({
               </select>
             </div>
             <div>
-              <label className={labelCls}>Buffer</label>
+              <label className={labelCls}>Pausa entre citas</label>
               <select
                 className={selectCls}
                 value={form.buffer_minutes}
                 onChange={(e) => set("buffer_minutes", Number(e.target.value))}
               >
                 {[0, 5, 10, 15].map((m) => (
-                  <option key={m} value={m}>{m === 0 ? "Sin buffer" : `${m} min`}</option>
+                  <option key={m} value={m}>{m === 0 ? "Sin pausa" : `${m} min`}</option>
                 ))}
               </select>
             </div>
