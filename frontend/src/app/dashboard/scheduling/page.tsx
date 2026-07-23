@@ -9,6 +9,7 @@ import { schedulingApi } from "@/lib/api";
 import {
   CalendarClock, Link2, Copy, Check, ChevronRight,
   CalendarDays, BookOpen, Clock, Loader2, CalendarCheck,
+  ExternalLink, AlertTriangle, Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -107,7 +108,7 @@ export default function SchedulingPage() {
             <div>
               <h1 className="text-lg font-bold text-slate-100">Agendamiento</h1>
               <p className="text-sm text-slate-500">
-                Sistema de reservas tipo Cal.com para tu organización
+                Sistema de reservas para tu organización
               </p>
             </div>
           </div>
@@ -186,34 +187,79 @@ export default function SchedulingPage() {
           </div>
 
           {/* Booking link card */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Link2 className="h-4 w-4 text-orange-400" />
-              <h2 className="font-semibold text-slate-200">Tu enlace de reserva</h2>
-            </div>
-            <p className="text-xs text-slate-500 mb-4">
-              Comparte este enlace con tus clientes para que puedan reservar citas contigo directamente.
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 font-mono truncate">
-                {orgSlug ? bookingUrl : "Configura el slug de tu organización en Ajustes"}
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-950/40">
+                  <Link2 className="h-4 w-4 text-orange-400" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-slate-200 text-sm">Tu enlace de reserva</h2>
+                  <p className="text-xs text-slate-500">Comparte esta URL con tus clientes</p>
+                </div>
               </div>
-              <button
-                onClick={handleCopy}
-                disabled={!orgSlug}
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-400 transition-all hover:border-orange-600 hover:text-orange-400 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-              </button>
               {orgSlug && (
                 <Link
                   href={`/booking/${orgSlug}`}
                   target="_blank"
-                  className="flex h-10 items-center gap-1.5 rounded-xl border border-orange-700/50 bg-orange-950/30 px-3 text-xs font-semibold text-orange-400 transition-all hover:bg-orange-950/60"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:border-orange-600/60 hover:text-orange-400"
                 >
-                  <Link2 className="h-3.5 w-3.5" />
-                  Ver
+                  <ExternalLink className="h-3 w-3" />
+                  Abrir
                 </Link>
+              )}
+            </div>
+
+            {/* URL bar or warning */}
+            <div className="px-5 pb-4">
+              {orgSlug ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/80 px-3 py-2.5 min-w-0">
+                      <span className="text-slate-600 text-xs select-none flex-shrink-0">URL</span>
+                      <span className="text-sm text-slate-300 font-mono truncate">{bookingUrl}</span>
+                    </div>
+                    <button
+                      onClick={handleCopy}
+                      title="Copiar enlace"
+                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900 text-slate-400 transition-all hover:border-orange-600/60 hover:text-orange-400"
+                    >
+                      {copied
+                        ? <Check className="h-4 w-4 text-green-400" />
+                        : <Copy className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  {/* How it works */}
+                  <div className="mt-3 flex gap-2.5 rounded-xl bg-slate-900/50 border border-slate-800 p-3">
+                    <Info className="h-3.5 w-3.5 text-slate-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Cuando un cliente visita este enlace ve tus tipos de evento activos, elige fecha y hora disponible según tu disponibilidad configurada, y confirma la cita rellenando su nombre y email.
+                      La reserva queda registrada en tu calendario automáticamente.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-700/30 bg-amber-950/20 p-4">
+                  <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-300 mb-1">
+                      Tu organización no tiene un identificador (slug) configurado
+                    </p>
+                    <p className="text-xs text-amber-400/70 mb-3">
+                      El slug es el nombre corto que aparece en tu URL pública de reservas. Configúralo una sola vez en Ajustes.
+                    </p>
+                    <Link
+                      href="/dashboard/settings"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600/20 border border-amber-600/40 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-600/30 transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Ir a Ajustes
+                    </Link>
+                  </div>
+                </div>
               )}
             </div>
           </div>
