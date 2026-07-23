@@ -13,7 +13,7 @@ class EventTypeSerializer(serializers.ModelSerializer):
     bookings_count = serializers.SerializerMethodField()
 
     def get_user_name(self, obj):
-        return obj.user.get_full_name() or obj.user.email
+        return obj.user.full_name or obj.user.email
 
     def get_bookings_count(self, obj):
         return obj.bookings.filter(status__in=["pending", "confirmed"]).count()
@@ -68,7 +68,7 @@ class PublicEventTypeSerializer(serializers.ModelSerializer):
     host_name = serializers.SerializerMethodField()
 
     def get_host_name(self, obj):
-        return obj.user.get_full_name() or obj.user.first_name or "Host"
+        return obj.user.full_name or obj.user.first_name or "Host"
 
     class Meta:
         model  = EventType
