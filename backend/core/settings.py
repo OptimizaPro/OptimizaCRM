@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.voice_plans",
     "apps.kb",
     "apps.chatbot",
+    "apps.scheduling",
 ]
 
 MIDDLEWARE = [

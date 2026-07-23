@@ -8,7 +8,7 @@ import {
   Calendar, BarChart3, Brain, Settings, LogOut, Menu,
   Plug, Inbox, MessageCircle, ChevronDown, MessagesSquare,
   TrendingUp, ListTodo, LineChart, ShieldCheck, FileText,
-  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound, BookOpen, Bot, Lock,
+  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound, BookOpen, Bot, Lock, CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, useSidebarStore } from "@/store/auth";
@@ -81,8 +81,9 @@ const NAV: NavEntry[] = [
       label: "Productividad",
       icon: ListTodo,
       items: [
-        { href: "/dashboard/tasks",    label: "Tareas",     icon: CheckSquare },
-        { href: "/dashboard/calendar", label: "Calendario", icon: Calendar },
+        { href: "/dashboard/tasks",      label: "Tareas",       icon: CheckSquare },
+        { href: "/dashboard/calendar",   label: "Calendario",   icon: Calendar },
+        { href: "/dashboard/scheduling", label: "Agendamiento", icon: CalendarClock },
       ],
     },
   },

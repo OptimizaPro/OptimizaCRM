@@ -1903,3 +1903,122 @@ export const teamsApi = {
   removeMember: (token: string, orgId: string, teamId: string, userId: string) =>
     api.delete(`/teams/${teamId}/members/${userId}/`, { token, orgId }),
 };
+
+// ─── Scheduling Types ─────────────────────────────────────────────────────────
+
+export type EventTypeColor = "slate" | "blue" | "green" | "orange" | "red"
+
+export interface EventType {
+  id: string
+  title: string
+  slug: string
+  description: string
+  duration_minutes: number
+  buffer_minutes: number
+  color: EventTypeColor
+  location: string
+  instructions: string
+  requires_confirmation: boolean
+  min_notice_hours: number
+  max_notice_days: number
+  is_active: boolean
+  user: string
+  user_name: string
+  bookings_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AvailabilitySlot {
+  id: string
+  day_of_week: number
+  day_label: string
+  start_time: string  // "HH:MM:SS"
+  end_time: string    // "HH:MM:SS"
+  is_active: boolean
+}
+
+export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed"
+
+export interface Booking {
+  id: string
+  event_type: string
+  event_type_title: string
+  event_type_duration: number
+  event_type_color: EventTypeColor
+  booker_name: string
+  booker_email: string
+  booker_phone: string
+  booker_notes: string
+  start_time: string
+  end_time: string
+  status: BookingStatus
+  cancellation_reason: string
+  calendar_event: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PublicEventType {
+  id: string
+  title: string
+  slug: string
+  description: string
+  duration_minutes: number
+  color: EventTypeColor
+  location: string
+  instructions: string
+  requires_confirmation: boolean
+  host_name: string
+}
+
+export interface TimeSlot {
+  start: string  // ISO datetime
+  end: string    // ISO datetime
+}
+
+export const schedulingApi = {
+  // Event Types
+  listEventTypes: (token: string, orgId: string) =>
+    api.get<EventType[]>("/scheduling/event-types/", { token, orgId }),
+  createEventType: (token: string, orgId: string, data: Partial<EventType>) =>
+    api.post<EventType>("/scheduling/event-types/", data, { token, orgId }),
+  updateEventType: (token: string, orgId: string, id: string, data: Partial<EventType>) =>
+    api.patch<EventType>(`/scheduling/event-types/${id}/`, data, { token, orgId }),
+  deleteEventType: (token: string, orgId: string, id: string) =>
+    api.delete(`/scheduling/event-types/${id}/`, { token, orgId }),
+
+  // Availability
+  listAvailability: (token: string, orgId: string) =>
+    api.get<AvailabilitySlot[]>("/scheduling/availability/", { token, orgId }),
+  bulkUpdateAvailability: (token: string, orgId: string, slots: Partial<AvailabilitySlot>[]) =>
+    api.post<AvailabilitySlot[]>("/scheduling/availability/bulk-update/", { slots }, { token, orgId }),
+
+  // Bookings
+  listBookings: (token: string, orgId: string, params?: { status?: string; start?: string; end?: string }) => {
+    const qs = new URLSearchParams(params as Record<string, string>).toString()
+    return api.get<Booking[]>(`/scheduling/bookings/${qs ? "?" + qs : ""}`, { token, orgId })
+  },
+  confirmBooking: (token: string, orgId: string, id: string) =>
+    api.post(`/scheduling/bookings/${id}/confirm/`, {}, { token, orgId }),
+  cancelBooking: (token: string, orgId: string, id: string, reason?: string) =>
+    api.post(`/scheduling/bookings/${id}/cancel/`, { reason }, { token, orgId }),
+}
+
+export const publicBookingApi = {
+  getOrgSchedule: (orgSlug: string) =>
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/booking/${orgSlug}/`).then(r => r.json()),
+  getEventTypeSlots: (orgSlug: string, eventSlug: string, date?: string) => {
+    const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/booking/${orgSlug}/${eventSlug}/${date ? `?date=${date}` : ""}`
+    return fetch(url).then(r => r.json())
+  },
+  createBooking: (orgSlug: string, eventSlug: string, data: {
+    booker_name: string; booker_email: string; booker_phone?: string;
+    booker_notes?: string; start_time: string
+  }) =>
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/booking/${orgSlug}/${eventSlug}/book/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).then(r => r.json()),
+}
