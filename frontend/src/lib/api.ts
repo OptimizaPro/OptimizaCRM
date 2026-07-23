@@ -1979,8 +1979,10 @@ export interface TimeSlot {
 
 export const schedulingApi = {
   // Event Types
-  listEventTypes: (token: string, orgId: string) =>
-    api.get<EventType[]>("/scheduling/event-types/", { token, orgId }),
+  listEventTypes: async (token: string, orgId: string): Promise<EventType[]> => {
+    const res = await api.get<PaginatedResponse<EventType>>("/scheduling/event-types/?page_size=200", { token, orgId })
+    return res.results
+  },
   createEventType: (token: string, orgId: string, data: Partial<EventType>) =>
     api.post<EventType>("/scheduling/event-types/", data, { token, orgId }),
   updateEventType: (token: string, orgId: string, id: string, data: Partial<EventType>) =>
@@ -1989,15 +1991,18 @@ export const schedulingApi = {
     api.delete(`/scheduling/event-types/${id}/`, { token, orgId }),
 
   // Availability
-  listAvailability: (token: string, orgId: string) =>
-    api.get<AvailabilitySlot[]>("/scheduling/availability/", { token, orgId }),
+  listAvailability: async (token: string, orgId: string): Promise<AvailabilitySlot[]> => {
+    const res = await api.get<PaginatedResponse<AvailabilitySlot>>("/scheduling/availability/?page_size=200", { token, orgId })
+    return res.results
+  },
   bulkUpdateAvailability: (token: string, orgId: string, slots: Partial<AvailabilitySlot>[]) =>
     api.post<AvailabilitySlot[]>("/scheduling/availability/bulk-update/", { slots }, { token, orgId }),
 
   // Bookings
-  listBookings: (token: string, orgId: string, params?: { status?: string; start?: string; end?: string }) => {
-    const qs = new URLSearchParams(params as Record<string, string>).toString()
-    return api.get<Booking[]>(`/scheduling/bookings/${qs ? "?" + qs : ""}`, { token, orgId })
+  listBookings: async (token: string, orgId: string, params?: { status?: string; start?: string; end?: string }): Promise<Booking[]> => {
+    const base = new URLSearchParams({ page_size: "200", ...(params as Record<string, string>) }).toString()
+    const res = await api.get<PaginatedResponse<Booking>>(`/scheduling/bookings/?${base}`, { token, orgId })
+    return res.results
   },
   confirmBooking: (token: string, orgId: string, id: string) =>
     api.post(`/scheduling/bookings/${id}/confirm/`, {}, { token, orgId }),
