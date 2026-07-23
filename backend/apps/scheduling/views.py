@@ -262,6 +262,46 @@ class PublicEventTypeSlotsView(APIView):
         })
 
 
+class PublicBookingVerifyView(APIView):
+    """Public: client verifies or self-confirms their booking via UUID link."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, booking_id):
+        booking    = get_object_or_404(Booking, id=booking_id)
+        event_type = booking.event_type
+        org        = booking.organization
+        return Response({
+            "booking_id":            str(booking.id),
+            "status":                booking.status,
+            "booker_name":           booking.booker_name,
+            "booker_email":          booking.booker_email,
+            "start_time":            booking.start_time.isoformat(),
+            "end_time":              booking.end_time.isoformat(),
+            "event_type":            event_type.title,
+            "duration_minutes":      event_type.duration_minutes,
+            "location":              event_type.location,
+            "instructions":          event_type.instructions,
+            "org_name":              org.name,
+            "requires_confirmation": event_type.requires_confirmation,
+        })
+
+    def post(self, request, booking_id):
+        """Client self-confirms a pending booking."""
+        booking = get_object_or_404(Booking, id=booking_id)
+        if booking.status != "pending":
+            return Response(
+                {"detail": "Esta reserva no está pendiente de confirmación."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        booking.status = "confirmed"
+        booking.save(update_fields=["status", "updated_at"])
+        if booking.calendar_event:
+            booking.calendar_event.status = "confirmed"
+            booking.calendar_event.save(update_fields=["status"])
+        return Response({"status": "confirmed"})
+
+
 class PublicBookingCreateView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []

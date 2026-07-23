@@ -97,7 +97,7 @@ function NewBookingPanel({
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [form, setForm] = useState<BookingForm>({ name: "", email: "", phone: "", notes: "" });
   const [submitting, setSubmitting] = useState(false);
-  const [createdBooking, setCreatedBooking] = useState<{ start_time: string; end_time: string; event_type: string; status: string } | null>(null);
+  const [createdBooking, setCreatedBooking] = useState<{ booking_id: string; start_time: string; end_time: string; event_type: string; status: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const today = new Date();
@@ -142,8 +142,11 @@ function NewBookingPanel({
   };
 
   // Confirmation message to copy
+  const verifyUrl = createdBooking
+    ? `${typeof window !== "undefined" ? window.location.origin : "https://optimizacrm.com"}/booking/verify/${createdBooking.booking_id}`
+    : "";
   const confirmationText = createdBooking
-    ? `Hola ${form.name}, tu cita está confirmada:\n\n📅 ${fmtTimeFull(createdBooking.start_time)}\n🕐 ${fmtTime(createdBooking.start_time)} – ${fmtTime(createdBooking.end_time)}\n📌 ${selectedET?.title}${selectedET?.location ? `\n📍 ${selectedET.location}` : ""}\n\n${createdBooking.status === "pending" ? "⚠️ Pendiente de confirmación — te contactaremos pronto." : "✅ Confirmada."}`
+    ? `Hola ${form.name}, tu cita está confirmada:\n\n📅 ${fmtTimeFull(createdBooking.start_time)}\n🕐 ${fmtTime(createdBooking.start_time)} – ${fmtTime(createdBooking.end_time)}\n📌 ${selectedET?.title}${selectedET?.location ? `\n📍 ${selectedET.location}` : ""}\n\n${createdBooking.status === "pending" ? "⚠️ Pendiente de confirmación.\n\nPuedes confirmar tu reserva aquí:\n🔗 " + verifyUrl : "✅ Confirmada.\n\nConsulta los detalles de tu reserva:\n🔗 " + verifyUrl}`
     : "";
 
   const handleCopy = async () => {

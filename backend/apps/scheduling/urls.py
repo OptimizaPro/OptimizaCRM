@@ -17,6 +17,11 @@ urlpatterns = [
     path("", include(router.urls)),
     # Public booking endpoints
     path(
+        "booking/verify/<uuid:booking_id>/",
+        views.PublicBookingVerifyView.as_view(),
+        name="public-booking-verify",
+    ),
+    path(
         "booking/<slug:org_slug>/",
         views.PublicOrgScheduleView.as_view(),
         name="public-org-schedule",

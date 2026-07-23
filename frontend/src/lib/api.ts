@@ -2026,4 +2026,11 @@ export const publicBookingApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }).then(r => r.json()),
+  getBooking: (bookingId: string) =>
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/booking/verify/${bookingId}/`).then(r => r.json()),
+  confirmBooking: (bookingId: string) =>
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/booking/verify/${bookingId}/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    }).then(r => r.json()),
 }
