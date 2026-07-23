@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { publicBookingApi } from "@/lib/api";
 import {
   CalendarCheck, Clock, MapPin, CheckCircle2, XCircle,
-  Loader2, AlertTriangle, FileText, User, Mail, BookOpen, ExternalLink, Video,
+  Loader2, AlertTriangle, FileText, User, Mail, BookOpen, ExternalLink, Video, Info,
 } from "lucide-react";
 
 // ─── Meeting link detection ────────────────────────────────────────────────────
@@ -272,10 +272,13 @@ export default function BookingVerifyPage({ params }: { params: { bookingId: str
                             </>
                           ) : (
                             <>
-                              <p className="text-sm font-semibold text-slate-500 mb-1">{platform.name}</p>
-                              <p className="text-xs text-slate-600 leading-relaxed">
-                                El link de acceso se compartirá una vez que la reserva sea confirmada.
-                              </p>
+                              <p className="text-sm font-semibold text-slate-500 mb-2">{platform.name}</p>
+                              <div className="flex items-start gap-2">
+                                <Info className="h-3.5 w-3.5 text-orange-400 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs text-slate-400 leading-relaxed">
+                                  El link de acceso se compartirá una vez que la reserva sea confirmada.
+                                </p>
+                              </div>
                             </>
                           )
                         ) : (
