@@ -91,7 +91,12 @@ class BookingViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     queryset           = Booking.objects.all()
     serializer_class   = BookingSerializer
     permission_classes = [IsReadOnlyOrAbove]
-    http_method_names  = ["get", "head", "options", "post"]  # no PUT/PATCH/DELETE from dashboard
+
+    def perform_destroy(self, instance):
+        # Also remove the linked CalendarEvent
+        if instance.calendar_event:
+            instance.calendar_event.delete()
+        instance.delete()
 
     def get_queryset(self):
         org = get_current_organization()

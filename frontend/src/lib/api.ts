@@ -2008,6 +2008,10 @@ export const schedulingApi = {
     api.post(`/scheduling/bookings/${id}/confirm/`, {}, { token, orgId }),
   cancelBooking: (token: string, orgId: string, id: string, reason?: string) =>
     api.post(`/scheduling/bookings/${id}/cancel/`, { reason }, { token, orgId }),
+  updateBooking: (token: string, orgId: string, id: string, data: Partial<Booking>) =>
+    api.patch<Booking>(`/scheduling/bookings/${id}/`, data, { token, orgId }),
+  deleteBooking: (token: string, orgId: string, id: string) =>
+    api.delete(`/scheduling/bookings/${id}/`, { token, orgId }),
 }
 
 export const publicBookingApi = {

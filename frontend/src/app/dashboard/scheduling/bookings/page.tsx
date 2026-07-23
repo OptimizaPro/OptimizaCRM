@@ -12,7 +12,7 @@ import {
 import {
   BookOpen, Loader2, CheckCircle2, XCircle, Clock, CalendarCheck,
   User, Mail, X, Plus, ChevronLeft, ChevronRight, Copy, Check,
-  Phone, FileText, Calendar, ArrowRight, Sparkles,
+  Phone, FileText, Calendar, ArrowRight, Sparkles, Pencil, Trash2, Link2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -598,6 +598,129 @@ function CancelDialog({
   );
 }
 
+// ─── Edit Dialog ─────────────────────────────────────────────────────────────
+
+const EDITABLE_STATUSES: { value: BookingStatus; label: string }[] = [
+  { value: "pending",   label: "Pendiente" },
+  { value: "confirmed", label: "Confirmada" },
+  { value: "completed", label: "Completada" },
+  { value: "cancelled", label: "Cancelada" },
+];
+
+function EditDialog({
+  booking, onClose, onSave, loading,
+}: {
+  booking: Booking;
+  onClose: () => void;
+  onSave: (data: { status: BookingStatus; booker_name: string; booker_email: string; booker_phone: string; booker_notes: string }) => void;
+  loading: boolean;
+}) {
+  const [status,     setStatus]     = useState<BookingStatus>(booking.status);
+  const [name,       setName]       = useState(booking.booker_name);
+  const [email,      setEmail]      = useState(booking.booker_email);
+  const [phone,      setPhone]      = useState(booking.booker_phone ?? "");
+  const [notes,      setNotes]      = useState(booking.booker_notes ?? "");
+
+  const inputCls = "w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20";
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-orange-400" />
+              <h2 className="font-semibold text-slate-100 text-sm">Editar reserva</h2>
+            </div>
+            <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-800">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-5 space-y-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Estado</label>
+              <select
+                className={inputCls}
+                value={status}
+                onChange={(e) => setStatus(e.target.value as BookingStatus)}
+              >
+                {EDITABLE_STATUSES.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Nombre del cliente</label>
+              <input className={inputCls} value={name} onChange={e => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Email</label>
+              <input type="email" className={inputCls} value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Teléfono</label>
+              <input className={inputCls} value={phone} onChange={e => setPhone(e.target.value)} placeholder="Opcional" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-400">Notas</label>
+              <textarea className={`${inputCls} resize-none`} rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcional" />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-slate-800 px-5 py-4">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>Cancelar</Button>
+            <Button size="sm" disabled={loading || !name.trim() || !email.trim()} onClick={() => onSave({ status, booker_name: name, booker_email: email, booker_phone: phone, booker_notes: notes })} className="gap-1.5 bg-orange-600 hover:bg-orange-500 text-white">
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              Guardar cambios
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Delete Dialog ────────────────────────────────────────────────────────────
+
+function DeleteDialog({
+  booking, onClose, onConfirm, loading,
+}: {
+  booking: Booking; onClose: () => void; onConfirm: () => void; loading: boolean;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-red-400" />
+              <h2 className="font-semibold text-slate-100 text-sm">Eliminar reserva</h2>
+            </div>
+            <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-800">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-5">
+            <p className="text-sm text-slate-400">
+              Vas a eliminar definitivamente la reserva de{" "}
+              <strong className="text-slate-200">{booking.booker_name}</strong>.
+              Esta acción no se puede deshacer y también eliminará el evento del calendario.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 border-t border-slate-800 px-5 py-4">
+            <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>Volver</Button>
+            <Button size="sm" disabled={loading} onClick={onConfirm} className="gap-1.5 bg-red-700 hover:bg-red-600 text-white">
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              Eliminar
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BookingsPage() {
@@ -611,6 +734,19 @@ export default function BookingsPage() {
   const [showNewPanel, setShowNewPanel] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
   const [cancelling,   setCancelling]   = useState(false);
+  const [editTarget,   setEditTarget]   = useState<Booking | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
+  const [copiedId,     setCopiedId]     = useState<string | null>(null);
+
+  const BASE_URL = typeof window !== "undefined" ? window.location.origin : "https://optimizacrm.com";
+  const verifyUrl = (id: string) => `${BASE_URL}/booking/verify/${id}`;
+
+  const handleCopyLink = async (booking: Booking) => {
+    await navigator.clipboard.writeText(verifyUrl(booking.id)).catch(() => {});
+    setCopiedId(booking.id);
+    toast.success("Link de verificación copiado");
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ["scheduling-bookings", orgId, activeTab],
@@ -636,6 +772,19 @@ export default function BookingsPage() {
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       schedulingApi.cancelBooking(token, orgId, id, reason),
     onSuccess: () => { invalidate(); setCancelTarget(null); toast.success("Reserva cancelada"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Booking> }) =>
+      schedulingApi.updateBooking(token, orgId, id, data),
+    onSuccess: () => { invalidate(); setEditTarget(null); toast.success("Reserva actualizada"); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => schedulingApi.deleteBooking(token, orgId, id),
+    onSuccess: () => { invalidate(); setDeleteTarget(null); toast.success("Reserva eliminada"); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -754,19 +903,32 @@ export default function BookingsPage() {
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${st.bg} ${st.color}`}>{st.label}</span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1">
                               {booking.status === "pending" && (
                                 <button onClick={() => confirmMutation.mutate(booking.id)} disabled={confirmMutation.isPending}
+                                  title="Confirmar"
                                   className="flex items-center gap-1 rounded-lg bg-green-950/50 px-2 py-1 text-[11px] font-semibold text-green-400 hover:bg-green-900/50 disabled:opacity-40">
                                   <CheckCircle2 className="h-3 w-3" /> Confirmar
                                 </button>
                               )}
                               {(booking.status === "pending" || booking.status === "confirmed") && (
-                                <button onClick={() => setCancelTarget(booking)}
+                                <button onClick={() => setCancelTarget(booking)} title="Cancelar"
                                   className="flex items-center gap-1 rounded-lg bg-red-950/40 px-2 py-1 text-[11px] font-semibold text-red-400 hover:bg-red-900/50">
                                   <XCircle className="h-3 w-3" /> Cancelar
                                 </button>
                               )}
+                              <button onClick={() => handleCopyLink(booking)} title="Copiar link de verificación"
+                                className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${copiedId === booking.id ? "bg-green-950/50 text-green-400" : "text-slate-500 hover:bg-slate-800 hover:text-orange-400"}`}>
+                                {copiedId === booking.id ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+                              </button>
+                              <button onClick={() => setEditTarget(booking)} title="Editar"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-800 hover:text-orange-400 transition-colors">
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button onClick={() => setDeleteTarget(booking)} title="Eliminar"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-red-950/40 hover:text-red-400 transition-colors">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -794,7 +956,7 @@ export default function BookingsPage() {
                         <Clock className="inline h-3 w-3 mr-0.5" />
                         {fmtDate(booking.start_time)} · {fmtTime(booking.start_time)}
                       </p>
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex flex-wrap gap-2 pt-1">
                         {booking.status === "pending" && (
                           <button onClick={() => confirmMutation.mutate(booking.id)} disabled={confirmMutation.isPending}
                             className="flex items-center gap-1 rounded-lg bg-green-950/50 px-2.5 py-1.5 text-xs font-semibold text-green-400 hover:bg-green-900/50 disabled:opacity-40">
@@ -807,6 +969,19 @@ export default function BookingsPage() {
                             <XCircle className="h-3.5 w-3.5" /> Cancelar
                           </button>
                         )}
+                        <button onClick={() => handleCopyLink(booking)}
+                          className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${copiedId === booking.id ? "bg-green-950/50 text-green-400" : "bg-slate-800 text-slate-400 hover:text-orange-400"}`}>
+                          {copiedId === booking.id ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                          Link
+                        </button>
+                        <button onClick={() => setEditTarget(booking)}
+                          className="flex items-center gap-1 rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-400 hover:text-orange-400">
+                          <Pencil className="h-3.5 w-3.5" /> Editar
+                        </button>
+                        <button onClick={() => setDeleteTarget(booking)}
+                          className="flex items-center gap-1 rounded-lg bg-red-950/30 px-2.5 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-900/50">
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                        </button>
                       </div>
                     </div>
                   );
@@ -832,6 +1007,24 @@ export default function BookingsPage() {
           onClose={() => setCancelTarget(null)}
           onConfirm={handleCancel}
           loading={cancelling}
+        />
+      )}
+
+      {editTarget && (
+        <EditDialog
+          booking={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSave={(data) => editMutation.mutate({ id: editTarget.id, data })}
+          loading={editMutation.isPending}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteDialog
+          booking={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() => deleteMutation.mutate(deleteTarget.id)}
+          loading={deleteMutation.isPending}
         />
       )}
     </>
