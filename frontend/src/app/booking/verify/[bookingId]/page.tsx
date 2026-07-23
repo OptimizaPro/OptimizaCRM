@@ -4,8 +4,38 @@ import { useState, useEffect } from "react";
 import { publicBookingApi } from "@/lib/api";
 import {
   CalendarCheck, Clock, MapPin, CheckCircle2, XCircle,
-  Loader2, AlertTriangle, FileText, User, Mail, BookOpen,
+  Loader2, AlertTriangle, FileText, User, Mail, BookOpen, ExternalLink, Video,
 } from "lucide-react";
+
+// ─── Meeting link detection ────────────────────────────────────────────────────
+
+function isUrl(str: string) {
+  try { return Boolean(new URL(str)); } catch { return false; }
+}
+
+type MeetingPlatform = {
+  name:    string;
+  label:   string;
+  bg:      string;
+  text:    string;
+  border:  string;
+  dot:     string;
+};
+
+function detectPlatform(url: string): MeetingPlatform {
+  const lower = url.toLowerCase();
+  if (lower.includes("meet.google.com"))
+    return { name:"Google Meet", label:"Unirse con Google Meet", bg:"bg-blue-950/40", text:"text-blue-300", border:"border-blue-600/30", dot:"bg-blue-400" };
+  if (lower.includes("zoom.us"))
+    return { name:"Zoom",        label:"Unirse a Zoom",          bg:"bg-sky-950/40",  text:"text-sky-300",  border:"border-sky-600/30",  dot:"bg-sky-400"  };
+  if (lower.includes("teams.microsoft.com") || lower.includes("teams.live.com"))
+    return { name:"Teams",       label:"Unirse a Teams",         bg:"bg-slate-800/60",text:"text-slate-300",border:"border-slate-600/30", dot:"bg-slate-400"};
+  if (lower.includes("whereby.com"))
+    return { name:"Whereby",     label:"Unirse con Whereby",     bg:"bg-teal-950/40", text:"text-teal-300", border:"border-teal-600/30",  dot:"bg-teal-400" };
+  if (lower.includes("meet.jit.si"))
+    return { name:"Jitsi",       label:"Unirse con Jitsi",       bg:"bg-slate-800/60",text:"text-slate-300",border:"border-slate-600/30", dot:"bg-slate-400"};
+  return   { name:"Reunión",     label:"Unirse a la reunión",    bg:"bg-orange-950/30",text:"text-orange-300",border:"border-orange-600/30",dot:"bg-orange-400"};
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -183,18 +213,42 @@ export default function BookingVerifyPage({ params }: { params: { bookingId: str
                   </div>
                 </div>
 
-                {/* Location */}
-                {booking.location && (
-                  <div className="flex items-start gap-4 py-5 border-b border-slate-800">
-                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-slate-800">
-                      <MapPin className="h-5 w-5 text-slate-400" />
+                {/* Location — URL or plain text */}
+                {booking.location && (() => {
+                  const locationIsUrl = isUrl(booking.location);
+                  const platform      = locationIsUrl ? detectPlatform(booking.location) : null;
+                  return (
+                    <div className="flex items-start gap-4 py-5 border-b border-slate-800">
+                      <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${platform ? platform.bg + " border " + platform.border : "bg-slate-800"}`}>
+                        {platform
+                          ? <Video className={`h-5 w-5 ${platform.text}`} />
+                          : <MapPin className="h-5 w-5 text-slate-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+                          {platform ? "Videollamada" : "Ubicación"}
+                        </p>
+                        {platform ? (
+                          <>
+                            <p className="text-sm font-semibold text-slate-200 mb-2">{platform.name}</p>
+                            <a
+                              href={booking.location}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all hover:brightness-110 ${platform.bg} ${platform.border} ${platform.text}`}
+                            >
+                              <span className={`h-2 w-2 rounded-full ${platform.dot}`} />
+                              {platform.label}
+                              <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                            </a>
+                          </>
+                        ) : (
+                          <p className="text-sm font-medium text-slate-200">{booking.location}</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500 uppercase tracking-wider mb-0.5">Ubicación</p>
-                      <p className="text-sm font-medium text-slate-200">{booking.location}</p>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Instructions */}
                 {booking.instructions && (
