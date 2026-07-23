@@ -6,7 +6,7 @@ import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth";
 import { schedulingApi, type AvailabilitySlot } from "@/lib/api";
-import { Clock, Loader2, Save, Plus, Trash2, Info } from "lucide-react";
+import { Clock, Loader2, Save, Plus, Trash2, Info, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -90,39 +90,51 @@ function RangeRow({
   onChange: (patch: Partial<TimeRange>) => void;
   onDelete: () => void;
 }) {
-  const inputCls =
-    "rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-sm text-slate-200 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500/30 w-[6.5rem]";
-
   const invalid =
     range.start_time >= range.end_time && range.end_time !== "00:00";
 
+  const baseInput =
+    "w-[6.5rem] rounded-lg border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 transition-colors";
+  const validInput =
+    "border-slate-700 bg-slate-900 text-slate-200 focus:border-orange-500 focus:ring-orange-500/20";
+  const invalidInput =
+    "border-red-500/60 bg-red-950/20 text-red-200 focus:border-red-400 focus:ring-red-500/20";
+
   return (
-    <div className={`flex items-center gap-2 ${invalid ? "opacity-80" : ""}`}>
-      <input
-        type="time"
-        className={`${inputCls} ${invalid ? "border-red-600" : ""}`}
-        value={range.start_time}
-        onChange={(e) => onChange({ start_time: e.target.value })}
-      />
-      <span className="text-slate-600 text-xs select-none">—</span>
-      <input
-        type="time"
-        className={`${inputCls} ${invalid ? "border-red-600" : ""}`}
-        value={range.end_time}
-        onChange={(e) => onChange({ end_time: e.target.value })}
-      />
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <input
+          type="time"
+          className={`${baseInput} ${invalid ? invalidInput : validInput}`}
+          value={range.start_time}
+          onChange={(e) => onChange({ start_time: e.target.value })}
+        />
+        <span className="text-slate-600 text-xs select-none">—</span>
+        <input
+          type="time"
+          className={`${baseInput} ${invalid ? invalidInput : validInput}`}
+          value={range.end_time}
+          onChange={(e) => onChange({ end_time: e.target.value })}
+        />
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={!canDelete}
+          title="Eliminar franja"
+          className="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-red-950/40 hover:text-red-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
       {invalid && (
-        <span className="text-xs text-red-400">fin &lt; inicio</span>
+        <div className="flex items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-950/30 px-3 py-1.5 w-fit">
+          <AlertCircle className="h-3 w-3 text-red-400 flex-shrink-0" />
+          <span className="text-xs font-medium text-red-300">
+            La hora de fin debe ser posterior al inicio
+          </span>
+        </div>
       )}
-      <button
-        type="button"
-        onClick={onDelete}
-        disabled={!canDelete}
-        title="Eliminar franja"
-        className="ml-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-red-950/40 hover:text-red-400 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
     </div>
   );
 }
