@@ -184,8 +184,10 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "core.pagination.StandardPagination",
     "PAGE_SIZE": 25,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    # Always output UTC timestamps with Z suffix — avoids tz-conversion ambiguity on the client
-    "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S.%fZ",
+    # iso-8601 emits the real UTC offset (e.g. -06:00 for Guatemala or Z for UTC).
+    # The old "%Y-%m-%dT%H:%M:%SZ" format was broken: DRF converted to local time
+    # THEN appended a literal Z, causing the browser to misread Guatemala 10:00 as UTC 10:00 (= 04:00 GT).
+    "DATETIME_FORMAT": "iso-8601",
 }
 
 # ─── JWT ──────────────────────────────────────────────────────────────────────
