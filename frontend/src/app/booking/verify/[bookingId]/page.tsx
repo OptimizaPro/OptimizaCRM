@@ -188,10 +188,10 @@ export default function BookingVerifyPage({ params }: { params: { bookingId: str
         </div>
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
 
           {/* ── LEFT: Event card (3 cols) ── */}
-          <div className="lg:col-span-3 space-y-4">
+          <div className="md:col-span-3 space-y-4">
 
             {/* Hero card */}
             <div className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
@@ -306,7 +306,7 @@ export default function BookingVerifyPage({ params }: { params: { bookingId: str
           </div>
 
           {/* ── RIGHT: Participant + action (2 cols) ── */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="md:col-span-2 space-y-4">
 
             {/* Participant card */}
             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">

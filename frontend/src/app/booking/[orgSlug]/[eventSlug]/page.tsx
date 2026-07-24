@@ -230,10 +230,10 @@ export default function EventBookingPage({
       </div>
 
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-5">
 
           {/* Left — event info */}
-          <div className="lg:col-span-2">
+          <div className="md:col-span-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
               <div>
                 <p className="text-xs text-slate-500 font-medium">{orgName}</p>
@@ -299,7 +299,7 @@ export default function EventBookingPage({
           </div>
 
           {/* Right — calendar / slots / form */}
-          <div className="lg:col-span-3">
+          <div className="md:col-span-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
               {/* STEP 1 — Calendar */}
@@ -383,7 +383,7 @@ export default function EventBookingPage({
                           No hay horarios disponibles para esta fecha.
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                           {slots.map((slot, i) => (
                             <button
                               key={i}
