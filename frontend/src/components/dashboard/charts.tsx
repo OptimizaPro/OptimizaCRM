@@ -26,7 +26,13 @@ function RevenueTooltip({ active, payload, label }: { active?: boolean; payload?
 
 export function RevenueChart({ data }: { data: Array<{ period: string; revenue: number }> }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => setMounted(true));
+      return () => cancelAnimationFrame(r2);
+    });
+    return () => cancelAnimationFrame(r1);
+  }, []);
 
   return (
     <Card className="bg-slate-950">
@@ -35,7 +41,7 @@ export function RevenueChart({ data }: { data: Array<{ period: string; revenue: 
       </CardHeader>
       <CardContent>
         {mounted && (
-          <ResponsiveContainer width="100%" height={300} minWidth={0}>
+          <ResponsiveContainer width="100%" height={300} minWidth={0} debounce={50}>
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
               <XAxis dataKey="period" className="text-xs" />
@@ -62,7 +68,13 @@ function FunnelTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export function FunnelChartWidget({ data }: { data: Array<{ stage: string; count: number; value: number }> }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => setMounted(true));
+      return () => cancelAnimationFrame(r2);
+    });
+    return () => cancelAnimationFrame(r1);
+  }, []);
 
   const chartData = data.map((d, i) => ({
     name:  STAGE_LABELS[d.stage] ?? d.stage,
@@ -77,7 +89,7 @@ export function FunnelChartWidget({ data }: { data: Array<{ stage: string; count
       </CardHeader>
       <CardContent>
         {mounted && (
-          <ResponsiveContainer width="100%" height={300} minWidth={0}>
+          <ResponsiveContainer width="100%" height={300} minWidth={0} debounce={50}>
             <BarChart data={chartData} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" allowDecimals={false} />
@@ -98,7 +110,13 @@ export function FunnelChartWidget({ data }: { data: Array<{ stage: string; count
 
 export function PipelineBarChart({ data }: { data: Array<{ stage: string; count: number; value: number }> }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => setMounted(true));
+      return () => cancelAnimationFrame(r2);
+    });
+    return () => cancelAnimationFrame(r1);
+  }, []);
 
   return (
     <Card className="bg-slate-950">
@@ -107,7 +125,7 @@ export function PipelineBarChart({ data }: { data: Array<{ stage: string; count:
       </CardHeader>
       <CardContent>
         {mounted && (
-          <ResponsiveContainer width="100%" height={300} minWidth={0}>
+          <ResponsiveContainer width="100%" height={300} minWidth={0} debounce={50}>
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="stage" className="text-xs" />

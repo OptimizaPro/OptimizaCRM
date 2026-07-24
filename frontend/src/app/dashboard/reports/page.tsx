@@ -228,7 +228,13 @@ export default function ReportsPage() {
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [showTeamGoalModal, setShowTeamGoalModal] = useState(false);
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(() => setMounted(true));
+      return () => cancelAnimationFrame(r2);
+    });
+    return () => cancelAnimationFrame(r1);
+  }, []);
 
   const { data: stages }  = useQuery({
     queryKey: ["stages-summary"],
@@ -373,7 +379,7 @@ export default function ReportsPage() {
           {/* Bar chart */}
           {mounted && (
             <div className="mt-6 h-52">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
                 <BarChart data={(stages?.stages ?? []).filter(s => !["won","lost"].includes(s.stage))} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="stage" tickFormatter={(v) => STAGE_LABELS[v] ?? v} tick={{ fill: "#64748b", fontSize: 11 }} />
@@ -396,7 +402,7 @@ export default function ReportsPage() {
         <Section title="Tasa de cierre mensual (últimos 6 meses)" icon={TrendingUp}>
           {mounted && (
             <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
                 <LineChart data={stages?.close_rates ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />
@@ -432,7 +438,7 @@ export default function ReportsPage() {
         <Section title="Tendencia de ingresos (12 meses)" icon={TrendingUp}>
           {mounted && (
             <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
                 <LineChart data={revenue?.data ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />
