@@ -622,12 +622,12 @@ function LeadPanel({
                     <p className="text-[10px] text-slate-500">Etapa: {PIPELINE_STAGE_LABELS[lead.opportunity_stage] ?? lead.opportunity_stage}</p>
                   )}
                 </div>
-                <a
+                <Link
                   href="/dashboard/pipeline"
                   className="text-[10px] text-orange-400 hover:text-orange-300 shrink-0"
                 >
                   Ver →
-                </a>
+                </Link>
               </div>
             )}
 
@@ -855,11 +855,6 @@ export default function LeadsPage() {
           <Badge variant={statusVariant(getValue() as string)}>
             {STATUS_LABELS[getValue() as string] ?? getValue() as string}
           </Badge>
-          {row.original.opportunity_id && (
-            <span className="text-[10px] text-orange-500/70 flex items-center gap-1">
-              <Target className="h-2.5 w-2.5" /> En Pipeline
-            </span>
-          )}
         </div>
       ),
     },
@@ -1084,11 +1079,6 @@ export default function LeadsPage() {
                     <Badge variant={statusVariant(lead.status)}>
                       {STATUS_LABELS[lead.status] ?? lead.status}
                     </Badge>
-                    {lead.opportunity_id && (
-                      <span className="text-[10px] text-orange-500/70 flex items-center gap-1">
-                        <Target className="h-2.5 w-2.5" /> En Pipeline
-                      </span>
-                    )}
                     {lead.score > 0 && (
                       <span className={`text-xs font-bold ${scoreColor(lead.score)}`}>{lead.score}/100</span>
                     )}
