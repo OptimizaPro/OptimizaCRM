@@ -5,7 +5,10 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 
 import csv
 import io
+import logging
 from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.text import slugify
@@ -76,15 +79,19 @@ class LeadViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         lead = serializer.save(organization=org)
 
         # Auto-create an Opportunity in "new" stage so the lead appears in Pipeline Board
-        Opportunity.objects.create(
-            organization = org,
-            lead         = lead,
-            assigned_to  = lead.assigned_to,
-            title        = lead.full_name or lead.email or "Nuevo lead",
-            stage        = "new",
-            amount       = 0,
-            probability  = 10,
-        )
+        try:
+            name = (lead.full_name or "").strip() or (lead.email or "").strip() or "Nuevo lead"
+            Opportunity.objects.create(
+                organization = org,
+                lead         = lead,
+                assigned_to  = lead.assigned_to,
+                title        = name,
+                stage        = "new",
+                amount       = 0,
+                probability  = 10,
+            )
+        except Exception:
+            logger.exception("Could not auto-create Opportunity for lead %s", lead.id)
 
         # Auto-create a follow-up task for every new lead
         Task.objects.create(
