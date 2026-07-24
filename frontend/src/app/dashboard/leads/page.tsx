@@ -44,6 +44,16 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
+
+const PIPELINE_STAGE_LABELS: Record<string, string> = {
+  new:         "Nuevo",
+  contacted:   "Contactado",
+  qualified:   "Calificado",
+  proposal:    "Propuesta",
+  negotiation: "Negociación",
+  won:         "Ganado",
+  lost:        "Perdido",
+};
 const SOURCE_OPTIONS = Object.entries(SOURCE_LABELS);
 
 const selectCls = "rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 focus:border-orange-500 focus:outline-none";
@@ -742,10 +752,17 @@ export default function LeadsPage() {
     {
       accessorKey: "status",
       header: "Estado",
-      cell: ({ getValue }) => (
-        <Badge variant={statusVariant(getValue() as string)}>
-          {STATUS_LABELS[getValue() as string] ?? getValue() as string}
-        </Badge>
+      cell: ({ getValue, row }) => (
+        <div className="flex flex-col gap-1">
+          <Badge variant={statusVariant(getValue() as string)}>
+            {STATUS_LABELS[getValue() as string] ?? getValue() as string}
+          </Badge>
+          {row.original.opportunity_stage && (
+            <span className="text-[10px] text-slate-500">
+              Pipeline: {PIPELINE_STAGE_LABELS[row.original.opportunity_stage] ?? row.original.opportunity_stage}
+            </span>
+          )}
+        </div>
       ),
     },
     {
@@ -969,6 +986,11 @@ export default function LeadsPage() {
                     <Badge variant={statusVariant(lead.status)}>
                       {STATUS_LABELS[lead.status] ?? lead.status}
                     </Badge>
+                    {lead.opportunity_stage && (
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        Pipeline: {PIPELINE_STAGE_LABELS[lead.opportunity_stage] ?? lead.opportunity_stage}
+                      </span>
+                    )}
                     {lead.score > 0 && (
                       <span className={`text-xs font-bold ${scoreColor(lead.score)}`}>{lead.score}/100</span>
                     )}

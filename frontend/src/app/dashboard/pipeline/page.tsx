@@ -770,6 +770,7 @@ export default function PipelinePage() {
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["pipeline-kanban"] });
     qc.invalidateQueries({ queryKey: ["opportunities-list"] });
+    qc.invalidateQueries({ queryKey: ["leads"] });
   };
 
   // ── Kanban query: all opps grouped by stage ──────────────────────────────

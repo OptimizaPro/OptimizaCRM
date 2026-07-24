@@ -15,9 +15,14 @@ from .models import (
 
 
 class LeadSerializer(serializers.ModelSerializer):
-    assigned_to_detail = UserSerializer(source="assigned_to", read_only=True)
-    full_name          = serializers.ReadOnlyField()
-    engagement_score   = serializers.ReadOnlyField()
+    assigned_to_detail  = UserSerializer(source="assigned_to", read_only=True)
+    full_name           = serializers.ReadOnlyField()
+    engagement_score    = serializers.ReadOnlyField()
+    opportunity_stage   = serializers.SerializerMethodField()
+
+    def get_opportunity_stage(self, obj):
+        opp = obj.opportunities.order_by("-created_at").first()
+        return opp.stage if opp else None
 
     class Meta:
         model  = Lead
@@ -27,6 +32,7 @@ class LeadSerializer(serializers.ModelSerializer):
             "assigned_to", "assigned_to_detail", "custom_fields",
             "email_opens", "link_clicks", "page_visits", "engagement_score",
             "outbound_consent", "consent_date",
+            "opportunity_stage",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "lead_ref_id", "score", "engagement_score", "created_at", "updated_at"]

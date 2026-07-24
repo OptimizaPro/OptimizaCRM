@@ -210,6 +210,7 @@ export interface Lead {
   engagement_score: number;
   outbound_consent: boolean;
   consent_date: string | null;
+  opportunity_stage: string | null;
   created_at: string;
   updated_at: string;
 }

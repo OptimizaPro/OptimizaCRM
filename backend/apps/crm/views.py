@@ -62,7 +62,7 @@ class LeadFilter(filters.FilterSet):
 
 
 class LeadViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
-    queryset         = Lead.objects.all()
+    queryset         = Lead.objects.prefetch_related("opportunities")
     serializer_class = LeadSerializer
     permission_classes = [IsReadOnlyOrAbove]
     filterset_class  = LeadFilter
