@@ -326,6 +326,7 @@ function LeadPanel({
       await crmApi.convertToOpportunity(auth.token, auth.orgId, lead.id);
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast.success("Lead convertido a oportunidad y añadido al Pipeline");
+      onClose();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error";
       if (msg.includes("ya tiene")) toast.error("Este lead ya tiene una oportunidad vinculada");
@@ -342,6 +343,7 @@ function LeadPanel({
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success(res.created ? "Lead convertido a cliente" : "Cliente actualizado con los datos del lead");
+      onClose();
     } catch (e) {
       toast.error("Error al convertir a cliente");
     } finally {
@@ -630,7 +632,17 @@ function LeadPanel({
             )}
 
             {/* Convert to Customer */}
-            {lead.status !== "converted" ? (
+            {lead.status === "converted" ? (
+              <div className="flex items-center gap-2 rounded-lg border border-green-900/40 bg-green-950/20 px-3 py-2">
+                <UserCheck className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                <p className="text-xs font-medium text-green-400">Convertido a cliente</p>
+              </div>
+            ) : !lead.opportunity_id ? (
+              <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2">
+                <UserCheck className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                <p className="text-xs text-slate-600">Convierte a Oportunidad primero</p>
+              </div>
+            ) : (
               <Button
                 size="sm"
                 variant="outline"
@@ -643,11 +655,6 @@ function LeadPanel({
                   : <UserCheck className="h-3.5 w-3.5" />}
                 Convertir a Cliente
               </Button>
-            ) : (
-              <div className="flex items-center gap-2 rounded-lg border border-green-900/40 bg-green-950/20 px-3 py-2">
-                <UserCheck className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                <p className="text-xs font-medium text-green-400">Convertido a cliente</p>
-              </div>
             )}
           </div>
 
@@ -848,9 +855,9 @@ export default function LeadsPage() {
           <Badge variant={statusVariant(getValue() as string)}>
             {STATUS_LABELS[getValue() as string] ?? getValue() as string}
           </Badge>
-          {row.original.opportunity_stage && (
-            <span className="text-[10px] text-slate-500">
-              Pipeline: {PIPELINE_STAGE_LABELS[row.original.opportunity_stage] ?? row.original.opportunity_stage}
+          {row.original.opportunity_id && (
+            <span className="text-[10px] text-orange-500/70 flex items-center gap-1">
+              <Target className="h-2.5 w-2.5" /> En Pipeline
             </span>
           )}
         </div>
@@ -1077,9 +1084,9 @@ export default function LeadsPage() {
                     <Badge variant={statusVariant(lead.status)}>
                       {STATUS_LABELS[lead.status] ?? lead.status}
                     </Badge>
-                    {lead.opportunity_stage && (
-                      <span className="text-[10px] text-slate-500 font-medium">
-                        Pipeline: {PIPELINE_STAGE_LABELS[lead.opportunity_stage] ?? lead.opportunity_stage}
+                    {lead.opportunity_id && (
+                      <span className="text-[10px] text-orange-500/70 flex items-center gap-1">
+                        <Target className="h-2.5 w-2.5" /> En Pipeline
                       </span>
                     )}
                     {lead.score > 0 && (
