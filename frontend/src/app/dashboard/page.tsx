@@ -20,6 +20,17 @@ const PERIODS: { key: DashboardPeriod; label: string; icon: React.ElementType }[
   { key: "year",    label: "Este año",  icon: TrendingUp   },
 ];
 
+const ACTIVITY_TYPE_LABELS: Record<string, string> = {
+  status_change: "Cambio de etapa",
+  note:          "Nota",
+  call:          "Llamada",
+  email:         "Email",
+  meeting:       "Reunión",
+  task:          "Tarea",
+  conversion:    "Conversión",
+  assignment:    "Asignación",
+};
+
 const COMPARES: { key: DashboardCompare; label: string; short: string }[] = [
   { key: "previous", label: "vs. período anterior",          short: "Per. anterior" },
   { key: "yoy",      label: "vs. mismo período año anterior", short: "Año anterior"  },
@@ -192,7 +203,7 @@ export default function DashboardPage() {
                       <div key={a.id} className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3 last:border-0">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-slate-200 truncate">{a.subject}</p>
-                          <p className="text-xs text-slate-400 truncate">{a.user__email} · {a.activity_type}</p>
+                          <p className="text-xs text-slate-400 truncate">{a.user__email} · {ACTIVITY_TYPE_LABELS[a.activity_type] ?? a.activity_type}</p>
                         </div>
                         <span className="text-xs text-slate-500 flex-shrink-0">{formatDate(a.created_at)}</span>
                       </div>

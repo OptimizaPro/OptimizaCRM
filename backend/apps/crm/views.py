@@ -367,10 +367,14 @@ class OpportunityViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             elif new_stage == "lost":
                 Lead.objects.filter(id=opp.lead_id).update(status="lost", updated_at=timezone.now())
 
+        STAGE_LABELS_ES = {
+            "new": "Nuevo", "contacted": "Contactado", "qualified": "Calificado",
+            "proposal": "Propuesta", "negotiation": "Negociación", "won": "Ganado", "lost": "Perdido",
+        }
         Activity.objects.create(
             organization=opp.organization, user=request.user,
             activity_type="status_change", related_type="opportunity", related_id=opp.id,
-            subject=f"Etapa cambiada a {new_stage}",
+            subject=f"Etapa cambiada a {STAGE_LABELS_ES.get(new_stage, new_stage)}",
         )
         return Response(OpportunitySerializer(opp).data)
 
