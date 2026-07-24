@@ -488,7 +488,7 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start">
 
             {/* ── Calendar grid ───────────────────────────────────────── */}
             <div className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl shadow-black/40 overflow-hidden">
@@ -524,7 +524,7 @@ export default function CalendarPage() {
                         key={i}
                         onClick={() => inMonth && setModalDate(dateKey)}
                         className={`
-                          relative min-h-[60px] sm:min-h-[100px] p-1.5 sm:p-2 transition-colors cursor-pointer group
+                          relative min-h-[60px] sm:min-h-[80px] md:min-h-[90px] lg:min-h-[100px] p-1.5 sm:p-2 transition-colors cursor-pointer group
                           ${!isLastRow ? "border-b border-slate-800/50" : ""}
                           ${!isLastCol ? "border-r border-slate-800/50" : ""}
                           ${isToday
@@ -632,7 +632,7 @@ export default function CalendarPage() {
             )}
 
             {/* ── Sidebar ─────────────────────────────────────────────── */}
-            <div className="w-full lg:w-56 lg:flex-shrink-0 space-y-3">
+            <div className="w-full md:w-48 lg:w-56 flex-shrink-0 space-y-3">
 
               {/* This month stats */}
               <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">

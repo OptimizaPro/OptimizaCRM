@@ -284,7 +284,7 @@ export default function ReportsPage() {
         </div>
 
         {/* ── KPI strip ───────────────────────────────────────────────── */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {[
             { label: "Valor en pipeline",       value: formatCurrency(totalPipelineValue), sub: `${openDeals} oportunidades abiertas`,     icon: BarChart3 },
             { label: "Previsión ponderada",      value: formatCurrency(weightedForecast),   sub: "Valor × probabilidad por etapa",          icon: TrendingUp },

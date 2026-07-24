@@ -114,7 +114,7 @@ export default function SchedulingPage() {
           </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
                 label: "Tipos de evento activos",
@@ -167,7 +167,7 @@ export default function SchedulingPage() {
           </div>
 
           {/* Quick links to sub-pages */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {subPages.map((page) => (
               <Link
                 key={page.href}
@@ -216,7 +216,7 @@ export default function SchedulingPage() {
             <div className="px-5 pb-4">
               {orgSlug ? (
                 <>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900/80 px-3 py-2.5 min-w-0">
                       <span className="text-slate-600 text-xs select-none flex-shrink-0">URL</span>
                       <span className="text-sm text-slate-300 font-mono truncate">{bookingUrl}</span>

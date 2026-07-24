@@ -350,7 +350,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* ── Main grid ── */}
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+          <div className="grid gap-6 md:grid-cols-[1fr_1.2fr]">
 
             {/* Checklist */}
             <div className="rounded-2xl border border-slate-800 bg-slate-950">

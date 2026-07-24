@@ -174,7 +174,7 @@ export default function DashboardPage() {
               compareLabel={dashboard.compare_label}
             />
 
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               {revenue && <RevenueChart data={revenue.data} />}
               {pipeline && <FunnelChartWidget data={pipeline.funnel} />}
             </div>
@@ -189,12 +189,12 @@ export default function DashboardPage() {
                     <p className="text-sm text-slate-400">Sin actividad reciente</p>
                   ) : (
                     dashboard.recent_activities.map((a) => (
-                      <div key={a.id} className="flex items-center justify-between border-b border-slate-800 pb-3 last:border-0">
-                        <div>
-                          <p className="text-sm font-medium text-slate-200">{a.subject}</p>
-                          <p className="text-xs text-slate-400">{a.user__email} · {a.activity_type}</p>
+                      <div key={a.id} className="flex items-center justify-between gap-3 border-b border-slate-800 pb-3 last:border-0">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-200 truncate">{a.subject}</p>
+                          <p className="text-xs text-slate-400 truncate">{a.user__email} · {a.activity_type}</p>
                         </div>
-                        <span className="text-xs text-slate-500">{formatDate(a.created_at)}</span>
+                        <span className="text-xs text-slate-500 flex-shrink-0">{formatDate(a.created_at)}</span>
                       </div>
                     ))
                   )}
