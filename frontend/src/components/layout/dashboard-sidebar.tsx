@@ -68,9 +68,9 @@ const NAV: NavEntry[] = [
       icon: TrendingUp,
       items: [
         { href: "/dashboard/leads",         label: "Leads",         icon: Users },
-        { href: "/dashboard/customers",     label: "Clientes",      icon: UserCheck },
         { href: "/dashboard/opportunities", label: "Oportunidades", icon: Target },
         { href: "/dashboard/pipeline",      label: "Pipeline",      icon: Kanban },
+        { href: "/dashboard/customers",     label: "Clientes",      icon: UserCheck },
       ],
     },
   },
