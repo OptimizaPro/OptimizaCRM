@@ -75,6 +75,17 @@ class LeadViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         org  = get_current_organization()
         lead = serializer.save(organization=org)
 
+        # Auto-create an Opportunity in "new" stage so the lead appears in Pipeline Board
+        Opportunity.objects.create(
+            organization = org,
+            lead         = lead,
+            assigned_to  = lead.assigned_to,
+            title        = lead.full_name or lead.email or "Nuevo lead",
+            stage        = "new",
+            amount       = 0,
+            probability  = 10,
+        )
+
         # Auto-create a follow-up task for every new lead
         Task.objects.create(
             organization = org,
