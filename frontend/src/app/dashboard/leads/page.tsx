@@ -17,7 +17,7 @@ import {
   Upload, Download, X, Pencil, Trash2, Phone, Mail,
   Building2, Tag, BarChart2, User, Clock, AlertTriangle, Info,
   MousePointerClick, Eye, AtSign, Filter, PhoneCall, ShieldCheck,
-  UserCircle2, Target, UserCheck,
+  UserCircle2, Target,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -256,8 +256,7 @@ function LeadPanel({
   // Local optimistic state for consent (so toggle responds immediately)
   const [consent, setConsent] = useState<boolean>(lead.outbound_consent ?? false);
   const [consentDate, setConsentDate] = useState<string | null>(lead.consent_date ?? null);
-  const [convertingOpp,      setConvertingOpp]      = useState(false);
-  const [convertingCustomer, setConvertingCustomer] = useState(false);
+  const [convertingOpp, setConvertingOpp] = useState(false);
 
   const auth = { token: tokens!.access, orgId: String(organization!.id) };
 
@@ -333,21 +332,6 @@ function LeadPanel({
       else toast.error("Error al convertir a oportunidad");
     } finally {
       setConvertingOpp(false);
-    }
-  }
-
-  async function handleConvertToCustomer() {
-    setConvertingCustomer(true);
-    try {
-      const res = await crmApi.convertToCustomer(auth.token, auth.orgId, lead.id);
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success(res.created ? "Lead convertido a cliente" : "Cliente actualizado con los datos del lead");
-      onClose();
-    } catch (e) {
-      toast.error("Error al convertir a cliente");
-    } finally {
-      setConvertingCustomer(false);
     }
   }
 
@@ -631,31 +615,6 @@ function LeadPanel({
               </div>
             )}
 
-            {/* Convert to Customer */}
-            {lead.status === "converted" ? (
-              <div className="flex items-center gap-2 rounded-lg border border-green-900/40 bg-green-950/20 px-3 py-2">
-                <UserCheck className="h-3.5 w-3.5 text-green-400 shrink-0" />
-                <p className="text-xs font-medium text-green-400">Convertido a cliente</p>
-              </div>
-            ) : !lead.opportunity_id ? (
-              <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2">
-                <UserCheck className="h-3.5 w-3.5 text-slate-600 shrink-0" />
-                <p className="text-xs text-slate-600">Convierte a Oportunidad primero</p>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full gap-2 border-slate-700 text-slate-300 hover:border-green-500 hover:text-green-400"
-                disabled={convertingCustomer}
-                onClick={handleConvertToCustomer}
-              >
-                {convertingCustomer
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  : <UserCheck className="h-3.5 w-3.5" />}
-                Convertir a Cliente
-              </Button>
-            )}
           </div>
 
           {/* Outbound voice AI */}

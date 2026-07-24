@@ -243,6 +243,7 @@ export interface Opportunity {
   description: string;
   lost_reason: string;
   customer_name?: string;
+  lead?: string | null;
   assigned_to: string | null;
   assigned_to_detail: {
     id: string;

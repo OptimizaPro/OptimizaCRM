@@ -19,7 +19,7 @@ import {
   Plus, Search, X, LayoutGrid, List, DollarSign, TrendingUp,
   Trophy, XCircle, Pencil, Trash2, Filter, ChevronLeft, ChevronRight,
   RefreshCw, Loader2, AlertTriangle, Info, GripVertical, ArrowLeft,
-  ArrowRight, Settings,
+  ArrowRight, Settings, UserCheck,
 } from "lucide-react";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
@@ -268,13 +268,15 @@ function OppFormModal({ initial, defaultStage = "new", onClose, onSave, saving, 
 
 // ─── Opp Kanban Card ──────────────────────────────────────────────────────────
 
-function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting }: {
+function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting, onConvertToCustomer, convertingCustomer }: {
   opp: Opportunity;
   slaMap: Record<string, number | null>;
   onEdit: () => void;
   onDelete: () => void;
   onDragStart: (e: React.DragEvent) => void;
   deleting: boolean;
+  onConvertToCustomer?: () => void;
+  convertingCustomer?: boolean;
 }) {
   const amount      = parseFloat(String(opp.amount));
   const closeOver   = opp.stage !== "won" && opp.stage !== "lost" && isOverdue(opp.expected_close_date);
@@ -332,6 +334,19 @@ function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting }:
           )}
         </div>
       </div>
+
+      {opp.stage === "won" && opp.lead && onConvertToCustomer && (
+        <button
+          onClick={e => { e.stopPropagation(); onConvertToCustomer(); }}
+          disabled={convertingCustomer}
+          className="mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-lg border border-green-800/40 bg-green-950/30 px-3 py-1.5 text-[11px] font-semibold text-green-400 hover:bg-green-950/60 disabled:opacity-50 transition-colors"
+        >
+          {convertingCustomer
+            ? <Loader2 className="h-3 w-3 animate-spin" />
+            : <UserCheck className="h-3 w-3" />}
+          Convertir a Cliente
+        </button>
+      )}
     </div>
   );
 }
@@ -766,6 +781,7 @@ export default function PipelinePage() {
   const [formError,          setFormError]    = useState("");
   const [formSaving,         setFormSaving]   = useState(false);
   const [deleting,           setDeleting]     = useState<string | null>(null);
+  const [convertingCust,     setConvertingCust] = useState<string | null>(null);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["pipeline-kanban"] });
@@ -865,6 +881,21 @@ export default function PipelinePage() {
   const handleMoveStage = async (id: string, stage: string) => {
     try { await crmApi.updateOpportunityStage(token, orgId, id, stage); invalidate(); }
     catch (e) { toast.error((e as Error).message); }
+  };
+
+  const handleConvertToCustomer = async (opp: Opportunity) => {
+    if (!opp.lead) { toast.error("Esta oportunidad no tiene un lead vinculado"); return; }
+    setConvertingCust(opp.id);
+    try {
+      const res = await crmApi.convertToCustomer(token, orgId, opp.lead);
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      toast.success(res.created ? "Cliente creado correctamente" : "Cliente actualizado con los datos del lead");
+    } catch {
+      toast.error("Error al convertir a cliente");
+    } finally {
+      setConvertingCust(null);
+    }
   };
 
   const handleEditPipeline = useCallback((pipeline: PipelineTemplate) => {
@@ -1131,6 +1162,8 @@ export default function PipelinePage() {
                                     onDelete={() => handleDelete(opp)}
                                     onDragStart={e => e.dataTransfer.setData("oppId", String(opp.id))}
                                     deleting={deleting === opp.id}
+                                    onConvertToCustomer={() => handleConvertToCustomer(opp)}
+                                    convertingCustomer={convertingCust === opp.id}
                                   />
                                 ))
                             }
@@ -1219,6 +1252,13 @@ export default function PipelinePage() {
                                 </td>
                                 <td className="px-4 py-3.5">
                                   <div className="flex items-center justify-end gap-1">
+                                    {opp.stage === "won" && opp.lead && (
+                                      <button onClick={() => handleConvertToCustomer(opp)} disabled={convertingCust === opp.id}
+                                        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-green-400 hover:bg-green-950/30 hover:text-green-300 disabled:opacity-40 transition-colors">
+                                        {convertingCust === opp.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserCheck className="h-3.5 w-3.5" />}
+                                        <span className="hidden sm:inline">A Cliente</span>
+                                      </button>
+                                    )}
                                     <button onClick={() => { setFormError(""); setEditOpp(opp); }}
                                       className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-orange-400 transition-colors">
                                       <Pencil className="h-3.5 w-3.5" />
