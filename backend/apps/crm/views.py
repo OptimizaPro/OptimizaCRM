@@ -396,7 +396,10 @@ class TaskViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         return super().get_permissions()
 
     def perform_create(self, serializer):
-        serializer.save(organization=get_current_organization(), created_by=self.request.user)
+        org = get_current_organization()
+        # Default assigned_to to the current user if not provided
+        assigned_to = serializer.validated_data.get("assigned_to") or self.request.user
+        serializer.save(organization=org, created_by=self.request.user, assigned_to=assigned_to)
 
     @action(detail=True, methods=["patch"], url_path="complete")
     def complete(self, request, pk=None):
