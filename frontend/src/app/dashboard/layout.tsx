@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { AuthGuard } from "@/components/auth-guard";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { DashboardMainArea } from "@/components/layout/dashboard-main-area";
 import { BodyScrollLock } from "@/components/layout/body-scroll-lock";
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <BodyScrollLock />
       <div className="flex h-screen overflow-hidden bg-slate-700">
         <DashboardSidebar />
-        <div className="flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden">{children}</div>
+        <DashboardMainArea>{children}</DashboardMainArea>
       </div>
       <Toaster
         position="bottom-right"
