@@ -332,12 +332,12 @@ function OppKanbanCard({ opp, slaMap, onSelect, onEdit, onDelete, onDragStart, d
       )}
 
       <div className="flex items-center justify-between gap-2 mb-2.5">
-        <span className="text-sm font-bold text-orange-500">{formatCurrency(amount)}</span>
+        <span className="text-sm font-semibold text-slate-400">{formatCurrency(amount)}</span>
         <div className="flex items-center gap-1.5" title={`Probabilidad: ${opp.probability}%`}>
           <div className="h-1 w-14 rounded-full bg-slate-800">
             <div className="h-1 rounded-full bg-orange-500" style={{ width: `${opp.probability}%` }} />
           </div>
-          <span className="text-[10px] text-slate-500">{opp.probability}%</span>
+          <span className="text-[10px] text-slate-400">{opp.probability}%</span>
         </div>
       </div>
 
@@ -1181,7 +1181,7 @@ export default function PipelinePage() {
                 <div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-100 leading-tight">Pipeline</h1>
                   <p className="mt-0.5 text-sm text-slate-400">{stats.totalCount} oportunidades en total</p>
-                  <p className="mt-1 text-xs text-slate-600 flex items-center gap-1"
+                  <p className="mt-1 text-xs text-slate-400 flex items-center gap-1"
                     title="Las etapas del pipeline reflejan el avance comercial de cada oportunidad">
                     <InfoIcon className="h-3 w-3 shrink-0" />
                     ¿En qué punto del proceso de venta estamos?
@@ -1336,14 +1336,14 @@ export default function PipelinePage() {
                             <p className="text-xs text-slate-500 mb-2 truncate">{opp.customer_name}</p>
                           )}
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-bold text-orange-500">{formatCurrency(amount)}</span>
+                            <span className="text-sm font-semibold text-slate-400">{formatCurrency(amount)}</span>
                             <div className="flex items-center gap-2">
                               <KanbanSLABadge opp={opp} slaMap={slaMap} />
                               <div className="flex items-center gap-1.5">
                                 <div className="h-1 w-12 rounded-full bg-slate-800">
                                   <div className="h-1 rounded-full bg-orange-500" style={{ width: `${opp.probability}%` }} />
                                 </div>
-                                <span className="text-[10px] text-slate-500">{opp.probability}%</span>
+                                <span className="text-[10px] text-slate-400">{opp.probability}%</span>
                               </div>
                             </div>
                           </div>
@@ -1486,14 +1486,14 @@ export default function PipelinePage() {
                                   </span>
                                 </td>
                                 <td className="px-4 py-3.5">
-                                  <span className="text-sm font-bold text-orange-500">{formatCurrency(amount)}</span>
+                                  <span className="text-sm font-semibold text-slate-400">{formatCurrency(amount)}</span>
                                 </td>
                                 <td className="px-4 py-3.5">
                                   <div className="flex items-center gap-1.5">
                                     <div className="h-1 w-12 rounded-full bg-slate-800">
                                       <div className="h-1 rounded-full bg-orange-500" style={{ width: `${opp.probability}%` }} />
                                     </div>
-                                    <span className="text-xs text-slate-500">{opp.probability}%</span>
+                                    <span className="text-xs text-slate-400">{opp.probability}%</span>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3.5">
