@@ -211,6 +211,7 @@ export interface Lead {
   outbound_consent: boolean;
   consent_date: string | null;
   opportunity_stage: string | null;
+  opportunity_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -554,6 +555,12 @@ export const crmApi = {
 
   deleteLead: (token: string, orgId: string, id: string) =>
     api.delete(`/leads/${id}/`, { token, orgId }),
+
+  convertToOpportunity: (token: string, orgId: string, id: string) =>
+    api.post<Opportunity>(`/leads/${id}/convert-to-opportunity/`, {}, { token, orgId }),
+
+  convertToCustomer: (token: string, orgId: string, id: string) =>
+    api.post<Customer & { created: boolean }>(`/leads/${id}/convert-to-customer/`, {}, { token, orgId }),
 
   getCustomers: (token: string, orgId: string, params?: string) =>
     api.get<PaginatedResponse<Customer>>(`/customers/${params ? `?${params}` : ""}`, { token, orgId }),
