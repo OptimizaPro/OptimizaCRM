@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -227,6 +227,8 @@ export default function ReportsPage() {
   const [goalTarget, setGoalTarget]             = useState<TeamMember | null>(null);
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [showTeamGoalModal, setShowTeamGoalModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const { data: stages }  = useQuery({
     queryKey: ["stages-summary"],
@@ -369,48 +371,52 @@ export default function ReportsPage() {
           </div>
 
           {/* Bar chart */}
-          <div className="mt-6 h-52">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <BarChart data={(stages?.stages ?? []).filter(s => !["won","lost"].includes(s.stage))} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="stage" tickFormatter={(v) => STAGE_LABELS[v] ?? v} tick={{ fill: "#64748b", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }}
-                  labelFormatter={(v) => STAGE_LABELS[v as string] ?? v}
-                  formatter={(val: number, name: string) => [formatCurrency(val), name === "value" ? "Valor total" : "Valor ponderado"]}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} formatter={(v) => v === "value" ? "Valor total" : "Valor ponderado"} />
-                <Bar dataKey="value"          fill="#f97316" opacity={0.4} radius={[4,4,0,0]} />
-                <Bar dataKey="weighted_value" fill="#f97316"               radius={[4,4,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {mounted && (
+            <div className="mt-6 h-52">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <BarChart data={(stages?.stages ?? []).filter(s => !["won","lost"].includes(s.stage))} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="stage" tickFormatter={(v) => STAGE_LABELS[v] ?? v} tick={{ fill: "#64748b", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }}
+                    labelFormatter={(v) => STAGE_LABELS[v as string] ?? v}
+                    formatter={(val: number, name: string) => [formatCurrency(val), name === "value" ? "Valor total" : "Valor ponderado"]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} formatter={(v) => v === "value" ? "Valor total" : "Valor ponderado"} />
+                  <Bar dataKey="value"          fill="#f97316" opacity={0.4} radius={[4,4,0,0]} />
+                  <Bar dataKey="weighted_value" fill="#f97316"               radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Section>
 
         {/* ── Close rate trend ────────────────────────────────────────── */}
         <Section title="Tasa de cierre mensual (últimos 6 meses)" icon={TrendingUp}>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <LineChart data={stages?.close_rates ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />
-                <YAxis yAxisId="left"  tick={{ fill: "#64748b", fontSize: 11 }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }}
-                  formatter={(val: number, name: string) => [
-                    name === "close_rate" ? `${val}%` : val,
-                    name === "close_rate" ? "Tasa de cierre" : name === "new_leads" ? "Leads nuevos" : "Tratos ganados",
-                  ]}
-                />
-                <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} formatter={(v) => v === "close_rate" ? "Tasa de cierre %" : v === "new_leads" ? "Leads nuevos" : "Tratos ganados"} />
-                <Bar yAxisId="left" dataKey="new_leads" fill="#1e293b" radius={[2,2,0,0]} />
-                <Line yAxisId="left"  type="monotone" dataKey="deals_won"   stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} />
-                <Line yAxisId="right" type="monotone" dataKey="close_rate"  stroke="#f97316" strokeWidth={2} dot={{ fill: "#f97316" }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {mounted && (
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <LineChart data={stages?.close_rates ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />
+                  <YAxis yAxisId="left"  tick={{ fill: "#64748b", fontSize: 11 }} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }}
+                    formatter={(val: number, name: string) => [
+                      name === "close_rate" ? `${val}%` : val,
+                      name === "close_rate" ? "Tasa de cierre" : name === "new_leads" ? "Leads nuevos" : "Tratos ganados",
+                    ]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "#94a3b8" }} formatter={(v) => v === "close_rate" ? "Tasa de cierre %" : v === "new_leads" ? "Leads nuevos" : "Tratos ganados"} />
+                  <Bar yAxisId="left" dataKey="new_leads" fill="#1e293b" radius={[2,2,0,0]} />
+                  <Line yAxisId="left"  type="monotone" dataKey="deals_won"   stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e" }} />
+                  <Line yAxisId="right" type="monotone" dataKey="close_rate"  stroke="#f97316" strokeWidth={2} dot={{ fill: "#f97316" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(stages?.close_rates ?? []).slice(-3).map((r: CloseRateData) => (
               <div key={r.period} className="rounded-xl border border-slate-800 bg-slate-900 p-3 text-center">
@@ -424,20 +430,22 @@ export default function ReportsPage() {
 
         {/* ── Revenue trend ───────────────────────────────────────────── */}
         <Section title="Tendencia de ingresos (12 meses)" icon={TrendingUp}>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <LineChart data={revenue?.data ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }}
-                  formatter={(val: number) => [formatCurrency(val), "Ingresos"]}
-                />
-                <Line type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={2} dot={{ fill: "#f97316" }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {mounted && (
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <LineChart data={revenue?.data ?? []} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="period" tick={{ fill: "#64748b", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#0f172a", border: "1px solid #1e293b", borderRadius: 8 }}
+                    formatter={(val: number) => [formatCurrency(val), "Ingresos"]}
+                  />
+                  <Line type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={2} dot={{ fill: "#f97316" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </Section>
 
         {/* ── Team performance vs goal ─────────────────────────────────── */}
