@@ -1,5 +1,10 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function OpportunitiesRedirect() {
-  redirect("/dashboard/pipeline");
+  const router = useRouter();
+  useEffect(() => { router.replace("/dashboard/pipeline"); }, [router]);
+  return null;
 }
