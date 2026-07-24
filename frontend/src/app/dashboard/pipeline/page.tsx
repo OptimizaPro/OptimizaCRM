@@ -1402,7 +1402,7 @@ export default function PipelinePage() {
                               </span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-slate-600">{formatCurrency(col?.total_amount ?? 0)}</span>
+                              <span className="text-xs text-slate-400">{formatCurrency(col?.total_amount ?? 0)}</span>
                               <button
                                 onClick={() => { setDefaultStage(stageKey); setFormError(""); setShowCreate(true); }}
                                 className="rounded-lg p-1 text-slate-600 hover:bg-slate-800 hover:text-orange-400 transition-colors">
