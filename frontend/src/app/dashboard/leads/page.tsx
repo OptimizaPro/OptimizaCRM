@@ -17,7 +17,7 @@ import {
   Upload, Download, X, Pencil, Trash2, Phone, Mail,
   Building2, Tag, BarChart2, User, Clock, AlertTriangle, Info,
   MousePointerClick, Eye, AtSign, Filter, PhoneCall, ShieldCheck,
-  UserCircle2,
+  UserCircle2, Target, UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -256,6 +256,8 @@ function LeadPanel({
   // Local optimistic state for consent (so toggle responds immediately)
   const [consent, setConsent] = useState<boolean>(lead.outbound_consent ?? false);
   const [consentDate, setConsentDate] = useState<string | null>(lead.consent_date ?? null);
+  const [convertingOpp,      setConvertingOpp]      = useState(false);
+  const [convertingCustomer, setConvertingCustomer] = useState(false);
 
   const auth = { token: tokens!.access, orgId: String(organization!.id) };
 
@@ -315,6 +317,35 @@ function LeadPanel({
       else toast.error(msg, { duration: 8000 });
     } finally {
       setCalling(false);
+    }
+  }
+
+  async function handleConvertToOpportunity() {
+    setConvertingOpp(true);
+    try {
+      await crmApi.convertToOpportunity(auth.token, auth.orgId, lead.id);
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Lead convertido a oportunidad y añadido al Pipeline");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error";
+      if (msg.includes("ya tiene")) toast.error("Este lead ya tiene una oportunidad vinculada");
+      else toast.error("Error al convertir a oportunidad");
+    } finally {
+      setConvertingOpp(false);
+    }
+  }
+
+  async function handleConvertToCustomer() {
+    setConvertingCustomer(true);
+    try {
+      const res = await crmApi.convertToCustomer(auth.token, auth.orgId, lead.id);
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      toast.success(res.created ? "Lead convertido a cliente" : "Cliente actualizado con los datos del lead");
+    } catch (e) {
+      toast.error("Error al convertir a cliente");
+    } finally {
+      setConvertingCustomer(false);
     }
   }
 
@@ -556,6 +587,66 @@ function LeadPanel({
                 >
                   <X className="h-4 w-4" />
                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Conversión ── */}
+          <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 text-orange-400" /> Acciones de conversión
+            </p>
+
+            {/* Convert to Opportunity */}
+            {!lead.opportunity_id ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-2 border-slate-700 text-slate-300 hover:border-orange-500 hover:text-orange-400"
+                disabled={convertingOpp}
+                onClick={handleConvertToOpportunity}
+              >
+                {convertingOpp
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <Target className="h-3.5 w-3.5" />}
+                Convertir a Oportunidad
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                <Target className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-slate-300">En el Pipeline</p>
+                  {lead.opportunity_stage && (
+                    <p className="text-[10px] text-slate-500">Etapa: {PIPELINE_STAGE_LABELS[lead.opportunity_stage] ?? lead.opportunity_stage}</p>
+                  )}
+                </div>
+                <a
+                  href="/dashboard/pipeline"
+                  className="text-[10px] text-orange-400 hover:text-orange-300 shrink-0"
+                >
+                  Ver →
+                </a>
+              </div>
+            )}
+
+            {/* Convert to Customer */}
+            {lead.status !== "converted" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-2 border-slate-700 text-slate-300 hover:border-green-500 hover:text-green-400"
+                disabled={convertingCustomer}
+                onClick={handleConvertToCustomer}
+              >
+                {convertingCustomer
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <UserCheck className="h-3.5 w-3.5" />}
+                Convertir a Cliente
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-green-900/40 bg-green-950/20 px-3 py-2">
+                <UserCheck className="h-3.5 w-3.5 text-green-400 shrink-0" />
+                <p className="text-xs font-medium text-green-400">Convertido a cliente</p>
               </div>
             )}
           </div>

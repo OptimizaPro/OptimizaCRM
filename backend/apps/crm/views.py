@@ -78,21 +78,6 @@ class LeadViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         org  = get_current_organization()
         lead = serializer.save(organization=org)
 
-        # Auto-create an Opportunity in "new" stage so the lead appears in Pipeline Board
-        try:
-            name = (lead.full_name or "").strip() or (lead.email or "").strip() or "Nuevo lead"
-            Opportunity.objects.create(
-                organization = org,
-                lead         = lead,
-                assigned_to  = lead.assigned_to,
-                title        = name,
-                stage        = "new",
-                amount       = 0,
-                probability  = 10,
-            )
-        except Exception:
-            logger.exception("Could not auto-create Opportunity for lead %s", lead.id)
-
         # Auto-create a follow-up task for every new lead
         Task.objects.create(
             organization = org,
@@ -109,6 +94,43 @@ class LeadViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             related_id   = lead.id,
             due_date     = timezone.now() + timedelta(days=1),
         )
+
+    @action(detail=True, methods=["post"], url_path="convert-to-opportunity")
+    def convert_to_opportunity(self, request, pk=None):
+        lead = self.get_object()
+        org  = get_current_organization()
+        if lead.opportunities.exists():
+            return Response({"detail": "Este lead ya tiene una oportunidad vinculada."}, status=status.HTTP_400_BAD_REQUEST)
+        opp = Opportunity.objects.create(
+            organization = org,
+            lead         = lead,
+            assigned_to  = lead.assigned_to,
+            title        = lead.full_name or lead.email or "Nueva oportunidad",
+            stage        = "new",
+            amount       = 0,
+            probability  = 10,
+        )
+        Lead.objects.filter(id=lead.id).update(status="qualified", updated_at=timezone.now())
+        return Response(OpportunitySerializer(opp).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="convert-to-customer")
+    def convert_to_customer(self, request, pk=None):
+        lead = self.get_object()
+        org  = get_current_organization()
+        name = lead.full_name or lead.email or "Cliente"
+        # Create or get customer (match by email if available)
+        if lead.email:
+            customer, created = Customer.objects.get_or_create(
+                organization=org, email=lead.email,
+                defaults={"name": name, "phone": lead.phone, "company": lead.company, "assigned_to": lead.assigned_to},
+            )
+        else:
+            customer = Customer.objects.create(
+                organization=org, name=name, phone=lead.phone, company=lead.company, assigned_to=lead.assigned_to,
+            )
+            created = True
+        Lead.objects.filter(id=lead.id).update(status="converted", updated_at=timezone.now())
+        return Response({**CustomerSerializer(customer).data, "created": created}, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
     @action(detail=False, methods=["post"])
     def bulk(self, request):
@@ -323,17 +345,6 @@ class OpportunityViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         response["Content-Disposition"] = 'attachment; filename="opportunities.csv"'
         return response
 
-    # Opportunity stage → Lead status mapping
-    _STAGE_TO_LEAD_STATUS = {
-        "new":         "new",
-        "contacted":   "contacted",
-        "qualified":   "qualified",
-        "proposal":    "qualified",
-        "negotiation": "qualified",
-        "won":         "converted",
-        "lost":        "lost",
-    }
-
     @action(detail=True, methods=["patch"], url_path="stage")
     def update_stage(self, request, pk=None):
         opp       = self.get_object()
@@ -349,13 +360,12 @@ class OpportunityViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             opp.probability = 0
         opp.save()
 
-        # Sync linked lead status
+        # Sync lead status for terminal stages only
         if opp.lead_id:
-            lead_status = self._STAGE_TO_LEAD_STATUS.get(new_stage)
-            if lead_status:
-                Lead.objects.filter(id=opp.lead_id).update(
-                    status=lead_status, updated_at=timezone.now()
-                )
+            if new_stage == "won":
+                Lead.objects.filter(id=opp.lead_id).update(status="converted", updated_at=timezone.now())
+            elif new_stage == "lost":
+                Lead.objects.filter(id=opp.lead_id).update(status="lost", updated_at=timezone.now())
 
         Activity.objects.create(
             organization=opp.organization, user=request.user,
