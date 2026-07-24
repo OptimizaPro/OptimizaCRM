@@ -323,6 +323,17 @@ class OpportunityViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         response["Content-Disposition"] = 'attachment; filename="opportunities.csv"'
         return response
 
+    # Opportunity stage → Lead status mapping
+    _STAGE_TO_LEAD_STATUS = {
+        "new":         "new",
+        "contacted":   "contacted",
+        "qualified":   "qualified",
+        "proposal":    "qualified",
+        "negotiation": "qualified",
+        "won":         "converted",
+        "lost":        "lost",
+    }
+
     @action(detail=True, methods=["patch"], url_path="stage")
     def update_stage(self, request, pk=None):
         opp       = self.get_object()
@@ -337,6 +348,15 @@ class OpportunityViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             opp.lost_reason = request.data.get("lost_reason", "")
             opp.probability = 0
         opp.save()
+
+        # Sync linked lead status
+        if opp.lead_id:
+            lead_status = self._STAGE_TO_LEAD_STATUS.get(new_stage)
+            if lead_status:
+                Lead.objects.filter(id=opp.lead_id).update(
+                    status=lead_status, updated_at=timezone.now()
+                )
+
         Activity.objects.create(
             organization=opp.organization, user=request.user,
             activity_type="status_change", related_type="opportunity", related_id=opp.id,
