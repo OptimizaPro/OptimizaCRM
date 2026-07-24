@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -9,17 +9,19 @@ import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/store/auth";
 import {
   crmApi,
+  csvApi,
   type Opportunity,
   type OppStage,
   type PipelineTemplate,
   type PipelineStage,
 } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import {
   Plus, Search, X, LayoutGrid, List, DollarSign, TrendingUp,
   Trophy, XCircle, Pencil, Trash2, Filter, ChevronLeft, ChevronRight,
   RefreshCw, Loader2, AlertTriangle, Info as InfoIcon, GripVertical, ArrowLeft,
-  ArrowRight, Settings, UserCheck,
+  ArrowRight, Settings, UserCheck, Percent, CalendarDays, Download, Clock,
 } from "lucide-react";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
@@ -113,6 +115,25 @@ function KanbanSLABadge({ opp, slaMap }: {
       {sla.light === "red" ? <AlertTriangle className="h-2.5 w-2.5" /> : <InfoIcon className="h-2.5 w-2.5 opacity-70" />}
     </div>
   );
+}
+
+// ─── Stage default probability ────────────────────────────────────────────────
+
+const STAGE_DEFAULT_PROB: Record<string, number> = {
+  new: 10, contacted: 25, qualified: 50,
+  proposal: 70, negotiation: 85, won: 100, lost: 0,
+};
+
+// ─── Relative date ────────────────────────────────────────────────────────────
+
+function formatRelativeDate(iso: string): string {
+  const d = new Date(iso); const now = new Date();
+  const diffH = (now.getTime() - d.getTime()) / (1000 * 60 * 60);
+  if (diffH < 1)  return `hace ${Math.round(diffH * 60)} min`;
+  if (diffH < 24) return `hace ${Math.floor(diffH)}h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7)  return `hace ${diffD}d`;
+  return d.toLocaleDateString("es-GT", { day: "numeric", month: "short", year: diffD > 365 ? "numeric" : undefined });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -268,9 +289,10 @@ function OppFormModal({ initial, defaultStage = "new", onClose, onSave, saving, 
 
 // ─── Opp Kanban Card ──────────────────────────────────────────────────────────
 
-function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting, onConvertToCustomer, convertingCustomer }: {
+function OppKanbanCard({ opp, slaMap, onSelect, onEdit, onDelete, onDragStart, deleting, onConvertToCustomer, convertingCustomer }: {
   opp: Opportunity;
   slaMap: Record<string, number | null>;
+  onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onDragStart: (e: React.DragEvent) => void;
@@ -280,10 +302,14 @@ function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting, o
 }) {
   const amount      = parseFloat(String(opp.amount));
   const closeOver   = opp.stage !== "won" && opp.stage !== "lost" && isOverdue(opp.expected_close_date);
+  const dragged     = useRef(false);
 
   return (
-    <div draggable onDragStart={onDragStart}
-      className={`group cursor-grab rounded-xl border bg-slate-950 p-3.5 shadow-sm transition-all hover:shadow-md hover:border-slate-600 active:cursor-grabbing ${
+    <div draggable
+      onDragStart={e => { dragged.current = true; onDragStart(e); }}
+      onDragEnd={() => { setTimeout(() => { dragged.current = false; }, 50); }}
+      onClick={() => { if (!dragged.current) onSelect(); }}
+      className={`group cursor-pointer rounded-xl border bg-slate-950 p-3.5 shadow-sm transition-all hover:shadow-md hover:border-slate-600 ${
         opp.stage === "lost" ? "border-slate-800 opacity-70" : closeOver ? "border-red-800/40" : "border-slate-800"
       }`}>
       <div className="flex items-start justify-between gap-2 mb-2">
@@ -291,10 +317,10 @@ function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting, o
           {opp.title}
         </p>
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-          <button onClick={onEdit} className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-orange-400">
+          <button onClick={e => { e.stopPropagation(); onEdit(); }} className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-orange-400">
             <Pencil className="h-3.5 w-3.5" />
           </button>
-          <button onClick={onDelete} disabled={deleting}
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} disabled={deleting}
             className="rounded p-1 text-slate-500 hover:bg-red-950/30 hover:text-red-400 disabled:opacity-40">
             {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
           </button>
@@ -337,7 +363,7 @@ function OppKanbanCard({ opp, slaMap, onEdit, onDelete, onDragStart, deleting, o
 
       {opp.stage === "won" && opp.lead && onConvertToCustomer && (
         <button
-          onClick={e => { e.stopPropagation(); onConvertToCustomer(); }}
+          onClick={e => { e.stopPropagation(); onConvertToCustomer?.(); }}
           disabled={convertingCustomer}
           className="mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-lg border border-green-800/40 bg-green-950/30 px-3 py-1.5 text-[11px] font-semibold text-green-400 hover:bg-green-950/60 disabled:opacity-50 transition-colors"
         >
@@ -755,6 +781,226 @@ function ConfigTab({ onEditPipeline }: { onEditPipeline: (p: PipelineTemplate) =
   );
 }
 
+// ─── Opportunity Panel (slide-over) ───────────────────────────────────────────
+
+function OpportunityPanel({ opp, onClose }: { opp: Opportunity; onClose: () => void }) {
+  const { tokens, organization } = useAuthStore();
+  const qc = useQueryClient();
+  const auth = { token: tokens!.access, orgId: String(organization!.id) };
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [form, setForm] = useState({
+    title:               opp.title,
+    stage:               opp.stage as string,
+    amount:              opp.amount,
+    probability:         opp.probability,
+    expected_close_date: opp.expected_close_date ?? "",
+    description:         opp.description ?? "",
+    lost_reason:         opp.lost_reason ?? "",
+  });
+
+  const panelInvalidate = () => {
+    qc.invalidateQueries({ queryKey: ["pipeline-kanban"] });
+    qc.invalidateQueries({ queryKey: ["opportunities-list"] });
+    qc.invalidateQueries({ queryKey: ["leads"] });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await crmApi.updateOpportunity(auth.token, auth.orgId, opp.id, form);
+      panelInvalidate();
+      toast.success("Oportunidad actualizada");
+      setEditing(false);
+      onClose();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await crmApi.deleteOpportunity(auth.token, auth.orgId, opp.id);
+      panelInvalidate();
+      toast.success("Oportunidad eliminada");
+      onClose();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setDeleting(false); }
+  };
+
+  const panelInputCls = "w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-100 placeholder-slate-500 focus:border-orange-500 focus:outline-none";
+  const panelLabelCls = "mb-1 block text-xs font-medium text-slate-500 uppercase tracking-wide";
+  const meta = STAGE_META[opp.stage as OppStage] ?? STAGE_META["new"];
+  const amount = parseFloat(String(opp.amount ?? 0));
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 flex h-full w-full sm:max-w-md flex-col bg-slate-950 border-l border-slate-800 shadow-2xl overflow-y-auto">
+
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-slate-800 px-5 py-4">
+          <div className="flex-1 min-w-0 pr-3">
+            {editing
+              ? <input className={panelInputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              : <h2 className="text-base font-semibold text-slate-100 truncate">{opp.title}</h2>
+            }
+            <p className="mt-0.5 text-xs text-slate-500">{opp.customer_name ?? "Sin cliente vinculado"}</p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!editing ? (
+              <Button size="sm" variant="outline" className="gap-1.5 border-slate-700 text-slate-300 hover:border-orange-500 hover:text-orange-400"
+                onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5" /> Editar
+              </Button>
+            ) : (
+              <>
+                <Button size="sm" variant="outline" className="border-slate-700 text-slate-400" onClick={() => setEditing(false)}>Cancelar</Button>
+                <Button size="sm" className="bg-orange-600 hover:bg-orange-500 text-white" disabled={saving} onClick={handleSave}>
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Guardar"}
+                </Button>
+              </>
+            )}
+            <button onClick={onClose} className="ml-1 text-slate-500 hover:text-slate-300"><X className="h-5 w-5" /></button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 space-y-5 p-5">
+
+          {/* Registro */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1.5 text-xs text-slate-400 cursor-help" title={new Date(opp.created_at).toLocaleString("es-GT")}>
+              <Clock className="h-3.5 w-3.5" /> Registro: <span className="text-slate-200">{formatRelativeDate(opp.created_at)}</span>
+              <InfoIcon className="h-3 w-3 opacity-60" />
+            </span>
+          </div>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-center">
+              <DollarSign className="mx-auto mb-1 h-4 w-4 text-orange-400" />
+              <p className="text-[10px] text-slate-500">Importe</p>
+              <p className="text-sm font-semibold text-slate-100">{formatCurrency(amount)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-center">
+              <Percent className="mx-auto mb-1 h-4 w-4 text-blue-400" />
+              <p className="text-[10px] text-slate-500">Probabilidad</p>
+              <p className="text-sm font-semibold text-slate-100">{opp.probability}%</p>
+            </div>
+            <div className="rounded-lg border border-slate-800 bg-slate-900 p-3 text-center">
+              <CalendarDays className="mx-auto mb-1 h-4 w-4 text-purple-400" />
+              <p className="text-[10px] text-slate-500">Cierre</p>
+              <p className="text-sm font-semibold text-slate-100">{opp.expected_close_date ? formatDate(opp.expected_close_date) : "—"}</p>
+            </div>
+          </div>
+
+          {/* Probability bar (view only) */}
+          {!editing && (
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Probabilidad de cierre</span>
+                <span className="text-xs font-medium text-slate-300">{opp.probability}%</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-slate-800">
+                <div className="h-2 rounded-full bg-orange-500 transition-all" style={{ width: `${opp.probability}%` }} />
+              </div>
+            </div>
+          )}
+
+          {/* Etapa */}
+          <div>
+            <label className={panelLabelCls}>Etapa</label>
+            {editing ? (
+              <select className={`${panelInputCls} h-9`} value={form.stage}
+                onChange={e => setForm(f => ({ ...f, stage: e.target.value, probability: STAGE_DEFAULT_PROB[e.target.value] ?? f.probability }))}>
+                {STAGE_KEYS.map(s => <option key={s} value={s}>{STAGE_META[s].label}</option>)}
+              </select>
+            ) : (
+              <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${meta.color}`}>
+                <span className={`h-2 w-2 rounded-full ${meta.dot}`} />{meta.label}
+              </span>
+            )}
+          </div>
+
+          {/* Edit fields */}
+          {editing && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={panelLabelCls}>Importe ($)</label>
+                <input type="number" className={panelInputCls} value={form.amount as string}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+              </div>
+              <div>
+                <label className={panelLabelCls}>Probabilidad (%)</label>
+                <input type="number" min={0} max={100} className={panelInputCls} value={form.probability}
+                  onChange={e => setForm(f => ({ ...f, probability: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div className="col-span-2">
+                <label className={panelLabelCls}>Fecha de cierre estimada</label>
+                <input type="date" className={panelInputCls} value={form.expected_close_date}
+                  onChange={e => setForm(f => ({ ...f, expected_close_date: e.target.value }))} />
+              </div>
+            </div>
+          )}
+
+          {/* Descripción */}
+          <div>
+            <label className={panelLabelCls}>Descripción</label>
+            {editing ? (
+              <textarea rows={3} className={panelInputCls} value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Notas sobre la oportunidad..." />
+            ) : (
+              <p className="text-sm text-slate-300">{opp.description || <span className="italic text-slate-600">Sin descripción</span>}</p>
+            )}
+          </div>
+
+          {/* Motivo de pérdida */}
+          {(editing || opp.lost_reason) && (
+            <div>
+              <label className={panelLabelCls}>Motivo de pérdida</label>
+              {editing ? (
+                <input className={panelInputCls} value={form.lost_reason}
+                  onChange={e => setForm(f => ({ ...f, lost_reason: e.target.value }))}
+                  placeholder="¿Por qué se perdió esta oportunidad?" />
+              ) : (
+                <p className="text-sm text-slate-300">{opp.lost_reason}</p>
+              )}
+            </div>
+          )}
+
+          {/* Google Drive */}
+          <DriveDocumentsPanel entityType="opportunity" entityId={opp.id} />
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-800 px-5 py-4">
+          {!confirmDelete ? (
+            <button onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-2 text-xs text-red-500 hover:text-red-400 transition-colors">
+              <Trash2 className="h-3.5 w-3.5" /> Eliminar oportunidad
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-400">¿Confirmar eliminación?</span>
+              <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 h-7 text-xs"
+                onClick={() => setConfirmDelete(false)}>No</Button>
+              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white h-7 text-xs"
+                disabled={deleting} onClick={handleDelete}>
+                {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Sí, eliminar"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 type ViewMode = "kanban" | "list";
@@ -778,6 +1024,7 @@ export default function PipelinePage() {
   const [showCreate,         setShowCreate]   = useState(false);
   const [createDefaultStage, setDefaultStage] = useState<OppStage>("new");
   const [editOpp,            setEditOpp]      = useState<Opportunity | null>(null);
+  const [selectedOpp,        setSelectedOpp]  = useState<Opportunity | null>(null);
   const [formError,          setFormError]    = useState("");
   const [formSaving,         setFormSaving]   = useState(false);
   const [deleting,           setDeleting]     = useState<string | null>(null);
@@ -906,7 +1153,7 @@ export default function PipelinePage() {
   if (appView.type === "stage-editor" && tokens && organization) {
     return (
       <>
-        <DashboardHeader title="Pipeline" />
+        <DashboardHeader title="Pipeline de Oportunidades" />
         <div className="flex-1 overflow-y-auto p-6">
           <StageEditor pipeline={appView.pipeline} token={tokens.access} orgId={orgId}
             onBack={() => setAppView({ type: "board" })} />
@@ -918,7 +1165,7 @@ export default function PipelinePage() {
   // ── Main page ────────────────────────────────────────────────────────────
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <DashboardHeader title="Pipeline" />
+      <DashboardHeader title="Pipeline de Oportunidades" />
 
       <div className="flex-1 overflow-y-auto bg-slate-900/30">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-8 py-6 sm:py-8">
@@ -958,6 +1205,11 @@ export default function PipelinePage() {
                   <Button size="sm" variant="outline" onClick={() => invalidate()} disabled={isFetching}
                     className="gap-1.5 border-slate-700 text-slate-400 hover:border-orange-600 hover:text-orange-400">
                     <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+                  </Button>
+                  <Button size="sm" variant="outline"
+                    onClick={() => csvApi.exportOpportunities(token, orgId)}
+                    className="gap-1.5 border-slate-700 text-slate-400 hover:border-orange-600 hover:text-orange-400">
+                    <Download className="h-4 w-4" /><span className="hidden sm:inline">Exportar</span>
                   </Button>
                   <Button size="sm"
                     onClick={() => { setDefaultStage("new"); setFormError(""); setShowCreate(true); }}
@@ -1067,7 +1319,7 @@ export default function PipelinePage() {
                       const closeOver = opp.stage !== "won" && opp.stage !== "lost" && isOverdue(opp.expected_close_date);
                       return (
                         <div key={opp.id}
-                          onClick={() => { setFormError(""); setEditOpp(opp); }}
+                          onClick={() => setSelectedOpp(opp)}
                           className={`rounded-xl border bg-slate-950 p-4 cursor-pointer transition-colors hover:border-slate-600 ${
                             opp.stage === "lost" ? "border-slate-800 opacity-70" : closeOver ? "border-red-800/40" : "border-slate-800"
                           }`}>
@@ -1163,6 +1415,7 @@ export default function PipelinePage() {
                               ? <p className="py-8 text-center text-xs text-slate-700">Sin oportunidades</p>
                               : col.opportunities.map(opp => (
                                   <OppKanbanCard key={opp.id} opp={opp} slaMap={slaMap}
+                                    onSelect={() => setSelectedOpp(opp)}
                                     onEdit={() => { setFormError(""); setEditOpp(opp); }}
                                     onDelete={() => handleDelete(opp)}
                                     onDragStart={e => e.dataTransfer.setData("oppId", String(opp.id))}
@@ -1222,9 +1475,10 @@ export default function PipelinePage() {
                             return (
                               <tr key={opp.id} className="hover:bg-slate-900/40 transition-colors group">
                                 <td className="px-4 py-3.5 max-w-[220px]">
-                                  <p className={`font-medium truncate ${opp.stage === "lost" ? "line-through text-slate-500" : "text-slate-200"}`}>
+                                  <button onClick={() => setSelectedOpp(opp)}
+                                    className={`font-medium truncate text-left hover:text-orange-400 transition-colors ${opp.stage === "lost" ? "line-through text-slate-500" : "text-slate-200"}`}>
                                     {opp.title}
-                                  </p>
+                                  </button>
                                 </td>
                                 <td className="px-4 py-3.5">
                                   <span className={`flex items-center gap-1.5 text-xs font-medium ${meta.color}`}>
@@ -1264,7 +1518,7 @@ export default function PipelinePage() {
                                         <span className="hidden sm:inline">A Cliente</span>
                                       </button>
                                     )}
-                                    <button onClick={() => { setFormError(""); setEditOpp(opp); }}
+                                    <button onClick={() => setSelectedOpp(opp)}
                                       className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-400 hover:bg-slate-800 hover:text-orange-400 transition-colors">
                                       <Pencil className="h-3.5 w-3.5" />
                                       <span className="hidden sm:inline">Editar</span>
@@ -1306,6 +1560,9 @@ export default function PipelinePage() {
       {editOpp && (
         <OppFormModal initial={editOpp} onClose={() => setEditOpp(null)}
           onSave={handleEdit} saving={formSaving} error={formError} />
+      )}
+      {selectedOpp && (
+        <OpportunityPanel opp={selectedOpp} onClose={() => setSelectedOpp(null)} />
       )}
     </div>
   );

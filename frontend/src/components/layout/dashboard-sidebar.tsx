@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, Users, UserCheck, Target, Kanban, CheckSquare,
+  LayoutDashboard, Users, UserCheck, Target, CheckSquare,
   Calendar, BarChart3, Brain, Settings, LogOut, Menu,
   Plug, Inbox, MessageCircle, ChevronDown, MessagesSquare,
   TrendingUp, ListTodo, LineChart, ShieldCheck, FileText,
@@ -67,10 +67,9 @@ const NAV: NavEntry[] = [
       label: "Ventas",
       icon: TrendingUp,
       items: [
-        { href: "/dashboard/leads",         label: "Leads",         icon: Users },
-        { href: "/dashboard/opportunities", label: "Oportunidades", icon: Target },
-        { href: "/dashboard/pipeline",      label: "Pipeline",      icon: Kanban },
-        { href: "/dashboard/customers",     label: "Clientes",      icon: UserCheck },
+        { href: "/dashboard/leads",      label: "Leads",          icon: Users },
+        { href: "/dashboard/pipeline",   label: "Oportunidades",  icon: Target },
+        { href: "/dashboard/customers",  label: "Clientes",       icon: UserCheck },
       ],
     },
   },
