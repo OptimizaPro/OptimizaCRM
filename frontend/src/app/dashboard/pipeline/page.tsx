@@ -18,7 +18,7 @@ import { formatCurrency } from "@/lib/utils";
 import {
   Plus, Search, X, LayoutGrid, List, DollarSign, TrendingUp,
   Trophy, XCircle, Pencil, Trash2, Filter, ChevronLeft, ChevronRight,
-  RefreshCw, Loader2, AlertTriangle, Info, GripVertical, ArrowLeft,
+  RefreshCw, Loader2, AlertTriangle, Info as InfoIcon, GripVertical, ArrowLeft,
   ArrowRight, Settings, UserCheck,
 } from "lucide-react";
 import {
@@ -110,7 +110,7 @@ function KanbanSLABadge({ opp, slaMap }: {
       className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium cursor-help ${cfg.ring} ${cfg.bg} ${cfg.text}`}>
       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${cfg.dot} ${sla.light === "red" ? "animate-pulse" : ""}`} />
       {sla.label}
-      {sla.light === "red" ? <AlertTriangle className="h-2.5 w-2.5" /> : <Info className="h-2.5 w-2.5 opacity-70" />}
+      {sla.light === "red" ? <AlertTriangle className="h-2.5 w-2.5" /> : <InfoIcon className="h-2.5 w-2.5 opacity-70" />}
     </div>
   );
 }
@@ -934,6 +934,11 @@ export default function PipelinePage() {
                 <div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-100 leading-tight">Pipeline</h1>
                   <p className="mt-0.5 text-sm text-slate-400">{stats.totalCount} oportunidades en total</p>
+                  <p className="mt-1 text-xs text-slate-600 flex items-center gap-1"
+                    title="Las etapas del pipeline reflejan el avance comercial de cada oportunidad">
+                    <InfoIcon className="h-3 w-3 shrink-0" />
+                    ¿En qué punto del proceso de venta estamos?
+                  </p>
                 </div>
               </div>
               {activeTab === "board" && (

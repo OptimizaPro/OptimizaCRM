@@ -28,8 +28,17 @@ const STATUS_LABELS: Record<string, string> = {
   new:       "Nuevo",
   contacted: "Contactado",
   qualified: "Calificado",
-  converted: "Convertido",
-  lost:      "Perdido",
+  converted: "En Pipeline",
+  lost:      "Descartado",
+};
+
+// Tooltips explicativos por estado de cualificación
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  new:       "Lead recién captado, pendiente de primer contacto",
+  contacted: "Se ha realizado al menos un contacto con el lead",
+  qualified: "Lead validado como potencial oportunidad — listo para convertir",
+  converted: "Lead convertido a oportunidad activa en el Pipeline",
+  lost:      "Lead descartado: sin potencial o sin interés, no se seguirá persiguiendo",
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -497,10 +506,15 @@ function LeadPanel({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                <Tag className="h-3 w-3" /> Estado
+              <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500"
+                title="Refleja la cualificación del lead: ¿vale la pena perseguir este contacto?">
+                <Tag className="h-3 w-3" /> Estado de cualificación
+                <Info className="h-3 w-3 opacity-60 cursor-help" />
               </label>
               {select("status", STATUS_OPTIONS)}
+              {form.status && (
+                <p className="mt-1 text-[10px] text-slate-600">{STATUS_DESCRIPTIONS[form.status]}</p>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">Fuente</label>
@@ -808,14 +822,22 @@ export default function LeadsPage() {
     },
     {
       accessorKey: "status",
-      header: "Estado",
-      cell: ({ getValue, row }) => (
-        <div className="flex flex-col gap-1">
-          <Badge variant={statusVariant(getValue() as string)}>
-            {STATUS_LABELS[getValue() as string] ?? getValue() as string}
-          </Badge>
-        </div>
+      header: () => (
+        <span className="flex items-center gap-1 cursor-help"
+          title="Estado de cualificación del lead — ¿vale la pena perseguir este contacto?">
+          Estado <Info className="h-3 w-3 text-slate-500 opacity-70" />
+        </span>
       ),
+      cell: ({ getValue }) => {
+        const s = getValue() as string;
+        return (
+          <div title={STATUS_DESCRIPTIONS[s]} className="cursor-help">
+            <Badge variant={statusVariant(s)}>
+              {STATUS_LABELS[s] ?? s}
+            </Badge>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "created_at",
@@ -1065,8 +1087,24 @@ export default function LeadsPage() {
           />
         </div>
 
+        {/* Estado de cualificación — guía rápida */}
+        <div className="mt-4 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1.5">
+            <Info className="h-3.5 w-3.5 text-orange-400" />
+            Estados de cualificación — ¿vale la pena perseguir este contacto?
+          </p>
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-slate-400">
+            {Object.entries(STATUS_DESCRIPTIONS).map(([key, desc]) => (
+              <span key={key} className="flex items-center gap-1.5">
+                <Badge variant={statusVariant(key)} className="text-[10px] py-0">{STATUS_LABELS[key]}</Badge>
+                <span>{desc}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* Legends row */}
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {/* Score legend */}
           <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Criterios del score</p>
