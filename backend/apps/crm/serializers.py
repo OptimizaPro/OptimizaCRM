@@ -84,6 +84,10 @@ class TaskSerializer(serializers.ModelSerializer):
             "related_type", "related_id", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "completed_at", "created_at", "updated_at"]
+        extra_kwargs = {
+            "assigned_to": {"required": False, "allow_null": True},
+            "created_by":  {"required": False, "allow_null": True},
+        }
 
 
 class ActivitySerializer(serializers.ModelSerializer):
