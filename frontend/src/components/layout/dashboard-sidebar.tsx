@@ -168,9 +168,9 @@ export function DashboardSidebar() {
     () => getDefaultOpenGroups(pathname)
   );
 
-  // Auto-close sidebar on mobile when navigating
+  // Auto-close sidebar on mobile/tablet when navigating
   useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 1024) setOpen(false);
+    if (typeof window !== "undefined" && window.innerWidth < 1280) setOpen(false);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGroup = (key: string) =>
@@ -186,20 +186,20 @@ export function DashboardSidebar() {
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile/tablet overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={toggle} />
+        <div className="fixed inset-0 z-40 bg-black/50 xl:hidden" onClick={toggle} />
       )}
 
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-800 bg-black transition-all duration-300",
-          "lg:static lg:translate-x-0",
-          // Mobile: slide in/out
+          "xl:static xl:translate-x-0",
+          // Mobile/tablet: slide in/out
           isOpen ? "translate-x-0" : "-translate-x-full",
           // Desktop: collapsed = w-16, expanded = w-64
-          isCollapsed ? "lg:w-16" : "lg:w-64",
-          // Mobile always full width sidebar
+          isCollapsed ? "xl:w-16" : "xl:w-64",
+          // Mobile/tablet always full width sidebar
           "w-64",
         )}
       >
@@ -226,7 +226,7 @@ export function DashboardSidebar() {
           {/* Desktop collapse toggle — always far right */}
           <button
             onClick={toggleCollapsed}
-            className="hidden lg:flex flex-shrink-0 items-center justify-center h-7 w-7 rounded-md text-slate-500 hover:bg-slate-800 hover:text-slate-200 transition-colors"
+            className="hidden xl:flex flex-shrink-0 items-center justify-center h-7 w-7 rounded-md text-slate-500 hover:bg-slate-800 hover:text-slate-200 transition-colors"
             title={isCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
           >
             {isCollapsed
@@ -473,7 +473,7 @@ export function DashboardHeader({ title }: { title: string }) {
   return (
     <header className="flex h-16 items-center justify-between border-b border-slate-700 bg-slate-800 px-4">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="lg:hidden" onClick={toggle}>
+        <Button variant="ghost" size="icon" className="xl:hidden" onClick={toggle}>
           <Menu className="h-5 w-5" />
         </Button>
         <h1 className="text-base font-semibold truncate sm:text-xl">{title}</h1>

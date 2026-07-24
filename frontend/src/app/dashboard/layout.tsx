@@ -14,7 +14,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <BodyScrollLock />
       <div className="flex h-screen overflow-hidden bg-slate-700">
         <DashboardSidebar />
-        <div className="flex flex-1 min-h-0 flex-col overflow-hidden">{children}</div>
+        <div className="flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden">{children}</div>
       </div>
       <Toaster
         position="bottom-right"
