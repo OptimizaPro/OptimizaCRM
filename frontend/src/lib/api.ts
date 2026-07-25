@@ -1074,6 +1074,13 @@ export const voiceWidgetApi = {
       { token, orgId },
     ),
 
+  syncAssistant: (token: string, orgId: string, agentId?: string) =>
+    api.post<{ ok: boolean; assistant_id: string }>(
+      "/voice-widget/sync-assistant/",
+      agentId ? { agent_id: agentId } : {},
+      { token, orgId },
+    ),
+
   uploadAvatar: async (token: string, orgId: string, file: File) => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
     const form = new FormData();

@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Mic, Copy, Check, Zap, Phone, ToggleLeft, ToggleRight,
   ExternalLink, Maximize2, Rocket, Loader2, Eye, EyeOff, Camera,
-  BookOpen, ArrowRight,
+  BookOpen, ArrowRight, RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -261,6 +261,22 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
     onError:   (e: Error) => setPublishError(e.message || "Error al publicar"),
   });
 
+
+  // Sync assistant prompt to Vapi
+  const syncMutation = useMutation({
+    mutationFn: () => voiceWidgetApi.syncAssistant(auth.token, auth.orgId, agentId),
+    onSuccess: () => {
+      toast.success("Prompt sincronizado con Vapi", {
+        description: "El agente ya tiene el sistema de instrucciones actualizado.",
+        duration: 6000,
+      });
+    },
+    onError: (e: Error) => {
+      toast.error("Error al sincronizar", {
+        description: e.message || "Inténtalo de nuevo.",
+      });
+    },
+  });
 
   // Reset assistant
   const resetMutation = useMutation({
@@ -701,6 +717,21 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
                 ? "Sincronizando…"
                 : widget ? "Guardar cambios" : "Crear asistente"}
             </Button>
+            {widget?.vapi_assistant_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => syncMutation.mutate()}
+                disabled={syncMutation.isPending}
+                className="border-slate-700 text-slate-400 hover:border-orange-700 hover:text-orange-400"
+                title="Empuja el system prompt y la KB actualizada a Vapi sin necesidad de Private Key"
+              >
+                {syncMutation.isPending
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <RefreshCw className="h-3.5 w-3.5" />}
+                {syncMutation.isPending ? "Sincronizando…" : "Sincronizar prompt"}
+              </Button>
+            )}
             {widget?.vapi_assistant_id && (
               <Button
                 variant="outline"
