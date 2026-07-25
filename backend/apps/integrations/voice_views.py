@@ -628,38 +628,46 @@ def voice_tool_qualify(request):
     )
 
     # ── Send booking link email when appointment=True ─────────────────────────
-    if appointment and caller_email:
+    booking_email_sent = False
+    booking_url = ""
+    if appointment:
         try:
             from django.conf import settings as django_settings
-            from .brevo import send_org_email
             booking_url = getattr(django_settings, "BOOKING_URL", "") or (
                 getattr(django_settings, "FRONTEND_URL", "") + "/booking"
             )
-            lead_first = (lead.first_name if lead else "") or caller_name.split()[0] if caller_name else "allí"
-            company_name = (org.name or "OptimizaCRM")
-            subject = f"Tu demo de {company_name} — elige tu horario"
-            body_text = (
-                f"Hola {lead_first},\n\n"
-                f"Gracias por tu interés en {company_name}. "
-                f"Reserva tu demo en el siguiente enlace — elige el día y horario que mejor te acomode:\n\n"
-                f"{booking_url}\n\n"
-                f"La sesión dura 30 minutos y podrás ver la plataforma en acción con un asesor.\n\n"
-                f"Si tienes alguna duda, responde este correo o llámanos.\n\n"
-                f"¡Hasta pronto!\nEl equipo de {company_name}"
-            )
-            body_html = (
-                f"<p>Hola <strong>{lead_first}</strong>,</p>"
-                f"<p>Gracias por tu interés en <strong>{company_name}</strong>. "
-                f"Reserva tu demo eligiendo el día y horario que mejor te acomode:</p>"
-                f'<p style="text-align:center;margin:32px 0">'
-                f'<a href="{booking_url}" style="background:#EA580C;color:#fff;padding:14px 28px;'
-                f'border-radius:8px;text-decoration:none;font-weight:600;font-size:16px">'
-                f"Reservar mi demo &rarr;</a></p>"
-                f"<p>La sesión dura <strong>30 minutos</strong> y podrás ver la plataforma en acción con un asesor.</p>"
-                f"<p>Si tienes alguna duda, responde este correo o llámanos.</p>"
-                f"<p>¡Hasta pronto!<br>El equipo de {company_name}</p>"
-            )
-            send_org_email(org, caller_email, subject, body_text, body_html)
+            if caller_email:
+                from .brevo import send_org_email
+                lead_first = (lead.first_name if lead else "") or (caller_name.split()[0] if caller_name else "")
+                company_name = org.name or "OptimizaCRM"
+                subject = f"Tu demo de {company_name} — elige tu horario"
+                body_text = (
+                    f"Hola {lead_first},\n\n"
+                    f"Gracias por tu interés en {company_name}. "
+                    f"Reserva tu demo en el siguiente enlace — elige el día y horario que mejor te acomode:\n\n"
+                    f"{booking_url}\n\n"
+                    f"La sesión dura 30 minutos y podrás ver la plataforma en acción con un asesor.\n\n"
+                    f"Si tienes alguna duda, responde este correo o llámanos.\n\n"
+                    f"¡Hasta pronto!\nEl equipo de {company_name}"
+                )
+                body_html = (
+                    f"<p>Hola <strong>{lead_first}</strong>,</p>"
+                    f"<p>Gracias por tu interés en <strong>{company_name}</strong>. "
+                    f"Reserva tu demo eligiendo el día y horario que mejor te acomode:</p>"
+                    f'<p style="text-align:center;margin:32px 0">'
+                    f'<a href="{booking_url}" style="background:#EA580C;color:#fff;padding:14px 28px;'
+                    f'border-radius:8px;text-decoration:none;font-weight:600;font-size:16px">'
+                    f"Reservar mi demo &rarr;</a></p>"
+                    f"<p>La sesión dura <strong>30 minutos</strong> y podrás ver la plataforma en acción con un asesor.</p>"
+                    f"<p>Si tienes alguna duda, responde este correo o llámanos.</p>"
+                    f"<p>¡Hasta pronto!<br>El equipo de {company_name}</p>"
+                )
+                # Try Brevo API first, fall back to Django SMTP
+                sent = send_org_email(org, caller_email, subject, body_text, body_html)
+                if not sent:
+                    from django.core.mail import send_mail as django_send_mail
+                    django_send_mail(subject, body_text, None, [caller_email], fail_silently=True)
+                booking_email_sent = True
         except Exception as exc:
             import logging
             logging.getLogger(__name__).warning("Booking email failed: %s", exc)
@@ -667,16 +675,28 @@ def voice_tool_qualify(request):
     client_id_value = (lead.client_id if lead else "") or ""
     lead_name = (lead.first_name if lead else "") or caller_name or ""
 
+    # Build appointment suffix for result_msg
+    if appointment:
+        if booking_email_sent and caller_email:
+            appt_suffix = f" EMAIL DE RESERVA ENVIADO a {caller_email}. Dile al cliente: 'Te he enviado un email con el link para elegir tu horario, revisa tu bandeja de entrada en unos minutos.'"
+        elif booking_url and caller_email:
+            appt_suffix = f" No se pudo enviar el email automáticamente. Dile al cliente el link directamente: '{booking_url}' — léelo letra a letra si es necesario, o dile que nuestro equipo le enviará el link en breve."
+        elif booking_url:
+            appt_suffix = f" El cliente no proporcionó email. Dile el link de reserva directamente: '{booking_url}'"
+        else:
+            appt_suffix = " Informa al cliente que el equipo le contactará para confirmar la fecha y hora de la demo."
+    else:
+        appt_suffix = ""
+
     if is_returning:
-        # Returning lead — agent must skip remaining data collection and killer questions
         result_msg = (
             f"CLIENTE EXISTENTE IDENTIFICADO. "
             f"Nombre registrado: {lead_name}. "
             f"NO repitas preguntas de datos ni preguntas de calificación — ya están registradas. "
             f"Saluda por su nombre y atiende directamente su consulta."
+            f"{appt_suffix}"
         )
     else:
-        # New lead — give client_id so caller can use it in future calls
         if client_id_value:
             result_msg = (
                 f"NUEVO CLIENTE REGISTRADO. "
@@ -684,9 +704,10 @@ def voice_tool_qualify(request):
                 f"Léelo dígito a dígito: \"{' — '.join(client_id_value)}\". "
                 f"Pídele que lo anote para identificarse en futuras llamadas. "
                 f"Continúa con las preguntas de calificación si aún no las has realizado."
+                f"{appt_suffix}"
             )
         else:
-            result_msg = "NUEVO CLIENTE REGISTRADO. Continúa con las preguntas de calificación."
+            result_msg = f"NUEVO CLIENTE REGISTRADO. Continúa con las preguntas de calificación.{appt_suffix}"
 
     r = JsonResponse({"result": result_msg})
     return _cors(r, request)
