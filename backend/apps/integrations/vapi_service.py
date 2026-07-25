@@ -113,12 +113,25 @@ Léelo dígito a dígito:
 """
 
 VOICE_MAP = {
+    # ── Azure Neural (económico, funcional) ───────────────────────────────────
     "es-MX-NuriaNeural":  {"provider": "azure", "voiceId": "es-MX-NuriaNeural"},
     "es-MX-JorgeNeural":  {"provider": "azure", "voiceId": "es-MX-JorgeNeural"},
     "es-MX-DaliaNeural":  {"provider": "azure", "voiceId": "es-MX-DaliaNeural"},
     "es-ES-ElviraNeural": {"provider": "azure", "voiceId": "es-ES-ElviraNeural"},
     "es-GT-MartaNeural":  {"provider": "azure", "voiceId": "es-GT-MartaNeural"},
     "es-GT-AndresNeural": {"provider": "azure", "voiceId": "es-GT-AndresNeural"},
+    # ── Cartesia (natural, baja latencia, ~$0.10/min) ─────────────────────────
+    # Voice IDs: obtener desde https://play.cartesia.ai o Vapi Voice Library
+    "cartesia-spanish-female": {"provider": "cartesia", "voiceId": "f9836c6e-a0bd-460e-9d3c-f7299fa60f94"},  # Maria
+    "cartesia-spanish-male":   {"provider": "cartesia", "voiceId": "5c5ad5e7-1020-476b-8b91-fdcbe9cc313c"},  # Pedro
+    # ── PlayHT (natural, expresivo, ~$0.10/min) ───────────────────────────────
+    # Voice IDs: obtener desde https://play.ht/studio o Vapi Voice Library
+    "playht-spanish-female": {"provider": "playht", "voiceId": "es-ES-AbrilNeural"},
+    "playht-spanish-male":   {"provider": "playht", "voiceId": "es-ES-AlvaroNeural"},
+    # ── ElevenLabs (más natural, expresivo, ~$0.30/min) ──────────────────────
+    # Voice IDs: obtener desde https://elevenlabs.io/voice-library
+    "elevenlabs-valentina": {"provider": "11labs", "voiceId": "z9fAnlkpzviPz146aGWa"},  # Valentina (es-LA)
+    "elevenlabs-sofia":     {"provider": "11labs", "voiceId": "XrExE9yKIg1WjnnlVkGX"},  # Sofia
 }
 
 
@@ -319,7 +332,8 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
         "silenceTimeoutSeconds":      30,
         "maxDurationSeconds":         600,
         "backgroundSound":            "off",
-        "backchannelingEnabled":      False,
+        "backchannelingEnabled":      True,
+        "fillerInjectionEnabled":     True,
         "backgroundDenoisingEnabled": True,
         # OptimizaCRM does post-call enrichment via its own LLM (tasks.py).
         # Disable Vapi's structured data plan to avoid schema validation errors.
