@@ -158,7 +158,7 @@
       '.send-btn svg{width:16px;height:16px;fill:#fff;transform:translateX(1px)}',
 
       // Powered by
-      '.powered{flex-shrink:0;text-align:center;padding:6px 0 10px;font-size:10px;color:#475569;background:#0f172a;letter-spacing:.02em}',
+      '.powered{flex-shrink:0;text-align:center;padding:6px 0 10px;font-size:10px;color:#e2e8f0;background:#0f172a;letter-spacing:.02em}',
       '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
       '.powered a:hover{color:#f97316}',
     ].join('');

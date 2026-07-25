@@ -69,7 +69,7 @@
       '.reason-btn{border:1px solid #334155;background:rgba(15,23,42,.6);border-radius:20px;padding:5px 10px;font-size:11px;color:#94a3b8;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap}',
       '.reason-btn:hover{border-color:#64748b;color:#e2e8f0}',
       '.reason-btn.active{border-color:' + color + ';background:rgba(234,88,12,.12);color:' + color + '}',
-      '.powered{text-align:center;font-size:10px;color:#475569;padding:6px 0 10px;letter-spacing:.02em}',
+      '.powered{text-align:center;font-size:10px;color:#e2e8f0;padding:6px 0 10px;letter-spacing:.02em}',
       '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
       '.powered a:hover{color:#f97316}',
     ].join('');

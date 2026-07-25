@@ -133,8 +133,8 @@
       '.ch-icon svg{width:20px;height:20px;fill:#fff}',
       '.ch-text{flex:1}',
       '.ch-label{font-size:13px;font-weight:600;color:#f1f5f9}',
-      '.ch-sub{font-size:11px;color:#64748b;margin-top:1px}',
-      '.ch-arrow{color:#475569;font-size:14px;line-height:1}',
+      '.ch-sub{font-size:11px;color:#94a3b8;margin-top:1px}',
+      '.ch-arrow{color:#94a3b8;font-size:14px;line-height:1}',
 
       // Panel (form or voice)
       '.panel{position:absolute;bottom:72px;right:0;width:340px;background:#1e293b;border-radius:16px;box-shadow:0 8px 36px rgba(0,0,0,.45);overflow:hidden;opacity:0;transform:translateY(14px) scale(.97);transition:opacity .2s,transform .2s;pointer-events:none}',
@@ -166,7 +166,7 @@
       '.r-btn.active{border-color:'+color+';background:rgba(234,88,12,.12);color:'+color+'}',
 
       // Powered by
-      '.powered{text-align:center;font-size:10px;color:#475569;padding:6px 0 10px;letter-spacing:.02em}',
+      '.powered{text-align:center;font-size:10px;color:#e2e8f0;padding:6px 0 10px;letter-spacing:.02em}',
       '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
       '.powered a:hover{color:#f97316}',
 
