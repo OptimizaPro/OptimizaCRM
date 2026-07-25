@@ -315,13 +315,6 @@
 
     // ── Form panel ───────────────────────────────────────────────────────────
     function renderForm(ch) {
-      var reasons = (ch.contact_reasons || []).filter(function(r){ return r.trim(); });
-      var reasonsHtml = reasons.length
-        ? '<div class="reasons" id="f-reasons">' +
-            reasons.map(function(r){ return '<button type="button" class="r-btn" data-r="'+esc(r)+'">'+esc(r)+'</button>'; }).join('') +
-          '</div>'
-        : '';
-
       var inner = panel.querySelector('#p-inner');
       inner.innerHTML =
         '<div class="p-head" style="background:linear-gradient(135deg,'+color+' 0%,'+darken(color)+' 100%)">' +
@@ -335,7 +328,6 @@
             '<input id="f-email"   type="email" placeholder="Email *" />' +
             '<input id="f-phone"   type="tel"   placeholder="Teléfono (opcional)" />' +
             '<input id="f-company"             placeholder="Empresa (opcional)" />' +
-            reasonsHtml +
             '<textarea id="f-msg" placeholder="Mensaje (opcional)"></textarea>' +
             '<div id="f-err" class="err" style="display:none"></div>' +
             '<button class="btn btn-send" id="f-send">' + esc(ch.button_text || 'Enviar mensaje') + '</button>' +
@@ -346,19 +338,7 @@
 
       inner.querySelector('#f-close').addEventListener('click', closeAll);
 
-      // Reason pills
       var selReason = '';
-      var reasonsEl = inner.querySelector('#f-reasons');
-      if (reasonsEl) {
-        reasonsEl.addEventListener('click', function(e) {
-          var btn = e.target.closest('.r-btn');
-          if (!btn) return;
-          var already = btn.classList.contains('active');
-          reasonsEl.querySelectorAll('.r-btn').forEach(function(b){ b.classList.remove('active'); });
-          if (!already) { btn.classList.add('active'); selReason = btn.getAttribute('data-r') || ''; }
-          else { selReason = ''; }
-        });
-      }
 
       inner.querySelector('#f-send').addEventListener('click', function() {
         var name    = inner.querySelector('#f-name').value.trim();
