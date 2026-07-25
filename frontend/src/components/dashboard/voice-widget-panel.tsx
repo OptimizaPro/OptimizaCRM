@@ -21,7 +21,14 @@ import Link from "next/link";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const VOICE_OPTIONS = [
+const VOICE_PROVIDER_OPTIONS = [
+  { value: "azure",    label: "Azure Neural (incluido)" },
+  { value: "cartesia", label: "Cartesia (~$0.10/min)" },
+  { value: "11labs",   label: "ElevenLabs (~$0.30/min)" },
+  { value: "openai",   label: "OpenAI TTS (~$0.06/min)" },
+];
+
+const AZURE_VOICE_OPTIONS = [
   // ── México ────────────────────────────────────────────────────────────────
   { value: "es-MX-NuriaNeural",    label: "Nuria — Femenina · México" },
   { value: "es-MX-DaliaNeural",    label: "Dalia — Femenina · México" },
@@ -539,17 +546,52 @@ export function VoiceWidgetPanel({ agentId }: { agentId?: string } = {}) {
               />
             </div>
             <div>
-              <label className={labelCls + " mb-1 block"}>Voz</label>
+              <label className={labelCls + " mb-1 block"}>Proveedor de voz</label>
               <select
                 className={inputCls}
-                value={merged.config.voice ?? "Nuria"}
-                onChange={(e) => patchCfg("voice", e.target.value)}
+                value={merged.config.voice_provider ?? "azure"}
+                onChange={(e) => patchCfg("voice_provider", e.target.value)}
               >
-                {VOICE_OPTIONS.map((v) => (
-                  <option key={v.value} value={v.value}>{v.label}</option>
+                {VOICE_PROVIDER_OPTIONS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
               </select>
             </div>
+            {(merged.config.voice_provider ?? "azure") === "azure" ? (
+              <div>
+                <label className={labelCls + " mb-1 block"}>Voz</label>
+                <select
+                  className={inputCls}
+                  value={merged.config.voice ?? "es-MX-NuriaNeural"}
+                  onChange={(e) => patchCfg("voice", e.target.value)}
+                >
+                  {AZURE_VOICE_OPTIONS.map((v) => (
+                    <option key={v.value} value={v.value}>{v.label}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className={labelCls + " mb-1 block"}>Voice ID</label>
+                <Input
+                  className={inputCls}
+                  value={merged.config.voice ?? ""}
+                  onChange={(e) => patchCfg("voice", e.target.value)}
+                  placeholder="Pega aquí el Voice ID del proveedor"
+                />
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {(merged.config.voice_provider ?? "") === "cartesia" && (
+                    <>Obtén el ID en <a href="https://play.cartesia.ai" target="_blank" rel="noopener" className="text-orange-400 hover:underline">play.cartesia.ai</a> o en la Vapi Voice Library</>
+                  )}
+                  {(merged.config.voice_provider ?? "") === "11labs" && (
+                    <>Obtén el ID en <a href="https://elevenlabs.io/voice-library" target="_blank" rel="noopener" className="text-orange-400 hover:underline">elevenlabs.io/voice-library</a></>
+                  )}
+                  {(merged.config.voice_provider ?? "") === "openai" && (
+                    <>Valores: alloy · echo · fable · onyx · nova · shimmer</>
+                  )}
+                </p>
+              </div>
+            )}
             <div className="sm:col-span-2">
               <label className={labelCls + " mb-1 block"}>Modelo LLM</label>
               <select

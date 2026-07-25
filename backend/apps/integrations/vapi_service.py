@@ -295,12 +295,18 @@ def create_or_update_assistant(widget, kb, api_key: str) -> str:
     Creates or updates a Vapi assistant for the given widget + knowledge base.
     Returns the assistant ID (string).
     """
-    cfg          = widget.config or {}
-    voice_key    = cfg.get("voice", "es-MX-NuriaNeural")
-    voice_config = VOICE_MAP.get(voice_key, {"provider": "azure", "voiceId": "es-MX-NuriaNeural"})
+    cfg           = widget.config or {}
+    voice_id      = cfg.get("voice", "es-MX-NuriaNeural")
+    voice_provider = cfg.get("voice_provider", "azure")
+
+    if voice_provider == "azure":
+        # For Azure use VOICE_MAP for known voices, fall back to raw voiceId
+        voice_config = VOICE_MAP.get(voice_id, {"provider": "azure", "voiceId": voice_id})
+    else:
+        # For Cartesia, ElevenLabs, OpenAI, etc. — use provider + raw voice_id directly
+        voice_config = {"provider": voice_provider, "voiceId": voice_id}
 
     # Vapi requires fallbackPlan.voices[0].voiceId when a voice is specified.
-    # Use a different Azure voice as fallback to avoid same-voice loops.
     fallback_voice_id = (
         "es-MX-DaliaNeural"
         if voice_config.get("voiceId") != "es-MX-DaliaNeural"
