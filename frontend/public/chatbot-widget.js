@@ -158,7 +158,7 @@
       '.send-btn svg{width:16px;height:16px;fill:#fff;transform:translateX(1px)}',
 
       // Powered by
-      '.powered{flex-shrink:0;text-align:center;padding:6px 0 10px;font-size:10px;color:#e2e8f0;background:#0f172a;letter-spacing:.02em}',
+      '.powered{flex-shrink:0;text-align:center;padding:6px 0 10px;font-size:10px;color:#cbd5e1;background:#0f172a;letter-spacing:.02em}',
       '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
       '.powered a:hover{color:#f97316}',
     ].join('');
@@ -209,7 +209,7 @@
     // Powered by
     var pw = document.createElement('div');
     pw.className = 'powered';
-    pw.innerHTML = 'Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
+    pw.innerHTML = 'Impulsado por <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
     panel.appendChild(pw);
 
     wrap.appendChild(panel);

@@ -69,7 +69,7 @@
       '.reason-btn{border:1px solid #334155;background:rgba(15,23,42,.6);border-radius:20px;padding:5px 10px;font-size:11px;color:#94a3b8;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap}',
       '.reason-btn:hover{border-color:#64748b;color:#e2e8f0}',
       '.reason-btn.active{border-color:' + color + ';background:rgba(234,88,12,.12);color:' + color + '}',
-      '.powered{text-align:center;font-size:10px;color:#e2e8f0;padding:6px 0 10px;letter-spacing:.02em}',
+      '.powered{text-align:center;font-size:10px;color:#cbd5e1;padding:6px 0 10px;letter-spacing:.02em}',
       '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
       '.powered a:hover{color:#f97316}',
     ].join('');
@@ -128,7 +128,7 @@
           '</div>',
           '<div id="ocw-success" class="success" style="display:none">' + escHtml(cfg.success_message || '¡Gracias! Nos pondremos en contacto pronto.') + '</div>',
         '</div>',
-        '<div class="powered">Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>',
+        '<div class="powered">Impulsado por <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>',
       ].join('');
       root.appendChild(panel);
 

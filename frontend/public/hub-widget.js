@@ -133,8 +133,8 @@
       '.ch-icon svg{width:20px;height:20px;fill:#fff}',
       '.ch-text{flex:1}',
       '.ch-label{font-size:13px;font-weight:600;color:#f1f5f9}',
-      '.ch-sub{font-size:11px;color:#94a3b8;margin-top:1px}',
-      '.ch-arrow{color:#94a3b8;font-size:14px;line-height:1}',
+      '.ch-sub{font-size:11px;color:#cbd5e1;margin-top:1px}',
+      '.ch-arrow{color:#cbd5e1;font-size:14px;line-height:1}',
 
       // Panel (form or voice)
       '.panel{position:absolute;bottom:72px;right:0;width:340px;background:#1e293b;border-radius:16px;box-shadow:0 8px 36px rgba(0,0,0,.45);overflow:hidden;opacity:0;transform:translateY(14px) scale(.97);transition:opacity .2s,transform .2s;pointer-events:none}',
@@ -166,7 +166,7 @@
       '.r-btn.active{border-color:'+color+';background:rgba(234,88,12,.12);color:'+color+'}',
 
       // Powered by
-      '.powered{text-align:center;font-size:10px;color:#e2e8f0;padding:6px 0 10px;letter-spacing:.02em}',
+      '.powered{text-align:center;font-size:10px;color:#cbd5e1;padding:6px 0 10px;letter-spacing:.02em}',
       '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
       '.powered a:hover{color:#f97316}',
 
@@ -236,7 +236,7 @@
     // Powered by — shown below channel list
     var pwBranding = document.createElement('div');
     pwBranding.className = 'powered';
-    pwBranding.innerHTML = 'Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
+    pwBranding.innerHTML = 'Impulsado por <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
     chList.appendChild(pwBranding);
 
     wrap.appendChild(chList);
@@ -341,7 +341,7 @@
           '</div>' +
           '<div id="f-ok" class="ok" style="display:none">' + esc(ch.success_message || '¡Gracias!') + '</div>' +
         '</div>' +
-        '<div class="powered">Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>';
+        '<div class="powered">Impulsado por <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>';
 
       inner.querySelector('#f-close').addEventListener('click', closeAll);
 
@@ -446,7 +446,7 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="powered">Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>';
+        '<div class="powered">Impulsado por <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>';
 
       inner.querySelector('#v-close').addEventListener('click', function(){
         if (vapiInstance) { try { vapiInstance.stop(); } catch(e){} vapiInstance = null; }
@@ -659,7 +659,7 @@
       // Powered by footer for chatbot
       var cbPowered = document.createElement('div');
       cbPowered.className = 'powered';
-      cbPowered.innerHTML = 'Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
+      cbPowered.innerHTML = 'Impulsado por <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
 
       // ── Mount into panel ──────────────────────────────────────────────────
       panel.innerHTML = '';
