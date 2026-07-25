@@ -105,7 +105,7 @@ Léelo dígito a dígito:
 2. Si el cliente pide hablar con una persona, usa transferToHuman (si disponible) o escalateToHuman de inmediato.
 3. Si ocurre un error, discúlpate y ofrece contacto alternativo: {whatsapp_number}
 4. Tono: amable, profesional, conciso. Evita respuestas largas.
-5. Al agendar cita, usa bookAppointment — queda pendiente de confirmación por el equipo.
+5. Al agendar cita: si el cliente quiere una demo y tienes su email, invoca qualifyLead con appointment=true — el sistema envía automáticamente el link de reserva a su correo. Confirma al cliente: "Perfecto, te enviaremos el link para elegir tu horario en unos minutos." Solo usa bookAppointment si el cliente da una fecha/hora específica.
 6. Al finalizar, despídete con: {farewell}
 7. IDIOMA: SIEMPRE en español. Si la KB tiene texto en inglés, tradúcelo antes de decirlo.
 8. MONEDA: SIEMPRE di el precio seguido de "dólares" o "USD". NUNCA quetzales, pesos ni otra moneda.
@@ -251,6 +251,7 @@ def _build_tools(widget) -> list:
                     "company":      {"type": "string",  "description": "Empresa o negocio DEL CLIENTE (no el proveedor del servicio)"},
                     "answers":      {"type": "object",  "description": "Respuestas a las preguntas de calificación en formato clave-valor"},
                     "is_qualified": {"type": "boolean", "description": "¿El lead cumple los criterios de calificación?"},
+                    "appointment":  {"type": "boolean", "description": "Pasar true cuando el cliente quiere agendar una demo o reunión. El sistema enviará automáticamente un link de reserva a su email."},
                     "notes":        {"type": "string",  "description": "Observaciones adicionales sobre la conversación"},
                 },
                 "required": ["caller_name", "caller_phone", "answers"],

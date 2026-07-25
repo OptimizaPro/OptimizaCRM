@@ -231,6 +231,7 @@ RECURRENTE_SECRET_KEY     = config("RECURRENTE_SECRET_KEY",     default="")
 RECURRENTE_WEBHOOK_SECRET = config("RECURRENTE_WEBHOOK_SECRET", default="")
 RECURRENTE_ENV            = config("RECURRENTE_ENV",            default="sandbox")
 FRONTEND_URL              = config("FRONTEND_URL",              default="http://localhost:3000")
+BOOKING_URL               = config("BOOKING_URL",               default="")
 
 # ─── Google Drive OAuth ───────────────────────────────────────────────────────
 

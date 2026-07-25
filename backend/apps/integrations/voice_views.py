@@ -577,6 +577,7 @@ def voice_tool_qualify(request):
     company       = args.get("company", "")
     answers       = args.get("answers", {})
     is_qualified  = args.get("is_qualified", True)
+    appointment   = bool(args.get("appointment", False))
     notes         = args.get("notes", "")
 
     # Real PSTN caller number from Vapi — stable dedup key across repeat calls
@@ -625,6 +626,43 @@ def voice_tool_qualify(request):
         notification_type="lead",
         link="/dashboard/leads/",
     )
+
+    # ── Send booking link email when appointment=True ─────────────────────────
+    if appointment and caller_email:
+        try:
+            from django.conf import settings as django_settings
+            from .brevo import send_org_email
+            booking_url = getattr(django_settings, "BOOKING_URL", "") or (
+                getattr(django_settings, "FRONTEND_URL", "") + "/booking"
+            )
+            lead_first = (lead.first_name if lead else "") or caller_name.split()[0] if caller_name else "allí"
+            company_name = (org.name or "OptimizaCRM")
+            subject = f"Tu demo de {company_name} — elige tu horario"
+            body_text = (
+                f"Hola {lead_first},\n\n"
+                f"Gracias por tu interés en {company_name}. "
+                f"Reserva tu demo en el siguiente enlace — elige el día y horario que mejor te acomode:\n\n"
+                f"{booking_url}\n\n"
+                f"La sesión dura 30 minutos y podrás ver la plataforma en acción con un asesor.\n\n"
+                f"Si tienes alguna duda, responde este correo o llámanos.\n\n"
+                f"¡Hasta pronto!\nEl equipo de {company_name}"
+            )
+            body_html = (
+                f"<p>Hola <strong>{lead_first}</strong>,</p>"
+                f"<p>Gracias por tu interés en <strong>{company_name}</strong>. "
+                f"Reserva tu demo eligiendo el día y horario que mejor te acomode:</p>"
+                f'<p style="text-align:center;margin:32px 0">'
+                f'<a href="{booking_url}" style="background:#EA580C;color:#fff;padding:14px 28px;'
+                f'border-radius:8px;text-decoration:none;font-weight:600;font-size:16px">'
+                f"Reservar mi demo &rarr;</a></p>"
+                f"<p>La sesión dura <strong>30 minutos</strong> y podrás ver la plataforma en acción con un asesor.</p>"
+                f"<p>Si tienes alguna duda, responde este correo o llámanos.</p>"
+                f"<p>¡Hasta pronto!<br>El equipo de {company_name}</p>"
+            )
+            send_org_email(org, caller_email, subject, body_text, body_html)
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("Booking email failed: %s", exc)
 
     client_id_value = (lead.client_id if lead else "") or ""
     lead_name = (lead.first_name if lead else "") or caller_name or ""
