@@ -137,7 +137,7 @@
       '.ch-arrow{color:#cbd5e1;font-size:14px;line-height:1}',
 
       // Panel (form or voice)
-      '.panel{position:absolute;bottom:72px;right:0;width:340px;max-height:calc(100vh - 260px);background:#1e293b;border-radius:16px;box-shadow:0 8px 36px rgba(0,0,0,.45);overflow:hidden;display:flex;flex-direction:column;opacity:0;transform:translateY(14px) scale(.97);transition:opacity .2s,transform .2s;pointer-events:none}',
+      '.panel{position:absolute;bottom:72px;right:0;width:340px;max-height:420px;background:#1e293b;border-radius:16px;box-shadow:0 8px 36px rgba(0,0,0,.45);overflow:hidden;display:flex;flex-direction:column;opacity:0;transform:translateY(14px) scale(.97);transition:opacity .2s,transform .2s;pointer-events:none}',
       '.panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}',
       '.p-head{flex-shrink:0;padding:16px 18px 14px;position:relative}',
       '.p-title{font-size:15px;font-weight:700;color:#fff}',
