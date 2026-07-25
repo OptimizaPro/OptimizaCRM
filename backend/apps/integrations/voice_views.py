@@ -91,13 +91,13 @@ def _notify_admins(org, title, message, notification_type="lead", link=""):
 def _get_voice_widget(token):
     from .models import VoiceWidget
     return VoiceWidget.objects.select_related(
-        "organization", "knowledge_base", "knowledge_base_v2",
+        "organization", "knowledge_base",
     ).get(token=token, is_active=True)
 
 
 def _effective_kb(widget):
-    """Return knowledge_base_v2 (new shared KB) if set, else old knowledge_base."""
-    return widget.knowledge_base_v2 or widget.knowledge_base
+    """Return the widget's knowledge_base."""
+    return widget.knowledge_base
 
 
 # ─── 1. Public config endpoint ────────────────────────────────────────────────
@@ -167,9 +167,9 @@ def voice_widget_manage(request):
     if request.method == "GET":
         agent_id = request.GET.get("agent_id")
         if agent_id:
-            widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base", "knowledge_base_v2").first()
+            widget = VoiceWidget.objects.filter(organization=org, id=agent_id).select_related("knowledge_base").first()
         else:
-            widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base", "knowledge_base_v2").first()
+            widget = VoiceWidget.objects.filter(organization=org).select_related("knowledge_base").first()
         if not widget:
             return JsonResponse({"widget": None, "knowledge_base": None})
 
@@ -246,7 +246,6 @@ def voice_widget_manage(request):
             widget.system_prompt = widget_data["system_prompt"]
 
         # Update or create knowledge base
-        # Prefer knowledge_base_v2 (new shared KB); fall back to old VoiceKnowledgeBase
         kb_data = body.get("knowledge_base")
         KB_FIELDS = [
             "company_info", "products_services", "pricing", "faqs",
@@ -254,32 +253,17 @@ def voice_widget_manage(request):
             "qualification_questions", "whatsapp_number",
         ]
         if kb_data is not None:
-            # ── Write to new shared KnowledgeBase ────────────────────────────
-            from apps.kb.models import KnowledgeBase as SharedKB
-            if widget.knowledge_base_v2_id:
-                kb_new = widget.knowledge_base_v2
-            else:
-                kb_new = SharedKB.objects.create(organization=org)
-                widget.knowledge_base_v2 = kb_new
-
-            for field in KB_FIELDS:
-                if field in kb_data:
-                    setattr(kb_new, field, kb_data[field])
-            kb_new.save()
-
-            # ── Keep legacy VoiceKnowledgeBase in sync (for existing callers) ──
+            # ── Write to VoiceKnowledgeBase ───────────────────────────────────
             if widget.knowledge_base:
-                kb_legacy = widget.knowledge_base
+                kb = widget.knowledge_base
             else:
-                kb_legacy = VoiceKnowledgeBase.objects.create(organization=org)
-                widget.knowledge_base = kb_legacy
+                kb = VoiceKnowledgeBase.objects.create(organization=org)
+                widget.knowledge_base = kb
 
             for field in KB_FIELDS:
                 if field in kb_data:
-                    setattr(kb_legacy, field, kb_data[field])
-            kb_legacy.save()
-
-            kb = kb_new
+                    setattr(kb, field, kb_data[field])
+            kb.save()
         else:
             kb = _effective_kb(widget)
 
@@ -839,19 +823,7 @@ def _save_kb_source(org, agent_id, source_type, name, char_count):
             char_count=char_count,
         )
 
-        # Mirror the source to the shared KnowledgeBase (knowledge_base_v2)
-        try:
-            from apps.kb.models import KBSource as SharedKBSource
-            if widget.knowledge_base_v2_id:
-                SharedKBSource.objects.create(
-                    organization=org,
-                    knowledge_base=widget.knowledge_base_v2,
-                    source_type=source_type,
-                    name=name,
-                    char_count=char_count,
-                )
-        except Exception:
-            pass  # best-effort — don't fail the main flow
+        # (knowledge_base_v2 mirror removed — field no longer exists on VoiceWidget)
 
         return {
             "source": {
