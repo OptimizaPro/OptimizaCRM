@@ -158,9 +158,9 @@
       '.send-btn svg{width:16px;height:16px;fill:#fff;transform:translateX(1px)}',
 
       // Powered by
-      '.powered{flex-shrink:0;text-align:center;padding:5px;font-size:10px;color:#1e293b;background:#0f172a;letter-spacing:.02em}',
-      '.powered a{color:#334155;text-decoration:none}',
-      '.powered a:hover{color:#475569}',
+      '.powered{flex-shrink:0;text-align:center;padding:6px 0 10px;font-size:10px;color:#475569;background:#0f172a;letter-spacing:.02em}',
+      '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
+      '.powered a:hover{color:#f97316}',
     ].join('');
     shadow.appendChild(style);
 

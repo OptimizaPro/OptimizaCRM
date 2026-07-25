@@ -165,6 +165,11 @@
       '.r-btn{border:1px solid #334155;background:rgba(15,23,42,.6);border-radius:20px;padding:5px 10px;font-size:11px;color:#94a3b8;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap}',
       '.r-btn.active{border-color:'+color+';background:rgba(234,88,12,.12);color:'+color+'}',
 
+      // Powered by
+      '.powered{text-align:center;font-size:10px;color:#475569;padding:6px 0 10px;letter-spacing:.02em}',
+      '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
+      '.powered a:hover{color:#f97316}',
+
       // Chatbot panel
       '@keyframes cbt{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-5px)}}',
 
@@ -228,6 +233,12 @@
       card.addEventListener('click', function () { openChannel(ch); });
       chList.appendChild(card);
     });
+    // Powered by — shown below channel list
+    var pwBranding = document.createElement('div');
+    pwBranding.className = 'powered';
+    pwBranding.innerHTML = 'Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
+    chList.appendChild(pwBranding);
+
     wrap.appendChild(chList);
 
     // ── Panel ────────────────────────────────────────────────────────────────
@@ -329,7 +340,8 @@
             '<button class="btn btn-send" id="f-send">' + esc(ch.button_text || 'Enviar mensaje') + '</button>' +
           '</div>' +
           '<div id="f-ok" class="ok" style="display:none">' + esc(ch.success_message || '¡Gracias!') + '</div>' +
-        '</div>';
+        '</div>' +
+        '<div class="powered">Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>';
 
       inner.querySelector('#f-close').addEventListener('click', closeAll);
 
@@ -433,7 +445,8 @@
               '<span class="v-btn-label">Finalizar</span>' +
             '</div>' +
           '</div>' +
-        '</div>';
+        '</div>' +
+        '<div class="powered">Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>';
 
       inner.querySelector('#v-close').addEventListener('click', function(){
         if (vapiInstance) { try { vapiInstance.stop(); } catch(e){} vapiInstance = null; }
@@ -643,11 +656,17 @@
       cbFoot.appendChild(inpEl);
       cbFoot.appendChild(sendBtn);
 
+      // Powered by footer for chatbot
+      var cbPowered = document.createElement('div');
+      cbPowered.className = 'powered';
+      cbPowered.innerHTML = 'Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a>';
+
       // ── Mount into panel ──────────────────────────────────────────────────
       panel.innerHTML = '';
       panel.appendChild(cbHead);
       panel.appendChild(msgsEl);
       panel.appendChild(cbFoot);
+      panel.appendChild(cbPowered);
 
       // ── Helpers ───────────────────────────────────────────────────────────
       function scrollBottom() { setTimeout(function(){ msgsEl.scrollTop = msgsEl.scrollHeight; }, 20); }

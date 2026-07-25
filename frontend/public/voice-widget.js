@@ -125,6 +125,9 @@
       '.error-msg{text-align:center;font-size:12px;color:#f87171;margin-bottom:12px;padding:8px;background:rgba(220,38,38,.1);border-radius:8px;border:1px solid rgba(220,38,38,.2)}',
       // Greeting
       '.greeting{font-size:12px;color:#64748b;text-align:center;margin-bottom:14px;font-style:italic}',
+      '.powered{text-align:center;font-size:10px;color:#475569;padding:6px 0 10px;letter-spacing:.02em}',
+      '.powered a{color:#ea580c;text-decoration:none;font-weight:600}',
+      '.powered a:hover{color:#f97316}',
     ].join('');
     shadow.appendChild(style);
 
@@ -154,6 +157,7 @@
         '<div id="vw-status-text" class="status-text">Haz clic en el micrófono para iniciar</div>',
         '<button class="btn-end" id="vw-end-btn" style="display:none">Finalizar llamada</button>',
       '</div>',
+      '<div class="powered">Powered by <a href="https://optimizacrm.com" target="_blank" rel="noopener">OptimizaCRM</a></div>',
     ].join('');
     shadow.appendChild(panel);
 
