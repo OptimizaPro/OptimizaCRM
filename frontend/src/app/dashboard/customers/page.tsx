@@ -90,10 +90,11 @@ function SegmentBadge({ segment, auto, segments }: { segment: string; auto: bool
 
 // ─── Churn Risk Tooltip ───────────────────────────────────────────────────────
 
-function ChurnRiskCell({ risk }: { risk: number }) {
-  const pct = (risk * 100).toFixed(0);
-  const color = risk >= 0.7 ? "text-red-400" : risk >= 0.4 ? "text-yellow-400" : "text-green-400";
-  const level = risk >= 0.7 ? "Alto" : risk >= 0.4 ? "Medio" : "Bajo";
+function ChurnRiskCell({ risk }: { risk: number | null }) {
+  const r = risk ?? 0;
+  const pct = (r * 100).toFixed(0);
+  const color = r >= 0.7 ? "text-red-400" : r >= 0.4 ? "text-yellow-400" : "text-green-400";
+  const level = r >= 0.7 ? "Alto" : r >= 0.4 ? "Medio" : "Bajo";
   const tooltip = `Riesgo de abandono: ${level} (${pct}%)\n\nPredicción de IA basada en actividad reciente,\nfrecuencia de compra y comportamiento histórico.\n\n• Verde  < 40% — cliente estable\n• Amarillo 40-70% — requiere atención\n• Rojo   > 70% — intervención urgente`;
   return (
     <span className={`inline-flex items-center gap-1 font-semibold ${color}`} title={tooltip}>
@@ -257,7 +258,7 @@ function CustomerPanel({
   });
 
   const segmentMutation = useMutation({
-    mutationFn: (segment: CustomerSegment) => crmApi.updateSegment(tokens!.access, organization!.id, customer.id, segment),
+    mutationFn: (segment: string) => crmApi.updateSegment(tokens!.access, organization!.id, customer.id, segment as CustomerSegment),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
   });
 
@@ -336,8 +337,8 @@ function CustomerPanel({
               </div>
               <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
                 <p className="text-xs text-slate-500">Riesgo abandono</p>
-                <p className={`mt-0.5 font-bold ${churnColor(customer.churn_risk)}`}>
-                  {(customer.churn_risk * 100).toFixed(0)}%
+                <p className={`mt-0.5 font-bold ${churnColor(customer.churn_risk ?? 0)}`}>
+                  {((customer.churn_risk ?? 0) * 100).toFixed(0)}%
                 </p>
               </div>
             </div>
@@ -346,13 +347,13 @@ function CustomerPanel({
             <div className="border-b border-slate-800 px-5 py-3">
               <p className="mb-2 text-xs font-medium text-slate-500">Segmento de cliente</p>
               <div className="flex flex-wrap gap-1.5">
-                {(Object.entries(SEGMENT_LABELS) as [CustomerSegment, string][]).map(([seg, label]) => (
-                  <button key={seg} onClick={() => segmentMutation.mutate(seg)}
+                {segments.map((s) => (
+                  <button key={s.key} onClick={() => segmentMutation.mutate(s.key)}
                     disabled={segmentMutation.isPending}
                     className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
-                      customer.segment === seg ? SEGMENT_COLORS[seg] + " ring-1 ring-current" : "border-slate-700 text-slate-500 hover:border-slate-500"
+                      customer.segment === s.key ? segmentColor(s) + " ring-1 ring-current" : "border-slate-700 text-slate-500 hover:border-slate-500"
                     }`}>
-                    {label}
+                    {s.label}
                   </button>
                 ))}
               </div>
