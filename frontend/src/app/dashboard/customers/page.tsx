@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { useAuthStore } from "@/store/auth";
-import { crmApi, aiApi, csvApi, type Customer, type ConsumptionRecord } from "@/lib/api";
+import { crmApi, aiApi, csvApi, organizationApi, type Customer, type ConsumptionRecord } from "@/lib/api";
 import type { CustomerSegment } from "@/lib/api";
 import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import { formatCurrency } from "@/lib/utils";
@@ -19,6 +19,7 @@ import {
   Pencil, Trash2, Mail, Phone, Building2, MapPin, User,
   Clock, AlertTriangle, Info, Search, Filter, Star, Receipt, Trash, HelpCircle,
   ChevronDown, ChevronUp, ShieldCheck, TrendingUp, TrendingDown,
+  Users, Layers, CheckCircle2, RotateCcw,
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -648,10 +649,13 @@ function CustomerPanel({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+type PageTab = "lista" | "segmentacion";
+
 export default function CustomersPage() {
-  const { tokens, organization } = useAuthStore();
+  const { tokens, organization, setOrganization } = useAuthStore();
   const queryClient = useQueryClient();
   const segments = useOrgSegments();
+  const [pageTab, setPageTab]           = useState<PageTab>("lista");
   const [showForm, setShowForm]         = useState(false);
   const [showImport, setShowImport]     = useState(false);
   const [importFile, setImportFile]     = useState<File | null>(null);
@@ -662,6 +666,25 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter]   = useState("");
   const [segmentFilter, setSegmentFilter] = useState("");
   const [churnResults, setChurnResults]   = useState<Record<string, ChurnResult>>({});
+
+  // ── Segment editor state ──────────────────────────────────────────────────
+  const [segmentsForm, setSegmentsForm] = useState<OrgSegment[]>(
+    (organization?.settings?.customer_segments as OrgSegment[]) ?? DEFAULT_SEGMENTS
+  );
+  const [segmentsMsg, setSegmentsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const saveSegmentsMutation = useMutation({
+    mutationFn: (segs: OrgSegment[]) =>
+      organizationApi.update(tokens!.access, organization!.id, {
+        settings: { ...(organization?.settings ?? {}), customer_segments: segs },
+      }),
+    onSuccess: (updated) => {
+      setOrganization({ ...organization!, ...updated });
+      setSegmentsMsg({ type: "ok", text: "Segmentación guardada correctamente." });
+      setTimeout(() => setSegmentsMsg(null), 4000);
+    },
+    onError: (e: Error) => setSegmentsMsg({ type: "err", text: e.message }),
+  });
 
   const hasFilters = !!(search || statusFilter || segmentFilter);
   const clearFilters = () => { setSearch(""); setStatusFilter(""); setSegmentFilter(""); };
@@ -824,11 +847,221 @@ export default function CustomersPage() {
     },
   ];
 
+  // ── Segment color options (shared with settings) ──────────────────────────
+  const SEGMENT_COLOR_OPTIONS = [
+    { value: "slate",  label: "Gris",     dot: "bg-slate-500" },
+    { value: "blue",   label: "Azul",     dot: "bg-blue-500" },
+    { value: "green",  label: "Verde",    dot: "bg-green-500" },
+    { value: "orange", label: "Naranja",  dot: "bg-orange-500" },
+    { value: "yellow", label: "Amarillo", dot: "bg-yellow-400" },
+    { value: "purple", label: "Morado",   dot: "bg-purple-500" },
+    { value: "pink",   label: "Rosa",     dot: "bg-pink-500" },
+    { value: "red",    label: "Rojo",     dot: "bg-red-500" },
+  ];
+
   return (
     <>
       <DashboardHeader title="Clientes" />
+
+      {/* ── Page tabs ── */}
+      <div className="flex border-b border-slate-800 bg-slate-950 px-4 sm:px-6">
+        {([
+          { id: "lista",        label: "Clientes",    icon: <Users className="h-4 w-4" /> },
+          { id: "segmentacion", label: "Segmentación", icon: <Layers className="h-4 w-4" /> },
+        ] as { id: PageTab; label: string; icon: React.ReactNode }[]).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setPageTab(t.id)}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+              pageTab === t.id
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
 
+        {/* ── SEGMENTACIÓN TAB ── */}
+        {pageTab === "segmentacion" && (
+          <div className="mx-auto max-w-2xl space-y-5">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
+              <div className="flex items-center gap-3 border-b border-slate-800 px-6 py-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-950/40 text-orange-400">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-100">Segmentación de clientes</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Define los niveles de tu base de clientes según tu industria
+                  </p>
+                </div>
+              </div>
+
+              <div className="px-6 py-5 space-y-4">
+                {/* Alert */}
+                {segmentsMsg && (
+                  <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm ${
+                    segmentsMsg.type === "ok"
+                      ? "border-green-800/50 bg-green-950/40 text-green-300"
+                      : "border-red-800/50 bg-red-950/40 text-red-300"
+                  }`}>
+                    {segmentsMsg.type === "ok"
+                      ? <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-400" />
+                      : <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />}
+                    {segmentsMsg.text}
+                  </div>
+                )}
+
+                {/* Column headers */}
+                <div className="grid grid-cols-12 gap-2 px-1">
+                  <span className="col-span-3 text-xs text-slate-500">Clave</span>
+                  <span className="col-span-3 text-xs text-slate-500">Etiqueta</span>
+                  <span className="col-span-3 text-xs text-slate-500">Color</span>
+                  <span className="col-span-2 text-xs text-slate-500">LTV mín. (Q)</span>
+                  <span className="col-span-1" />
+                </div>
+
+                {/* Segment rows */}
+                {segmentsForm.map((seg, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+                    {/* Key */}
+                    <div className="col-span-3">
+                      <input
+                        className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        placeholder="ej. vip"
+                        value={seg.key}
+                        onChange={(e) => setSegmentsForm((prev) =>
+                          prev.map((s, i) => i === idx ? { ...s, key: e.target.value.toLowerCase().replace(/\s+/g, "_") } : s)
+                        )}
+                      />
+                    </div>
+                    {/* Label */}
+                    <div className="col-span-3">
+                      <input
+                        className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        placeholder="ej. VIP"
+                        value={seg.label}
+                        onChange={(e) => setSegmentsForm((prev) =>
+                          prev.map((s, i) => i === idx ? { ...s, label: e.target.value } : s)
+                        )}
+                      />
+                    </div>
+                    {/* Color dots */}
+                    <div className="col-span-3">
+                      <div className="flex gap-1.5 flex-wrap">
+                        {SEGMENT_COLOR_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            title={opt.label}
+                            onClick={() => setSegmentsForm((prev) =>
+                              prev.map((s, i) => i === idx ? { ...s, color: opt.value as OrgSegment["color"] } : s)
+                            )}
+                            className={`h-5 w-5 rounded-full transition-all ${opt.dot} ${
+                              seg.color === opt.value
+                                ? "ring-2 ring-white ring-offset-1 ring-offset-slate-900 scale-110"
+                                : "opacity-50 hover:opacity-90"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        {SEGMENT_COLOR_OPTIONS.find(o => o.value === seg.color)?.label ?? seg.color}
+                      </p>
+                    </div>
+                    {/* Min LTV */}
+                    <div className="col-span-2">
+                      <input
+                        type="number"
+                        min={0}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        value={seg.min_ltv}
+                        onChange={(e) => setSegmentsForm((prev) =>
+                          prev.map((s, i) => i === idx ? { ...s, min_ltv: Number(e.target.value) } : s)
+                        )}
+                      />
+                    </div>
+                    {/* Delete */}
+                    <div className="col-span-1 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setSegmentsForm((prev) => prev.filter((_, i) => i !== idx))}
+                        className="rounded p-1.5 text-slate-500 hover:bg-red-950/30 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add row */}
+                <button
+                  type="button"
+                  onClick={() => setSegmentsForm((prev) => [
+                    ...prev,
+                    { key: "", label: "", color: "slate" as OrgSegment["color"], min_ltv: 0 },
+                  ])}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-700 py-2.5 text-xs text-slate-400 hover:border-orange-600/50 hover:text-orange-400 transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Añadir segmento
+                </button>
+
+                {/* Info */}
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  El campo <code className="rounded bg-slate-800 px-1 text-slate-300">LTV mín.</code> es el valor de vida mínimo
+                  para asignar este segmento automáticamente. Los segmentos se evalúan de mayor a menor LTV.
+                </p>
+
+                {/* Actions */}
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setSegmentsForm(DEFAULT_SEGMENTS)}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Restaurar predeterminados
+                  </button>
+                  <Button
+                    className="bg-orange-600 hover:bg-orange-500 text-white"
+                    onClick={() => saveSegmentsMutation.mutate(segmentsForm)}
+                    disabled={saveSegmentsMutation.isPending || segmentsForm.some(s => !s.key || !s.label)}
+                  >
+                    {saveSegmentsMutation.isPending
+                      ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Guardando…</>
+                      : "Guardar segmentación"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
+              <div className="border-b border-slate-800 px-6 py-4">
+                <h3 className="text-sm font-semibold text-slate-100">Vista previa</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Así lucirán los badges en la tabla de clientes</p>
+              </div>
+              <div className="flex flex-wrap gap-2 px-6 py-4">
+                {segmentsForm.filter(s => s.key && s.label).map((s) => (
+                  <SegmentBadge key={s.key} segment={s.key} auto={true} segments={segmentsForm} />
+                ))}
+                {segmentsForm.filter(s => s.key && s.label).length === 0 && (
+                  <p className="text-xs text-slate-600">Añade segmentos para ver la vista previa</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── LISTA TAB ── */}
+        {pageTab === "lista" && (
+        <>
         {/* Toolbar */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-2">
@@ -992,6 +1225,8 @@ export default function CustomersPage() {
             <span><span className="font-medium text-slate-200">Inactivo</span> 48h · <span className="font-medium text-slate-200">Perdido</span> 24h · <span className="font-medium text-slate-200">Activo</span> sin deadline</span>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {selected && (
