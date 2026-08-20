@@ -390,6 +390,7 @@ class AdminUsersView(APIView):
         # Optionally create membership if org_id + role provided
         org_id = request.data.get("org_id")
         role   = request.data.get("role", "sales_executive")
+        org    = None
         if org_id:
             org = Organization.objects.filter(id=org_id).first()
             if org:
@@ -397,6 +398,8 @@ class AdminUsersView(APIView):
                     user=user, organization=org,
                     defaults={"role": role, "is_active": True},
                 )
+
+        _send_verification_email(user, org=org)
 
         return Response(AdminUserSerializer(user).data, status=201)
 

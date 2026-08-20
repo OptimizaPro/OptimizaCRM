@@ -1013,6 +1013,13 @@ export default function LeadsPage() {
                   className="h-10 rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-200">
                   {SOURCE_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
+                <textarea
+                  placeholder="Notas"
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  rows={2}
+                  className="sm:col-span-2 lg:col-span-3 rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 resize-none"
+                />
                 <Button type="submit" className="bg-orange-600 hover:bg-orange-500 text-white" disabled={createMutation.isPending}>
                   {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Crear Lead"}
                 </Button>

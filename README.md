@@ -59,3 +59,7 @@ GROQ_API_KEY=your-groq-key   # opcional en dev, BYOK en prod
 ## Licencia
 
 Copyright (c) 2025 Nelson Alvarez / OptimizaPro. Todos los derechos reservados.
+
+## Brand Color 
+#006837 -> Green
+#f15a24 -> Orange
