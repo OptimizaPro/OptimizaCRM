@@ -11,13 +11,39 @@ import { settingsApi, organizationApi, type MembershipDetail, type LeadFieldSche
 import {
   User, Building2, Users, CreditCard, Trash2, Shield,
   CheckCircle2, Loader2, ExternalLink, Lock, BanknoteX,
-  KeyRound, ChevronRight, Sparkles, Crown, Camera, Plus, ListChecks,
+  KeyRound, ChevronRight, Sparkles, Crown, Camera, Plus, ListChecks, UserCheck,
 } from "lucide-react";
 import { useRef } from "react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { billingApi, type ApiPlan } from "@/lib/api";
 
-type Tab = "perfil" | "organizacion" | "equipo" | "facturacion";
+type Tab = "perfil" | "organizacion" | "clientes" | "equipo" | "facturacion";
+
+// ── Segment types ────────────────────────────────────────────────────────────
+interface OrgSegment {
+  key: string;
+  label: string;
+  color: string;
+  min_ltv: number;
+}
+
+const SEGMENT_COLOR_OPTIONS = [
+  { value: "slate",  label: "Gris",     dot: "bg-slate-500" },
+  { value: "blue",   label: "Azul",     dot: "bg-blue-500" },
+  { value: "green",  label: "Verde",    dot: "bg-green-500" },
+  { value: "orange", label: "Naranja",  dot: "bg-orange-500" },
+  { value: "yellow", label: "Amarillo", dot: "bg-yellow-400" },
+  { value: "purple", label: "Morado",   dot: "bg-purple-500" },
+  { value: "pink",   label: "Rosa",     dot: "bg-pink-500" },
+  { value: "red",    label: "Rojo",     dot: "bg-red-500" },
+];
+
+const DEFAULT_SEGMENTS: OrgSegment[] = [
+  { key: "basic",    label: "Básico",    color: "slate",  min_ltv: 0 },
+  { key: "frequent", label: "Frecuente", color: "blue",   min_ltv: 500 },
+  { key: "vip",      label: "VIP",       color: "orange", min_ltv: 2000 },
+  { key: "premium",  label: "Premium",   color: "yellow", min_ltv: 5000 },
+];
 
 const ROLES: Record<string, string> = {
   org_admin:       "Administrador",
@@ -162,6 +188,12 @@ export default function SettingsPage() {
   );
   const [schemaMsg, setSchemaMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // ── Segmentación state ──
+  const [segmentsForm, setSegmentsForm] = useState<OrgSegment[]>(
+    (organization?.settings?.customer_segments as OrgSegment[]) ?? DEFAULT_SEGMENTS
+  );
+  const [segmentsMsg, setSegmentsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   // ── Equipo state ──
   const [inviteForm, setInviteForm] = useState({ email: "", first_name: "", last_name: "", role: "sales_executive" });
   const [inviteMsg,  setInviteMsg]  = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -230,6 +262,19 @@ export default function SettingsPage() {
     onError: (e: Error) => setOrgMsg({ type: "err", text: e.message }),
   });
 
+  const saveSegmentsMutation = useMutation({
+    mutationFn: (segments: OrgSegment[]) =>
+      organizationApi.update(tokens!.access, organization!.id, {
+        settings: { ...(organization?.settings ?? {}), customer_segments: segments },
+      }),
+    onSuccess: (updated) => {
+      setOrganization({ ...organization!, ...updated });
+      setSegmentsMsg({ type: "ok", text: "Segmentación guardada correctamente." });
+      setTimeout(() => setSegmentsMsg(null), 4000);
+    },
+    onError: (e: Error) => setSegmentsMsg({ type: "err", text: e.message }),
+  });
+
   const saveSchemamutation = useMutation({
     mutationFn: (schema: LeadFieldSchema[]) =>
       organizationApi.update(tokens!.access, organization!.id, {
@@ -284,6 +329,7 @@ export default function SettingsPage() {
   const TABS: { id: Tab; label: string; desc: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
     { id: "perfil",       label: "Perfil",        desc: "Datos personales y contraseña",  icon: <User className="h-4 w-4" /> },
     { id: "organizacion", label: "Organización",  desc: "Nombre, sector y configuración", icon: <Building2 className="h-4 w-4" />, adminOnly: true },
+    { id: "clientes",     label: "Clientes",      desc: "Segmentación personalizada",     icon: <UserCheck className="h-4 w-4" />, adminOnly: true },
     { id: "equipo",       label: "Equipo",         desc: "Miembros y roles",               icon: <Users className="h-4 w-4" />, adminOnly: true },
     { id: "facturacion",  label: "Facturación",   desc: "Plan, pagos y upgrade",           icon: <CreditCard className="h-4 w-4" /> },
   ];
@@ -601,6 +647,138 @@ export default function SettingsPage() {
                     </div>
                   </Section>
                 </>
+              )}
+
+              {/* ── CLIENTES ── */}
+              {tab === "clientes" && isAdmin && (
+                <Section
+                  icon={<UserCheck className="h-4 w-4" />}
+                  title="Segmentación de clientes"
+                  description="Define los segmentos que usará tu organización para clasificar clientes"
+                >
+                  {segmentsMsg && <Alert {...segmentsMsg} />}
+                  <div className="mt-4 space-y-3">
+                    {/* Header labels */}
+                    <div className="grid grid-cols-12 gap-2 px-1">
+                      <span className="col-span-3 text-xs text-slate-500">Clave</span>
+                      <span className="col-span-3 text-xs text-slate-500">Etiqueta</span>
+                      <span className="col-span-3 text-xs text-slate-500">Color</span>
+                      <span className="col-span-2 text-xs text-slate-500">LTV mín. (Q)</span>
+                      <span className="col-span-1" />
+                    </div>
+
+                    {segmentsForm.map((seg, idx) => (
+                      <div key={idx} className="grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+                        {/* Key */}
+                        <div className="col-span-3">
+                          <input
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500 font-mono"
+                            placeholder="ej. vip"
+                            value={seg.key}
+                            onChange={(e) => setSegmentsForm((prev) =>
+                              prev.map((s, i) => i === idx ? { ...s, key: e.target.value.toLowerCase().replace(/\s+/g, "_") } : s)
+                            )}
+                          />
+                        </div>
+                        {/* Label */}
+                        <div className="col-span-3">
+                          <input
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                            placeholder="ej. VIP"
+                            value={seg.label}
+                            onChange={(e) => setSegmentsForm((prev) =>
+                              prev.map((s, i) => i === idx ? { ...s, label: e.target.value } : s)
+                            )}
+                          />
+                        </div>
+                        {/* Color */}
+                        <div className="col-span-3">
+                          <div className="flex gap-1.5 flex-wrap">
+                            {SEGMENT_COLOR_OPTIONS.map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                title={opt.label}
+                                onClick={() => setSegmentsForm((prev) =>
+                                  prev.map((s, i) => i === idx ? { ...s, color: opt.value } : s)
+                                )}
+                                className={`h-5 w-5 rounded-full transition-all ${opt.dot} ${
+                                  seg.color === opt.value
+                                    ? "ring-2 ring-white ring-offset-1 ring-offset-slate-900 scale-110"
+                                    : "opacity-50 hover:opacity-90"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <p className="mt-1 text-[10px] text-slate-500">
+                            {SEGMENT_COLOR_OPTIONS.find(o => o.value === seg.color)?.label ?? seg.color}
+                          </p>
+                        </div>
+                        {/* Min LTV */}
+                        <div className="col-span-2">
+                          <input
+                            type="number"
+                            min={0}
+                            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                            value={seg.min_ltv}
+                            onChange={(e) => setSegmentsForm((prev) =>
+                              prev.map((s, i) => i === idx ? { ...s, min_ltv: Number(e.target.value) } : s)
+                            )}
+                          />
+                        </div>
+                        {/* Delete */}
+                        <div className="col-span-1 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setSegmentsForm((prev) => prev.filter((_, i) => i !== idx))}
+                            className="rounded p-1.5 text-slate-500 hover:bg-red-950/30 hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add row */}
+                    <button
+                      type="button"
+                      onClick={() => setSegmentsForm((prev) => [
+                        ...prev,
+                        { key: "", label: "", color: "slate", min_ltv: 0 },
+                      ])}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-700 py-2.5 text-xs text-slate-400 hover:border-orange-600/50 hover:text-orange-400 transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Añadir segmento
+                    </button>
+
+                    {/* Info note */}
+                    <p className="text-xs text-slate-500 leading-relaxed pt-1">
+                      El campo <code className="rounded bg-slate-800 px-1 text-slate-300">LTV mín.</code> define el valor de vida mínimo (en Q) para que un cliente sea asignado automáticamente a este segmento.
+                      Los segmentos se evalúan de mayor a menor — el primero que cumpla el umbral se aplica.
+                    </p>
+
+                    {/* Reset to defaults */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setSegmentsForm(DEFAULT_SEGMENTS)}
+                        className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 transition-colors"
+                      >
+                        Restaurar predeterminados
+                      </button>
+                      <Button
+                        className="bg-orange-600 hover:bg-orange-500 text-white"
+                        onClick={() => saveSegmentsMutation.mutate(segmentsForm)}
+                        disabled={saveSegmentsMutation.isPending || segmentsForm.some(s => !s.key || !s.label)}
+                      >
+                        {saveSegmentsMutation.isPending
+                          ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />Guardando…</>
+                          : "Guardar segmentación"}
+                      </Button>
+                    </div>
+                  </div>
+                </Section>
               )}
 
               {/* ── EQUIPO ── */}

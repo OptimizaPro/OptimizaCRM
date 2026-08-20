@@ -5,11 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("es-ES", {
+export function formatCurrency(value: number, currency = "GTQ"): string {
+  if (currency === "GTQ") {
+    return `Q${new Intl.NumberFormat("es-GT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+  }
+  return new Intl.NumberFormat("es-GT", {
     style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
+    currency,
+    minimumFractionDigits: 2,
   }).format(value);
 }
 

@@ -10,13 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { useAuthStore } from "@/store/auth";
-import { crmApi, aiApi, csvApi, type Customer, type CustomerSegment, type ConsumptionRecord } from "@/lib/api";
+import { crmApi, aiApi, csvApi, type Customer, type ConsumptionRecord } from "@/lib/api";
+import type { CustomerSegment } from "@/lib/api";
 import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import { formatCurrency } from "@/lib/utils";
 import {
   Plus, Brain, Upload, Download, X, Loader2,
   Pencil, Trash2, Mail, Phone, Building2, MapPin, User,
-  Clock, AlertTriangle, Info, Search, Filter, Star, TrendingUp, Receipt, Trash,
+  Clock, AlertTriangle, Info, Search, Filter, Star, Receipt, Trash, HelpCircle,
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -29,19 +30,43 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
 
-const SEGMENT_LABELS: Record<CustomerSegment, string> = {
-  basic:    "Básico",
-  frequent: "Frecuente",
-  vip:      "VIP",
-  premium:  "Premium",
+// ─── Segmentos (defaults + override desde org.settings) ──────────────────────
+
+export interface OrgSegment {
+  key: string;
+  label: string;
+  color: "slate" | "blue" | "green" | "orange" | "yellow" | "purple" | "pink" | "red";
+  min_ltv: number;
+}
+
+export const DEFAULT_SEGMENTS: OrgSegment[] = [
+  { key: "basic",    label: "Básico",    color: "slate",  min_ltv: 0    },
+  { key: "frequent", label: "Frecuente", color: "blue",   min_ltv: 500  },
+  { key: "vip",      label: "VIP",       color: "orange", min_ltv: 2000 },
+  { key: "premium",  label: "Premium",   color: "yellow", min_ltv: 5000 },
+];
+
+const COLOR_CLASSES: Record<OrgSegment["color"], string> = {
+  slate:  "border-slate-600 text-slate-400 bg-slate-900",
+  blue:   "border-blue-700 text-blue-400 bg-blue-950/50",
+  green:  "border-green-700 text-green-400 bg-green-950/50",
+  orange: "border-orange-600 text-orange-400 bg-orange-950/50",
+  yellow: "border-yellow-500 text-yellow-400 bg-yellow-950/50",
+  purple: "border-purple-700 text-purple-400 bg-purple-950/50",
+  pink:   "border-pink-700 text-pink-400 bg-pink-950/50",
+  red:    "border-red-700 text-red-400 bg-red-950/50",
 };
 
-const SEGMENT_COLORS: Record<CustomerSegment, string> = {
-  basic:    "border-slate-600 text-slate-400 bg-slate-900",
-  frequent: "border-blue-700 text-blue-400 bg-blue-950/50",
-  vip:      "border-orange-600 text-orange-400 bg-orange-950/50",
-  premium:  "border-yellow-500 text-yellow-400 bg-yellow-950/50",
-};
+function useOrgSegments(): OrgSegment[] {
+  const { organization } = useAuthStore();
+  const custom = (organization?.settings as Record<string, unknown> | undefined)?.customer_segments;
+  if (Array.isArray(custom) && custom.length > 0) return custom as OrgSegment[];
+  return DEFAULT_SEGMENTS;
+}
+
+function segmentColor(seg: OrgSegment | undefined): string {
+  return COLOR_CLASSES[seg?.color ?? "slate"] ?? COLOR_CLASSES.slate;
+}
 
 const CATEGORY_LABELS: Record<string, string> = {
   purchase: "Compra",
@@ -50,12 +75,30 @@ const CATEGORY_LABELS: Record<string, string> = {
   other:    "Otro",
 };
 
-function SegmentBadge({ segment, auto }: { segment: CustomerSegment; auto: boolean }) {
+function SegmentBadge({ segment, auto, segments }: { segment: string; auto: boolean; segments?: OrgSegment[] }) {
+  const list = segments ?? DEFAULT_SEGMENTS;
+  const def  = list.find(s => s.key === segment) ?? { key: segment, label: segment, color: "slate" as const, min_ltv: 0 };
+  const isTop = list.indexOf(def) >= list.length - 2; // últimos dos = niveles altos
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${SEGMENT_COLORS[segment]}`}
-      title={auto ? "Segmento asignado automáticamente" : "Segmento manual"}>
-      {segment === "vip" || segment === "premium" ? <Star className="h-2.5 w-2.5" /> : null}
-      {SEGMENT_LABELS[segment]}
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${segmentColor(def)}`}
+      title={auto ? "Segmento asignado automáticamente por valor de vida" : "Segmento asignado manualmente"}>
+      {isTop ? <Star className="h-2.5 w-2.5" /> : null}
+      {def.label}
+    </span>
+  );
+}
+
+// ─── Churn Risk Tooltip ───────────────────────────────────────────────────────
+
+function ChurnRiskCell({ risk }: { risk: number }) {
+  const pct = (risk * 100).toFixed(0);
+  const color = risk >= 0.7 ? "text-red-400" : risk >= 0.4 ? "text-yellow-400" : "text-green-400";
+  const level = risk >= 0.7 ? "Alto" : risk >= 0.4 ? "Medio" : "Bajo";
+  const tooltip = `Riesgo de abandono: ${level} (${pct}%)\n\nPredicción de IA basada en actividad reciente,\nfrecuencia de compra y comportamiento histórico.\n\n• Verde  < 40% — cliente estable\n• Amarillo 40-70% — requiere atención\n• Rojo   > 70% — intervención urgente`;
+  return (
+    <span className={`inline-flex items-center gap-1 font-semibold ${color}`} title={tooltip}>
+      {pct}%
+      <HelpCircle className="h-3 w-3 opacity-50 cursor-help" />
     </span>
   );
 }
@@ -169,6 +212,7 @@ function CustomerPanel({
 }) {
   const { tokens, organization } = useAuthStore();
   const queryClient = useQueryClient();
+  const segments = useOrgSegments();
   const [activeTab, setActiveTab]   = useState<PanelTab>("info");
   const [editing, setEditing]       = useState(false);
   const [form, setForm] = useState({
@@ -530,6 +574,7 @@ function CustomerPanel({
 export default function CustomersPage() {
   const { tokens, organization } = useAuthStore();
   const queryClient = useQueryClient();
+  const segments = useOrgSegments();
   const [showForm, setShowForm]         = useState(false);
   const [showImport, setShowImport]     = useState(false);
   const [importFile, setImportFile]     = useState<File | null>(null);
@@ -615,7 +660,7 @@ export default function CustomersPage() {
     {
       accessorKey: "segment",
       header: "Segmento",
-      cell: ({ row }) => <SegmentBadge segment={row.original.segment} auto={row.original.segment_auto} />,
+      cell: ({ row }) => <SegmentBadge segment={row.original.segment} auto={row.original.segment_auto} segments={segments} />,
     },
     {
       accessorKey: "created_at",
@@ -641,11 +686,13 @@ export default function CustomersPage() {
     },
     {
       accessorKey: "churn_risk",
-      header: "Riesgo abandono",
-      cell: ({ getValue }) => {
-        const r = getValue() as number;
-        return <span className={`font-semibold ${churnColor(r)}`}>{(r * 100).toFixed(0)}%</span>;
-      },
+      header: () => (
+        <span className="inline-flex items-center gap-1">
+          Riesgo abandono
+          <HelpCircle className="h-3.5 w-3.5 text-slate-500" title="Predicción de IA: probabilidad de que el cliente deje de comprar. Verde &lt;40%, Amarillo 40-70%, Rojo &gt;70%" />
+        </span>
+      ),
+      cell: ({ getValue }) => <ChurnRiskCell risk={getValue() as number} />,
     },
     {
       id: "actions",
@@ -693,8 +740,8 @@ export default function CustomersPage() {
             </select>
             <select value={segmentFilter} onChange={(e) => setSegmentFilter(e.target.value)} className={selectCls}>
               <option value="">Todos los segmentos</option>
-              {(Object.entries(SEGMENT_LABELS) as [CustomerSegment, string][]).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
+              {segments.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
               ))}
             </select>
             {hasFilters && (
