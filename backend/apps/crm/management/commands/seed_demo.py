@@ -10,7 +10,8 @@ import random
 
 from apps.accounts.models import Organization, User
 from apps.crm.models import (
-    Lead, Customer, Opportunity, Task, Activity, PipelineTemplate, PipelineStage
+    Lead, Customer, Opportunity, Task, Activity, PipelineTemplate, PipelineStage,
+    IncentiveProgram,
 )
 
 
@@ -72,6 +73,37 @@ TASKS = [
     ("Actualizar datos de contacto Distribuidora 5E",        "low",    "completed",  -5),
 ]
 
+INCENTIVES = [
+    # (name, program_type, target_segment, min_amount, reward_value, rules, end_date_days)
+    (
+        "Descuento Clientes Frecuentes",
+        "discount",
+        "frequent",
+        500,
+        15,
+        {"aplica_a": "compras_directas", "no_acumulable": True},
+        90,
+    ),
+    (
+        "Regalo Bienvenida VIP",
+        "gift",
+        "vip",
+        2000,
+        200,
+        {"descripcion": "Voucher de consumo Q200 en próxima compra", "usos_max": 1},
+        60,
+    ),
+    (
+        "Cashback Premium 5%",
+        "cashback",
+        "premium",
+        1000,
+        5,
+        {"acreditacion": "30 días hábiles", "tope_mensual": 500},
+        None,  # sin fecha fin = vigente indefinido
+    ),
+]
+
 ACTIVITIES = [
     ("call",    "Llamada de prospección — interés confirmado",     "lead"),
     ("email",   "Envío de brochure y precios",                    "lead"),
@@ -124,6 +156,7 @@ class Command(BaseCommand):
             Customer.objects.filter(organization=org).delete()
             Lead.objects.filter(organization=org).delete()
             PipelineTemplate.objects.filter(organization=org).delete()
+            IncentiveProgram.objects.filter(organization=org).delete()
             self.stdout.write("Datos anteriores eliminados.")
 
         now = timezone.now()
@@ -243,5 +276,28 @@ class Command(BaseCommand):
             if created:
                 act_count += 1
         self.stdout.write(f"  {act_count} actividades OK")
+
+        # ── Incentive programs ──
+        inc_count = 0
+        today = date.today()
+        for name, ptype, segment, min_amt, reward, rules, end_days in INCENTIVES:
+            end_date = today + timedelta(days=end_days) if end_days else None
+            _, created = IncentiveProgram.objects.get_or_create(
+                organization=org, name=name,
+                defaults={
+                    "program_type":   ptype,
+                    "target_segment": segment,
+                    "min_amount":     min_amt,
+                    "reward_value":   reward,
+                    "rules":          rules,
+                    "is_active":      True,
+                    "start_date":     today,
+                    "end_date":       end_date,
+                    "created_by":     user,
+                },
+            )
+            if created:
+                inc_count += 1
+        self.stdout.write(f"  {inc_count} programas de incentivos OK")
 
         self.stdout.write(self.style.SUCCESS(f"\nDemo lista en '{org.name}'. A explorar!"))
