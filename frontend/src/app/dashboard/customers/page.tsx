@@ -181,6 +181,54 @@ function ChurnBreakdown({ result }: { result: ChurnResult }) {
   );
 }
 
+// ─── Churn level badge (columna independiente, igual que SLA) ────────────────
+
+const CHURN_LEVEL_CONFIG = {
+  high:   {
+    label: "Alto",
+    hint:  "Contacto inmediato",
+    dot:   "bg-red-500 animate-pulse",
+    ring:  "border-red-800",
+    text:  "text-red-400",
+    bg:    "bg-red-950/60",
+  },
+  medium: {
+    label: "Medio",
+    hint:  "Atención requerida",
+    dot:   "bg-yellow-400",
+    ring:  "border-yellow-700",
+    text:  "text-yellow-400",
+    bg:    "bg-yellow-950/60",
+  },
+  low:    {
+    label: "Bajo",
+    hint:  "Cliente estable",
+    dot:   "bg-green-400",
+    ring:  "border-green-800",
+    text:  "text-green-400",
+    bg:    "bg-green-950/60",
+  },
+};
+
+function ChurnLevelBadge({ risk }: { risk: number | null }) {
+  const r = risk ?? 0;
+  if (r === 0) return <span className="text-slate-600 text-xs">—</span>;
+
+  const key = r >= 0.7 ? "high" : r >= 0.4 ? "medium" : "low";
+  const { label, hint, dot, ring, text, bg } = CHURN_LEVEL_CONFIG[key];
+
+  return (
+    <div
+      title={`Riesgo de abandono: ${Math.round(r * 100)}%\n${hint}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium cursor-help ${ring} ${bg} ${text}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
+      {label}
+      <span className="opacity-70">· {hint}</span>
+    </div>
+  );
+}
+
 const selectCls = "rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 focus:border-orange-500 focus:outline-none";
 
 const EMPTY_FORM = { name: "", email: "", phone: "", company: "", status: "active", address: "", notes: "" };
@@ -779,9 +827,15 @@ export default function CustomersPage() {
     },
     {
       id: "sla",
-      header: "Atención",
+      header: "Atención (SLA)",
       enableSorting: false,
       cell: ({ row }) => <CustomerSLABadge customer={row.original} />,
+    },
+    {
+      id: "churn_level",
+      header: "Riesgo abandono",
+      enableSorting: false,
+      cell: ({ row }) => <ChurnLevelBadge risk={row.original.churn_risk} />,
     },
     {
       accessorKey: "lifetime_value",
@@ -792,8 +846,8 @@ export default function CustomersPage() {
       accessorKey: "churn_risk",
       header: () => (
         <span className="inline-flex items-center gap-1">
-          Riesgo abandono
-          <HelpCircle className="h-3.5 w-3.5 text-slate-500" title="Predicción de IA: probabilidad de que el cliente deje de comprar. Verde &lt;40%, Amarillo 40-70%, Rojo &gt;70%. Haz clic en el % para ver la explicación." />
+          % Abandono
+          <HelpCircle className="h-3.5 w-3.5 text-slate-500" title="Probabilidad exacta de abandono calculada por IA. Haz clic en el % para ver el análisis completo." />
         </span>
       ),
       cell: ({ getValue, row }) => {
@@ -1214,15 +1268,25 @@ export default function CustomersPage() {
           />
         </div>
 
-        {/* SLA legend */}
-        <div className="mt-4 rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Semáforo de atención (SLA)</p>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-400">
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-400" /><span className="text-green-400 font-medium">Verde</span> — dentro del plazo</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-400" /><span className="text-yellow-400 font-medium">Amarillo</span> — menos de 3h</span>
-            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /><span className="text-red-400 font-medium">Rojo</span> — plazo vencido</span>
-            <span className="h-3 w-px bg-slate-700" />
-            <span><span className="font-medium text-slate-200">Inactivo</span> 48h · <span className="font-medium text-slate-200">Perdido</span> 24h · <span className="font-medium text-slate-200">Activo</span> sin deadline</span>
+        {/* Legends */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Semáforo de atención (SLA)</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-400" /><span className="text-green-400 font-medium">Verde</span> — dentro del plazo</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-400" /><span className="text-yellow-400 font-medium">Amarillo</span> — menos de 3h</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /><span className="text-red-400 font-medium">Rojo</span> — plazo vencido</span>
+              <span className="w-full mt-0.5"><span className="font-medium text-slate-200">Inactivo</span> 48h · <span className="font-medium text-slate-200">Perdido</span> 24h · <span className="font-medium text-slate-200">Activo</span> sin deadline</span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Riesgo de abandono (IA)</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-400">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-400" /><span className="text-green-400 font-medium">Bajo</span> — &lt; 40%</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-400" /><span className="text-yellow-400 font-medium">Medio</span> — 40–70%</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /><span className="text-red-400 font-medium">Alto</span> — &gt; 70% (parpadea)</span>
+              <span className="w-full mt-0.5">Usa el botón <span className="font-medium text-slate-200">Analizar</span> para calcular. El % exacto se muestra en la columna <span className="font-medium text-slate-200">% Abandono</span>.</span>
+            </div>
           </div>
         </div>
         </>
