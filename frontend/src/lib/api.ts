@@ -216,6 +216,8 @@ export interface Lead {
   updated_at: string;
 }
 
+export type CustomerSegment = "basic" | "frequent" | "vip" | "premium";
+
 export interface Customer {
   id: string;
   name: string;
@@ -223,10 +225,62 @@ export interface Customer {
   phone: string;
   company: string;
   status: string;
+  segment: CustomerSegment;
+  segment_auto: boolean;
   churn_risk: number;
   lifetime_value: string;
   address: string;
   notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConsumptionRecord {
+  id: string;
+  customer: string;
+  amount: string;
+  date: string;
+  description: string;
+  category: "purchase" | "service" | "recharge" | "other";
+  reference: string;
+  created_at: string;
+}
+
+export interface ConsumptionSummary {
+  records: ConsumptionRecord[];
+  total: number;
+  count: number;
+}
+
+export interface IncentiveProgram {
+  id: string;
+  name: string;
+  description: string;
+  program_type: "points" | "discount" | "gift" | "cashback";
+  target_segment: "all" | CustomerSegment;
+  min_amount: string;
+  reward_value: string;
+  rules: Record<string, unknown>;
+  is_active: boolean;
+  start_date: string;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WACampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "failed";
+
+export interface WhatsAppCampaign {
+  id: string;
+  name: string;
+  message_template: string;
+  target_segment: "all" | CustomerSegment;
+  status: WACampaignStatus;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  sent_count: number;
+  failed_count: number;
+  recipient_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -574,6 +628,58 @@ export const crmApi = {
 
   deleteCustomer: (token: string, orgId: string, id: string) =>
     api.delete(`/customers/${id}/`, { token, orgId }),
+
+  getConsumption: (token: string, orgId: string, customerId: string, params?: { date_from?: string; date_to?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.date_from) qs.set("date_from", params.date_from);
+    if (params?.date_to)   qs.set("date_to",   params.date_to);
+    const q = qs.toString();
+    return api.get<ConsumptionSummary>(`/customers/${customerId}/consumption/${q ? `?${q}` : ""}`, { token, orgId });
+  },
+
+  addConsumption: (token: string, orgId: string, customerId: string, data: Partial<ConsumptionRecord>) =>
+    api.post<ConsumptionRecord>(`/customers/${customerId}/consumption/`, data, { token, orgId }),
+
+  deleteConsumption: (token: string, orgId: string, customerId: string, recordId: string) =>
+    api.delete(`/customers/${customerId}/consumption/${recordId}/`, { token, orgId }),
+
+  updateSegment: (token: string, orgId: string, customerId: string, segment: CustomerSegment) =>
+    api.patch<Customer>(`/customers/${customerId}/segment/`, { segment }, { token, orgId }),
+
+  getSegmentSummary: (token: string, orgId: string) =>
+    api.get<Record<string, { label: string; count: number; total_ltv: number }>>("/customers/by-segment/", { token, orgId }),
+
+  getIncentives: (token: string, orgId: string, params?: string) =>
+    api.get<PaginatedResponse<IncentiveProgram>>(`/incentives/${params ? `?${params}` : ""}`, { token, orgId }),
+
+  createIncentive: (token: string, orgId: string, data: Partial<IncentiveProgram>) =>
+    api.post<IncentiveProgram>("/incentives/", data, { token, orgId }),
+
+  updateIncentive: (token: string, orgId: string, id: string, data: Partial<IncentiveProgram>) =>
+    api.patch<IncentiveProgram>(`/incentives/${id}/`, data, { token, orgId }),
+
+  deleteIncentive: (token: string, orgId: string, id: string) =>
+    api.delete(`/incentives/${id}/`, { token, orgId }),
+
+  getWACampaigns: (token: string, orgId: string, params?: string) =>
+    api.get<PaginatedResponse<WhatsAppCampaign>>(`/wa-campaigns/${params ? `?${params}` : ""}`, { token, orgId }),
+
+  createWACampaign: (token: string, orgId: string, data: Partial<WhatsAppCampaign>) =>
+    api.post<WhatsAppCampaign>("/wa-campaigns/", data, { token, orgId }),
+
+  updateWACampaign: (token: string, orgId: string, id: string, data: Partial<WhatsAppCampaign>) =>
+    api.patch<WhatsAppCampaign>(`/wa-campaigns/${id}/`, data, { token, orgId }),
+
+  deleteWACampaign: (token: string, orgId: string, id: string) =>
+    api.delete(`/wa-campaigns/${id}/`, { token, orgId }),
+
+  previewWACampaign: (token: string, orgId: string, id: string) =>
+    api.post<{ rendered: string; recipient: { name: string; phone: string; segment: string } | null }>(
+      `/wa-campaigns/${id}/preview/`, {}, { token, orgId }
+    ),
+
+  sendWACampaign: (token: string, orgId: string, id: string) =>
+    api.post<WhatsAppCampaign>(`/wa-campaigns/${id}/send/`, {}, { token, orgId }),
 
   getOpportunities: (token: string, orgId: string, params?: {
     stage?:       string;

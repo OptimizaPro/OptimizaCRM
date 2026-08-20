@@ -8,7 +8,7 @@ import {
   Calendar, BarChart3, Brain, Settings, LogOut, Menu,
   Plug, Inbox, MessageCircle, ChevronDown, MessagesSquare,
   TrendingUp, ListTodo, LineChart, ShieldCheck, FileText,
-  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound, BookOpen, Bot, Lock, CalendarClock,
+  PanelLeftClose, PanelLeftOpen, Zap, ChevronUp, GraduationCap, Mail, Mic, LayoutGrid, FormInput, UsersRound, BookOpen, Bot, Lock, CalendarClock, Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore, useSidebarStore } from "@/store/auth";
@@ -54,9 +54,10 @@ const NAV: NavEntry[] = [
       label: "Comunicaciones",
       icon: MessagesSquare,
       items: [
-        { href: "/dashboard/inbox",     label: "Bandeja de entrada", icon: Inbox },
-        { href: "/dashboard/whatsapp",  label: "WhatsApp",           icon: MessageCircle, minPlan: "pro" },
-        { href: "/dashboard/campaigns", label: "Campañas de email",  icon: Mail,          minPlan: "pro" },
+        { href: "/dashboard/inbox",                label: "Bandeja de entrada",  icon: Inbox },
+        { href: "/dashboard/whatsapp",             label: "WhatsApp",            icon: MessageCircle,    minPlan: "pro" },
+        { href: "/dashboard/campaigns",            label: "Campañas de email",   icon: Mail,             minPlan: "pro" },
+        { href: "/dashboard/campaigns/whatsapp",   label: "Campañas WhatsApp",   icon: MessageCircle,    minPlan: "pro" },
       ],
     },
   },
@@ -70,6 +71,7 @@ const NAV: NavEntry[] = [
         { href: "/dashboard/leads",      label: "Leads",          icon: Users },
         { href: "/dashboard/pipeline",   label: "Oportunidades",  icon: Target },
         { href: "/dashboard/customers",  label: "Clientes",       icon: UserCheck },
+        { href: "/dashboard/incentives", label: "Incentivos",     icon: Gift },
       ],
     },
   },

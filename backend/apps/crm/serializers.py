@@ -10,7 +10,8 @@ from apps.accounts.serializers import UserSerializer
 from .models import (
     Lead, Customer, Opportunity, Task, Activity,
     CalendarEvent, PipelineTemplate, PipelineStage,
-    Team, TeamMembership,
+    Team, TeamMembership, ConsumptionRecord, IncentiveProgram,
+    WhatsAppCampaign,
 )
 
 
@@ -50,11 +51,45 @@ class CustomerSerializer(serializers.ModelSerializer):
         model  = Customer
         fields = [
             "id", "name", "email", "phone", "company", "status",
+            "segment", "segment_auto",
             "churn_risk", "lifetime_value", "address", "notes",
             "assigned_to", "assigned_to_detail", "custom_fields",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "churn_risk", "created_at", "updated_at"]
+
+
+class ConsumptionRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = ConsumptionRecord
+        fields = [
+            "id", "customer", "amount", "date", "description",
+            "category", "reference", "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+
+class IncentiveProgramSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = IncentiveProgram
+        fields = [
+            "id", "name", "description", "program_type", "target_segment",
+            "min_amount", "reward_value", "rules", "is_active",
+            "start_date", "end_date", "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class WhatsAppCampaignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = WhatsAppCampaign
+        fields = [
+            "id", "name", "message_template", "target_segment",
+            "status", "scheduled_at", "sent_at",
+            "sent_count", "failed_count", "recipient_count",
+            "created_at", "updated_at",
+        ]
+        read_only_fields = ["id", "sent_at", "sent_count", "failed_count", "recipient_count", "created_at", "updated_at"]
 
 
 class OpportunitySerializer(serializers.ModelSerializer):

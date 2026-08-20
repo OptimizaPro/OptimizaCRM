@@ -102,6 +102,12 @@ class Customer(TenantModel):
         ("inactive", "Inactivo"),
         ("churned",  "Perdido"),
     ]
+    SEGMENT_CHOICES = [
+        ("basic",    "Básico"),
+        ("frequent", "Frecuente"),
+        ("vip",      "VIP"),
+        ("premium",  "Premium"),
+    ]
 
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
@@ -112,6 +118,8 @@ class Customer(TenantModel):
     phone          = models.CharField(max_length=20, blank=True)
     company        = models.CharField(max_length=255, blank=True)
     status         = models.CharField(max_length=50, choices=STATUS_CHOICES, default="active")
+    segment        = models.CharField(max_length=20, choices=SEGMENT_CHOICES, default="basic")
+    segment_auto   = models.BooleanField(default=True, help_text="Segmento asignado automáticamente por reglas")
     churn_risk     = models.FloatField(default=0.0)
     lifetime_value = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     address        = models.TextField(blank=True)
@@ -121,9 +129,120 @@ class Customer(TenantModel):
     class Meta:
         db_table = "customers"
         ordering = ["-created_at"]
+        indexes  = [
+            models.Index(fields=["organization", "segment"]),
+            models.Index(fields=["organization", "status"]),
+        ]
 
     def __str__(self):
         return self.name
+
+    def recalculate_segment(self):
+        """Auto-assign segment based on lifetime_value. Only runs when segment_auto=True."""
+        if not self.segment_auto:
+            return
+        ltv = float(self.lifetime_value or 0)
+        if ltv >= 5000:
+            self.segment = "premium"
+        elif ltv >= 2000:
+            self.segment = "vip"
+        elif ltv >= 500:
+            self.segment = "frequent"
+        else:
+            self.segment = "basic"
+
+
+class ConsumptionRecord(TenantModel):
+    CATEGORY_CHOICES = [
+        ("purchase", "Compra"),
+        ("service",  "Servicio"),
+        ("recharge", "Recarga"),
+        ("other",    "Otro"),
+    ]
+
+    customer    = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="consumption_records")
+    amount      = models.DecimalField(max_digits=15, decimal_places=2)
+    date        = models.DateField()
+    description = models.CharField(max_length=255, blank=True)
+    category    = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="purchase")
+    reference   = models.CharField(max_length=100, blank=True, help_text="# factura u otro identificador")
+
+    class Meta:
+        db_table = "consumption_records"
+        ordering = ["-date", "-created_at"]
+        indexes  = [
+            models.Index(fields=["organization", "customer", "date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.customer.name} — {self.amount} ({self.date})"
+
+
+class IncentiveProgram(TenantModel):
+    TYPE_CHOICES = [
+        ("points",   "Puntos"),
+        ("discount", "Descuento"),
+        ("gift",     "Regalo"),
+        ("cashback", "Cashback"),
+    ]
+    SEGMENT_CHOICES = [("all", "Todos")] + Customer.SEGMENT_CHOICES
+
+    created_by      = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="created_incentive_programs",
+    )
+    name            = models.CharField(max_length=255)
+    description     = models.TextField(blank=True)
+    program_type    = models.CharField(max_length=20, choices=TYPE_CHOICES, default="points")
+    target_segment  = models.CharField(max_length=20, choices=SEGMENT_CHOICES, default="all")
+    min_amount      = models.DecimalField(max_digits=15, decimal_places=2, default=0,
+                                          help_text="Consumo mínimo para calificar")
+    reward_value    = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+                                          help_text="Valor del beneficio (% descuento, puntos, etc.)")
+    rules           = models.JSONField(default=dict, blank=True,
+                                       help_text="Reglas adicionales en formato JSON")
+    is_active       = models.BooleanField(default=True)
+    start_date      = models.DateField()
+    end_date        = models.DateField(null=True, blank=True)
+
+    class Meta:
+        db_table = "incentive_programs"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.program_type})"
+
+
+class WhatsAppCampaign(TenantModel):
+    STATUS_CHOICES = [
+        ("draft",      "Borrador"),
+        ("scheduled",  "Programada"),
+        ("sending",    "Enviando"),
+        ("sent",       "Enviada"),
+        ("failed",     "Fallida"),
+    ]
+    SEGMENT_CHOICES = [("all", "Todos")] + Customer.SEGMENT_CHOICES
+
+    created_by       = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="created_wa_campaigns",
+    )
+    name             = models.CharField(max_length=255)
+    message_template = models.TextField(help_text="Usar {{nombre}}, {{segmento}}, {{empresa}} como variables")
+    target_segment   = models.CharField(max_length=20, choices=SEGMENT_CHOICES, default="all")
+    status           = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    scheduled_at     = models.DateTimeField(null=True, blank=True)
+    sent_at          = models.DateTimeField(null=True, blank=True)
+    sent_count       = models.PositiveIntegerField(default=0)
+    failed_count     = models.PositiveIntegerField(default=0)
+    recipient_count  = models.PositiveIntegerField(default=0, help_text="Total de destinatarios al momento del envío")
+
+    class Meta:
+        db_table = "whatsapp_campaigns"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} [{self.status}]"
 
 
 class Opportunity(TenantModel):

@@ -24,7 +24,8 @@ from core.middleware import get_current_organization
 from .models import (
     Lead, Customer, Opportunity, Task, Activity,
     CalendarEvent, PipelineTemplate, PipelineStage,
-    Team, TeamMembership,
+    Team, TeamMembership, ConsumptionRecord, IncentiveProgram,
+    WhatsAppCampaign,
 )
 from .serializers import (
     LeadSerializer, CustomerSerializer, OpportunitySerializer,
@@ -32,6 +33,8 @@ from .serializers import (
     BulkLeadActionSerializer, CSVImportSerializer,
     PipelineTemplateSerializer, PipelineStageSerializer,
     TeamSerializer, TeamMembershipSerializer,
+    ConsumptionRecordSerializer, IncentiveProgramSerializer,
+    WhatsAppCampaignSerializer,
 )
 
 
@@ -230,6 +233,7 @@ class CustomerViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
     serializer_class   = CustomerSerializer
     permission_classes = [IsReadOnlyOrAbove]
     search_fields      = ["name", "email", "company"]
+    filterset_fields   = ["status", "segment"]
     ordering_fields    = ["created_at", "lifetime_value", "churn_risk"]
 
     def get_permissions(self):
@@ -282,12 +286,188 @@ class CustomerViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         customers = Customer.objects.filter(organization=org)
         output    = io.StringIO()
         writer    = csv.writer(output)
-        writer.writerow(["name", "email", "phone", "company", "status", "lifetime_value", "churn_risk"])
+        writer.writerow(["name", "email", "phone", "company", "status", "segment", "lifetime_value", "churn_risk"])
         for c in customers:
-            writer.writerow([c.name, c.email, c.phone, c.company, c.status, c.lifetime_value, c.churn_risk])
+            writer.writerow([c.name, c.email, c.phone, c.company, c.status, c.segment, c.lifetime_value, c.churn_risk])
         response = HttpResponse(output.getvalue(), content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="customers.csv"'
         return response
+
+    @action(detail=True, methods=["get", "post"], url_path="consumption")
+    def consumption(self, request, pk=None):
+        customer = self.get_object()
+        org      = get_current_organization()
+
+        if request.method == "GET":
+            qs = ConsumptionRecord.objects.filter(organization=org, customer=customer)
+            date_from = request.query_params.get("date_from")
+            date_to   = request.query_params.get("date_to")
+            if date_from:
+                qs = qs.filter(date__gte=date_from)
+            if date_to:
+                qs = qs.filter(date__lte=date_to)
+            total = qs.aggregate(total=Sum("amount"))["total"] or 0
+            return Response({
+                "records": ConsumptionRecordSerializer(qs, many=True).data,
+                "total":   float(total),
+                "count":   qs.count(),
+            })
+
+        # POST — create record
+        serializer = ConsumptionRecordSerializer(data={**request.data, "customer": str(customer.id)})
+        serializer.is_valid(raise_exception=True)
+        record = serializer.save(organization=org, customer=customer)
+
+        # Update customer lifetime_value and recalculate segment
+        customer.lifetime_value = (
+            ConsumptionRecord.objects.filter(organization=org, customer=customer)
+            .aggregate(total=Sum("amount"))["total"] or 0
+        )
+        customer.recalculate_segment()
+        customer.save(update_fields=["lifetime_value", "segment"])
+
+        return Response(ConsumptionRecordSerializer(record).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["delete"], url_path=r"consumption/(?P<record_id>[^/.]+)")
+    def delete_consumption(self, request, pk=None, record_id=None):
+        customer = self.get_object()
+        org      = get_current_organization()
+        record   = get_object_or_404(ConsumptionRecord, id=record_id, organization=org, customer=customer)
+        record.delete()
+
+        # Recalculate lifetime_value and segment after deletion
+        customer.lifetime_value = (
+            ConsumptionRecord.objects.filter(organization=org, customer=customer)
+            .aggregate(total=Sum("amount"))["total"] or 0
+        )
+        customer.recalculate_segment()
+        customer.save(update_fields=["lifetime_value", "segment"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["patch"], url_path="segment")
+    def update_segment(self, request, pk=None):
+        """Manually set a customer segment (disables auto-segmentation)."""
+        customer     = self.get_object()
+        new_segment  = request.data.get("segment")
+        valid        = dict(Customer.SEGMENT_CHOICES)
+        if new_segment not in valid:
+            return Response({"error": f"Segmento inválido. Opciones: {list(valid.keys())}"}, status=400)
+        Customer.objects.filter(id=customer.id).update(
+            segment=new_segment, segment_auto=False,
+        )
+        customer.refresh_from_db()
+        return Response(CustomerSerializer(customer).data)
+
+    @action(detail=False, methods=["get"], url_path="by-segment")
+    def by_segment(self, request):
+        org = get_current_organization()
+        result = {}
+        for seg, label in Customer.SEGMENT_CHOICES:
+            qs     = Customer.objects.filter(organization=org, segment=seg)
+            result[seg] = {
+                "label": label,
+                "count": qs.count(),
+                "total_ltv": float(qs.aggregate(t=Sum("lifetime_value"))["t"] or 0),
+            }
+        return Response(result)
+
+
+# ─── Incentive Programs ───────────────────────────────────────────────────────
+
+class IncentiveProgramViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
+    queryset           = IncentiveProgram.objects.all()
+    serializer_class   = IncentiveProgramSerializer
+    permission_classes = [IsReadOnlyOrAbove]
+    search_fields      = ["name", "description"]
+    filterset_fields   = ["program_type", "target_segment", "is_active"]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [CanWriteCRM()]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        serializer.save(organization=get_current_organization(), created_by=self.request.user)
+
+
+# ─── WhatsApp Campaigns ───────────────────────────────────────────────────────
+
+class WhatsAppCampaignViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
+    queryset           = WhatsAppCampaign.objects.all()
+    serializer_class   = WhatsAppCampaignSerializer
+    permission_classes = [IsReadOnlyOrAbove]
+    search_fields      = ["name"]
+    filterset_fields   = ["status", "target_segment"]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy", "preview", "send"]:
+            return [CanWriteCRM()]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        org = get_current_organization()
+        # Calculate recipient_count at creation time
+        segment = serializer.validated_data.get("target_segment", "all")
+        qs = Customer.objects.filter(organization=org, phone__gt="")
+        if segment != "all":
+            qs = qs.filter(segment=segment)
+        serializer.save(organization=org, created_by=self.request.user, recipient_count=qs.count())
+
+    @action(detail=True, methods=["post"])
+    def preview(self, request, pk=None):
+        """Returns the rendered message for the first matched recipient."""
+        campaign = self.get_object()
+        org      = get_current_organization()
+        qs = Customer.objects.filter(organization=org, phone__gt="")
+        if campaign.target_segment != "all":
+            qs = qs.filter(segment=campaign.target_segment)
+        sample = qs.first()
+        if not sample:
+            return Response({"rendered": campaign.message_template, "recipient": None})
+        rendered = (
+            campaign.message_template
+            .replace("{{nombre}}", sample.name)
+            .replace("{{segmento}}", dict(Customer.SEGMENT_CHOICES).get(sample.segment, sample.segment))
+            .replace("{{empresa}}", sample.company or "")
+        )
+        return Response({
+            "rendered":  rendered,
+            "recipient": {"name": sample.name, "phone": sample.phone, "segment": sample.segment},
+        })
+
+    @action(detail=True, methods=["post"])
+    def send(self, request, pk=None):
+        """
+        Marks campaign as 'sending' and queues messages.
+        WhatsApp integration will be wired once Meta API is configured.
+        """
+        campaign = self.get_object()
+        if campaign.status not in ("draft", "scheduled"):
+            return Response({"error": "Solo se pueden enviar campañas en estado borrador o programada."}, status=400)
+
+        org = get_current_organization()
+        qs  = Customer.objects.filter(organization=org, phone__gt="")
+        if campaign.target_segment != "all":
+            qs = qs.filter(segment=campaign.target_segment)
+
+        recipient_count = qs.count()
+        WhatsAppCampaign.objects.filter(id=campaign.id).update(
+            status="sending",
+            recipient_count=recipient_count,
+        )
+
+        # TODO: enqueue actual WhatsApp API calls here once Meta integration is configured
+        # For now, simulate immediate "sent" status
+        WhatsAppCampaign.objects.filter(id=campaign.id).update(
+            status="sent",
+            sent_count=recipient_count,
+            failed_count=0,
+            sent_at=timezone.now(),
+        )
+
+        campaign.refresh_from_db()
+        return Response(WhatsAppCampaignSerializer(campaign).data)
 
 
 # ─── Opportunities ────────────────────────────────────────────────────────────

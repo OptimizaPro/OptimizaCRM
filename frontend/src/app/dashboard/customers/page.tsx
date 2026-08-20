@@ -10,13 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { useAuthStore } from "@/store/auth";
-import { crmApi, aiApi, csvApi, type Customer } from "@/lib/api";
+import { crmApi, aiApi, csvApi, type Customer, type CustomerSegment, type ConsumptionRecord } from "@/lib/api";
 import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import { formatCurrency } from "@/lib/utils";
 import {
   Plus, Brain, Upload, Download, X, Loader2,
   Pencil, Trash2, Mail, Phone, Building2, MapPin, User,
-  Clock, AlertTriangle, Info, Search, Filter,
+  Clock, AlertTriangle, Info, Search, Filter, Star, TrendingUp, Receipt, Trash,
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -28,6 +28,37 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_OPTIONS = Object.entries(STATUS_LABELS);
+
+const SEGMENT_LABELS: Record<CustomerSegment, string> = {
+  basic:    "Básico",
+  frequent: "Frecuente",
+  vip:      "VIP",
+  premium:  "Premium",
+};
+
+const SEGMENT_COLORS: Record<CustomerSegment, string> = {
+  basic:    "border-slate-600 text-slate-400 bg-slate-900",
+  frequent: "border-blue-700 text-blue-400 bg-blue-950/50",
+  vip:      "border-orange-600 text-orange-400 bg-orange-950/50",
+  premium:  "border-yellow-500 text-yellow-400 bg-yellow-950/50",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  purchase: "Compra",
+  service:  "Servicio",
+  recharge: "Recarga",
+  other:    "Otro",
+};
+
+function SegmentBadge({ segment, auto }: { segment: CustomerSegment; auto: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${SEGMENT_COLORS[segment]}`}
+      title={auto ? "Segmento asignado automáticamente" : "Segmento manual"}>
+      {segment === "vip" || segment === "premium" ? <Star className="h-2.5 w-2.5" /> : null}
+      {SEGMENT_LABELS[segment]}
+    </span>
+  );
+}
 
 const selectCls = "rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 focus:border-orange-500 focus:outline-none";
 
@@ -124,6 +155,8 @@ function CustomerSLABadge({ customer }: { customer: Customer }) {
 
 // ─── Panel lateral ────────────────────────────────────────────────────────────
 
+type PanelTab = "info" | "consumo";
+
 function CustomerPanel({
   customer, onClose, onSave, onDelete, isSaving, isDeleting,
 }: {
@@ -134,7 +167,10 @@ function CustomerPanel({
   isSaving: boolean;
   isDeleting: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
+  const { tokens, organization } = useAuthStore();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab]   = useState<PanelTab>("info");
+  const [editing, setEditing]       = useState(false);
   const [form, setForm] = useState({
     name:    customer.name    ?? "",
     email:   customer.email   ?? "",
@@ -145,6 +181,41 @@ function CustomerPanel({
     notes:   customer.notes   ?? "",
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // ── Consumption state ──────────────────────────────────────────────────────
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo,   setDateTo]   = useState("");
+  const [newRecord, setNewRecord] = useState({ amount: "", date: new Date().toISOString().slice(0, 10), description: "", category: "purchase", reference: "" });
+  const [showAddRecord, setShowAddRecord] = useState(false);
+
+  const { data: consumptionData, isLoading: loadingConsumption } = useQuery({
+    queryKey: ["consumption", customer.id, dateFrom, dateTo],
+    queryFn:  () => crmApi.getConsumption(tokens!.access, organization!.id, customer.id, { date_from: dateFrom || undefined, date_to: dateTo || undefined }),
+    enabled:  activeTab === "consumo" && !!tokens && !!organization,
+  });
+
+  const addRecordMutation = useMutation({
+    mutationFn: (data: Partial<ConsumptionRecord>) => crmApi.addConsumption(tokens!.access, organization!.id, customer.id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["consumption", customer.id] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setNewRecord({ amount: "", date: new Date().toISOString().slice(0, 10), description: "", category: "purchase", reference: "" });
+      setShowAddRecord(false);
+    },
+  });
+
+  const deleteRecordMutation = useMutation({
+    mutationFn: (recordId: string) => crmApi.deleteConsumption(tokens!.access, organization!.id, customer.id, recordId),
+    onSuccess:  () => {
+      queryClient.invalidateQueries({ queryKey: ["consumption", customer.id] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+    },
+  });
+
+  const segmentMutation = useMutation({
+    mutationFn: (segment: CustomerSegment) => crmApi.updateSegment(tokens!.access, organization!.id, customer.id, segment),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
+  });
 
   const field = (key: keyof typeof form, placeholder = "") => (
     <Input value={form[key]} placeholder={placeholder}
@@ -161,15 +232,19 @@ function CustomerPanel({
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
           <div>
             <h2 className="font-bold text-slate-100">{customer.name}</h2>
-            <p className="text-xs text-slate-500">{customer.company || "Sin empresa"}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-slate-500">{customer.company || "Sin empresa"}</p>
+              <SegmentBadge segment={customer.segment} auto={customer.segment_auto} />
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            {!editing ? (
+            {activeTab === "info" && !editing && (
               <Button size="sm" variant="outline" className="gap-1.5 border-slate-700 text-slate-300 hover:border-orange-500 hover:text-orange-400"
                 onClick={() => setEditing(true)}>
                 <Pencil className="h-3.5 w-3.5" /> Editar
               </Button>
-            ) : (
+            )}
+            {activeTab === "info" && editing && (
               <>
                 <Button size="sm" variant="outline" className="border-slate-700 text-slate-400"
                   onClick={() => setEditing(false)}>Cancelar</Button>
@@ -185,99 +260,266 @@ function CustomerPanel({
           </div>
         </div>
 
-        {/* Registro + SLA */}
-        <div className="flex items-center gap-3 flex-wrap border-b border-slate-800 px-5 py-3">
-          <span className="flex items-center gap-1.5 text-xs text-slate-400 cursor-help" title={new Date(customer.created_at).toLocaleString("es-GT")}>
-            <Clock className="h-3.5 w-3.5" /> Registro: <span className="text-slate-200">{formatRelativeDate(customer.created_at)}</span>
-            <Info className="h-3 w-3 opacity-60" />
-          </span>
-          <CustomerSLABadge customer={customer} />
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 border-b border-slate-800 px-5 py-4">
-          <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
-            <p className="text-xs text-slate-500">Valor de vida</p>
-            <p className="mt-0.5 font-bold text-slate-100">{formatCurrency(parseFloat(customer.lifetime_value))}</p>
-          </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
-            <p className="text-xs text-slate-500">Riesgo abandono</p>
-            <p className={`mt-0.5 font-bold ${churnColor(customer.churn_risk)}`}>
-              {(customer.churn_risk * 100).toFixed(0)}%
-            </p>
-          </div>
-        </div>
-
-        {/* Campos */}
-        <div className="flex-1 space-y-4 p-5">
-          <div>
-            <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-              <User className="h-3 w-3" /> Nombre
-            </label>
-            {field("name")}
-          </div>
-          <div>
-            <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-              <Mail className="h-3 w-3" /> Email
-            </label>
-            {field("email")}
-          </div>
-          <div>
-            <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-              <Phone className="h-3 w-3" /> Teléfono
-            </label>
-            {field("phone")}
-          </div>
-          <div>
-            <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-              <Building2 className="h-3 w-3" /> Empresa
-            </label>
-            {field("company")}
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Estado</label>
-            <select value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-              disabled={!editing}
-              className="h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 disabled:opacity-70 disabled:cursor-default">
-              {STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-              <MapPin className="h-3 w-3" /> Dirección
-            </label>
-            {field("address")}
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Notas</label>
-            <textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-              disabled={!editing} rows={4} placeholder="Notas internas..."
-              className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 disabled:opacity-70 disabled:cursor-default resize-none" />
-          </div>
-
-          {/* Google Drive documents */}
-          <DriveDocumentsPanel entityType="customer" entityId={customer.id} />
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-slate-800 px-5 py-4">
-          {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-2 text-xs text-red-500 hover:text-red-400 transition-colors">
-              <Trash2 className="h-3.5 w-3.5" /> Eliminar cliente
+        {/* Tabs */}
+        <div className="flex border-b border-slate-800">
+          {(["info", "consumo"] as PanelTab[]).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 text-xs font-medium transition-colors ${activeTab === tab ? "border-b-2 border-orange-500 text-orange-400" : "text-slate-500 hover:text-slate-300"}`}>
+              {tab === "info" ? "Información" : "Historial de Consumos"}
             </button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-400">¿Confirmar eliminación?</span>
-              <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 h-7 text-xs"
-                onClick={() => setConfirmDelete(false)}>No</Button>
-              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white h-7 text-xs"
-                disabled={isDeleting} onClick={onDelete}>
-                {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Sí, eliminar"}
-              </Button>
-            </div>
-          )}
+          ))}
         </div>
+
+        {/* Registro + SLA */}
+        {activeTab === "info" && (
+          <div className="flex items-center gap-3 flex-wrap border-b border-slate-800 px-5 py-3">
+            <span className="flex items-center gap-1.5 text-xs text-slate-400 cursor-help" title={new Date(customer.created_at).toLocaleString("es-GT")}>
+              <Clock className="h-3.5 w-3.5" /> Registro: <span className="text-slate-200">{formatRelativeDate(customer.created_at)}</span>
+              <Info className="h-3 w-3 opacity-60" />
+            </span>
+            <CustomerSLABadge customer={customer} />
+          </div>
+        )}
+
+        {/* ── TAB: Info ──────────────────────────────────────────────────────── */}
+        {activeTab === "info" && (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3 border-b border-slate-800 px-5 py-4">
+              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+                <p className="text-xs text-slate-500">Valor de vida</p>
+                <p className="mt-0.5 font-bold text-slate-100">{formatCurrency(parseFloat(customer.lifetime_value))}</p>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+                <p className="text-xs text-slate-500">Riesgo abandono</p>
+                <p className={`mt-0.5 font-bold ${churnColor(customer.churn_risk)}`}>
+                  {(customer.churn_risk * 100).toFixed(0)}%
+                </p>
+              </div>
+            </div>
+
+            {/* Segment selector */}
+            <div className="border-b border-slate-800 px-5 py-3">
+              <p className="mb-2 text-xs font-medium text-slate-500">Segmento de cliente</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.entries(SEGMENT_LABELS) as [CustomerSegment, string][]).map(([seg, label]) => (
+                  <button key={seg} onClick={() => segmentMutation.mutate(seg)}
+                    disabled={segmentMutation.isPending}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                      customer.segment === seg ? SEGMENT_COLORS[seg] + " ring-1 ring-current" : "border-slate-700 text-slate-500 hover:border-slate-500"
+                    }`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {customer.segment_auto && (
+                <p className="mt-1.5 text-xs text-slate-600">Auto-asignado por valor de vida</p>
+              )}
+            </div>
+
+            {/* Campos */}
+            <div className="flex-1 space-y-4 p-5">
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <User className="h-3 w-3" /> Nombre
+                </label>
+                {field("name")}
+              </div>
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Mail className="h-3 w-3" /> Email
+                </label>
+                {field("email")}
+              </div>
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Phone className="h-3 w-3" /> Teléfono
+                </label>
+                {field("phone")}
+              </div>
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Building2 className="h-3 w-3" /> Empresa
+                </label>
+                {field("company")}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Estado</label>
+                <select value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                  disabled={!editing}
+                  className="h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 disabled:opacity-70 disabled:cursor-default">
+                  {STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <MapPin className="h-3 w-3" /> Dirección
+                </label>
+                {field("address")}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Notas</label>
+                <textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+                  disabled={!editing} rows={4} placeholder="Notas internas..."
+                  className="w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder-slate-500 disabled:opacity-70 disabled:cursor-default resize-none" />
+              </div>
+
+              {/* Google Drive documents */}
+              <DriveDocumentsPanel entityType="customer" entityId={customer.id} />
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-800 px-5 py-4">
+              {!confirmDelete ? (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-2 text-xs text-red-500 hover:text-red-400 transition-colors">
+                  <Trash2 className="h-3.5 w-3.5" /> Eliminar cliente
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400">¿Confirmar eliminación?</span>
+                  <Button size="sm" variant="outline" className="border-slate-700 text-slate-400 h-7 text-xs"
+                    onClick={() => setConfirmDelete(false)}>No</Button>
+                  <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white h-7 text-xs"
+                    disabled={isDeleting} onClick={onDelete}>
+                    {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : "Sí, eliminar"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── TAB: Consumos ──────────────────────────────────────────────────── */}
+        {activeTab === "consumo" && (
+          <div className="flex-1 p-5 space-y-4">
+            {/* Summary */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+                <p className="text-xs text-slate-500">Total consumido</p>
+                <p className="mt-0.5 font-bold text-slate-100">
+                  {loadingConsumption ? "..." : formatCurrency(consumptionData?.total ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
+                <p className="text-xs text-slate-500">Transacciones</p>
+                <p className="mt-0.5 font-bold text-slate-100">
+                  {loadingConsumption ? "..." : consumptionData?.count ?? 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Date filter */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs text-slate-500">Desde</label>
+                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200" />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1 block text-xs text-slate-500">Hasta</label>
+                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200" />
+              </div>
+              {(dateFrom || dateTo) && (
+                <button onClick={() => { setDateFrom(""); setDateTo(""); }}
+                  className="mt-5 text-slate-500 hover:text-red-400">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Add record */}
+            <div>
+              <button onClick={() => setShowAddRecord(!showAddRecord)}
+                className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-300 transition-colors">
+                <Plus className="h-3.5 w-3.5" /> Registrar consumo
+              </button>
+              {showAddRecord && (
+                <div className="mt-3 rounded-lg border border-slate-700 bg-slate-900 p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-500">Monto *</label>
+                      <Input type="number" step="0.01" placeholder="0.00" value={newRecord.amount}
+                        onChange={(e) => setNewRecord(p => ({ ...p, amount: e.target.value }))}
+                        className="h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-500">Fecha *</label>
+                      <input type="date" value={newRecord.date}
+                        onChange={(e) => setNewRecord(p => ({ ...p, date: e.target.value }))}
+                        className="h-8 w-full rounded-md border border-slate-700 bg-slate-800 px-2 text-xs text-slate-200" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500">Categoría</label>
+                    <select value={newRecord.category} onChange={(e) => setNewRecord(p => ({ ...p, category: e.target.value }))}
+                      className="h-8 w-full rounded-md border border-slate-700 bg-slate-800 px-2 text-xs text-slate-200">
+                      {Object.entries(CATEGORY_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </div>
+                  <Input placeholder="Descripción" value={newRecord.description}
+                    onChange={(e) => setNewRecord(p => ({ ...p, description: e.target.value }))}
+                    className="h-8 text-sm" />
+                  <Input placeholder="# Referencia / factura" value={newRecord.reference}
+                    onChange={(e) => setNewRecord(p => ({ ...p, reference: e.target.value }))}
+                    className="h-8 text-sm" />
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="bg-orange-600 hover:bg-orange-500 text-white"
+                      disabled={!newRecord.amount || addRecordMutation.isPending}
+                      onClick={() => addRecordMutation.mutate({
+                        amount: newRecord.amount, date: newRecord.date,
+                        description: newRecord.description, category: newRecord.category as ConsumptionRecord["category"],
+                        reference: newRecord.reference,
+                      })}>
+                      {addRecordMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Guardar"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-slate-700 text-slate-400"
+                      onClick={() => setShowAddRecord(false)}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Records list */}
+            {loadingConsumption ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-14 rounded-lg bg-slate-800 animate-pulse" />
+                ))}
+              </div>
+            ) : (consumptionData?.records ?? []).length === 0 ? (
+              <div className="py-10 text-center">
+                <Receipt className="mx-auto h-8 w-8 text-slate-700 mb-2" />
+                <p className="text-sm text-slate-500">Sin registros de consumo</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {consumptionData!.records.map((rec) => (
+                  <div key={rec.id} className="flex items-start justify-between rounded-lg border border-slate-800 bg-slate-900 px-3 py-2.5">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-slate-100">{formatCurrency(parseFloat(rec.amount))}</span>
+                        <span className="rounded-full border border-slate-700 px-1.5 py-0.5 text-xs text-slate-500">
+                          {CATEGORY_LABELS[rec.category]}
+                        </span>
+                      </div>
+                      {rec.description && <p className="text-xs text-slate-400 truncate mt-0.5">{rec.description}</p>}
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        {new Date(rec.date).toLocaleDateString("es-GT")}
+                        {rec.reference && ` · ${rec.reference}`}
+                      </p>
+                    </div>
+                    <button onClick={() => deleteRecordMutation.mutate(rec.id)}
+                      className="ml-2 shrink-0 text-slate-700 hover:text-red-400 transition-colors">
+                      <Trash className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -293,19 +535,21 @@ export default function CustomersPage() {
   const [importFile, setImportFile]     = useState<File | null>(null);
   const [importResult, setImportResult] = useState<string | null>(null);
   const [form, setForm]                 = useState(EMPTY_FORM);
-  const [selected, setSelected]         = useState<Customer | null>(null);
-  const [search, setSearch]             = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [selected, setSelected]           = useState<Customer | null>(null);
+  const [search, setSearch]               = useState("");
+  const [statusFilter, setStatusFilter]   = useState("");
+  const [segmentFilter, setSegmentFilter] = useState("");
 
-  const hasFilters = !!(search || statusFilter);
-  const clearFilters = () => { setSearch(""); setStatusFilter(""); };
+  const hasFilters = !!(search || statusFilter || segmentFilter);
+  const clearFilters = () => { setSearch(""); setStatusFilter(""); setSegmentFilter(""); };
 
   const { data, isLoading } = useQuery({
-    queryKey: ["customers", search, statusFilter],
+    queryKey: ["customers", search, statusFilter, segmentFilter],
     queryFn: () => {
       const qs = new URLSearchParams();
-      if (search)       qs.set("search", search);
-      if (statusFilter) qs.set("status", statusFilter);
+      if (search)        qs.set("search",   search);
+      if (statusFilter)  qs.set("status",   statusFilter);
+      if (segmentFilter) qs.set("segment",  segmentFilter);
       const q = qs.toString();
       return crmApi.getCustomers(tokens!.access, organization!.id, q || undefined);
     },
@@ -367,6 +611,11 @@ export default function CustomersPage() {
           {STATUS_LABELS[getValue() as string] ?? getValue() as string}
         </Badge>
       ),
+    },
+    {
+      accessorKey: "segment",
+      header: "Segmento",
+      cell: ({ row }) => <SegmentBadge segment={row.original.segment} auto={row.original.segment_auto} />,
     },
     {
       accessorKey: "created_at",
@@ -441,6 +690,12 @@ export default function CustomersPage() {
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={selectCls}>
               <option value="">Todos los estados</option>
               {STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <select value={segmentFilter} onChange={(e) => setSegmentFilter(e.target.value)} className={selectCls}>
+              <option value="">Todos los segmentos</option>
+              {(Object.entries(SEGMENT_LABELS) as [CustomerSegment, string][]).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
             </select>
             {hasFilters && (
               <button onClick={clearFilters}

@@ -9,16 +9,19 @@ from .views import (
     LeadViewSet, CustomerViewSet, OpportunityViewSet,
     TaskViewSet, ActivityViewSet, CalendarViewSet,
     PipelineTemplateViewSet, TeamViewSet,
+    IncentiveProgramViewSet, WhatsAppCampaignViewSet,
 )
 
 router = DefaultRouter()
-router.register("leads",         LeadViewSet,             basename="lead")
-router.register("customers",     CustomerViewSet,         basename="customer")
-router.register("opportunities", OpportunityViewSet,      basename="opportunity")
-router.register("tasks",         TaskViewSet,             basename="task")
-router.register("activities",    ActivityViewSet,         basename="activity")
-router.register("calendar",      CalendarViewSet,         basename="calendar")
-router.register("pipelines",     PipelineTemplateViewSet, basename="pipeline")
-router.register("teams",         TeamViewSet,             basename="team")
+router.register("leads",              LeadViewSet,              basename="lead")
+router.register("customers",          CustomerViewSet,          basename="customer")
+router.register("opportunities",      OpportunityViewSet,       basename="opportunity")
+router.register("tasks",              TaskViewSet,              basename="task")
+router.register("activities",         ActivityViewSet,          basename="activity")
+router.register("calendar",           CalendarViewSet,          basename="calendar")
+router.register("pipelines",          PipelineTemplateViewSet,  basename="pipeline")
+router.register("teams",              TeamViewSet,              basename="team")
+router.register("incentives",         IncentiveProgramViewSet,  basename="incentive")
+router.register("wa-campaigns",       WhatsAppCampaignViewSet,  basename="wa-campaign")
 
 urlpatterns = [path("", include(router.urls))]
