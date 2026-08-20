@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { type ColumnDef } from "@tanstack/react-table";
+import { type ColumnDef, type Row } from "@tanstack/react-table";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   Plus, Brain, Upload, Download, X, Loader2,
   Pencil, Trash2, Mail, Phone, Building2, MapPin, User,
   Clock, AlertTriangle, Info, Search, Filter, Star, Receipt, Trash, HelpCircle,
+  ChevronDown, ChevronUp, ShieldCheck, TrendingUp, TrendingDown,
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -101,6 +102,81 @@ function ChurnRiskCell({ risk }: { risk: number | null }) {
       {pct}%
       <HelpCircle className="h-3 w-3 opacity-50 cursor-help" />
     </span>
+  );
+}
+
+// ─── Churn breakdown ──────────────────────────────────────────────────────────
+
+interface ChurnResult {
+  churn_risk: number;
+  retention_probability: number;
+  risk_level: "low" | "medium" | "high";
+  recommendation: string;
+}
+
+const RISK_LEVEL_ES: Record<string, string> = {
+  low:    "Bajo",
+  medium: "Medio",
+  high:   "Alto",
+};
+const RISK_LEVEL_COLOR: Record<string, string> = {
+  low:    "text-green-400",
+  medium: "text-yellow-400",
+  high:   "text-red-400",
+};
+const RISK_BAR_COLOR: Record<string, string> = {
+  low:    "bg-green-500",
+  medium: "bg-yellow-500",
+  high:   "bg-red-500",
+};
+
+function ChurnBreakdown({ result }: { result: ChurnResult }) {
+  const { churn_risk, retention_probability, risk_level, recommendation } = result;
+  const riskPct = Math.round(churn_risk * 100);
+  const retPct  = Math.round(retention_probability * 100);
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4 space-y-3">
+      {/* Bar + numbers */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-2 rounded-full bg-slate-700">
+          <div
+            className={`h-2 rounded-full transition-all duration-500 ${RISK_BAR_COLOR[risk_level]}`}
+            style={{ width: `${riskPct}%` }}
+          />
+        </div>
+        <span className={`text-sm font-bold ${RISK_LEVEL_COLOR[risk_level]}`}>
+          {riskPct}% riesgo
+        </span>
+        <span className={`text-xs font-semibold ${RISK_LEVEL_COLOR[risk_level]}`}>
+          {RISK_LEVEL_ES[risk_level]}
+        </span>
+      </div>
+
+      {/* Metric pills */}
+      <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900 px-3 py-1.5">
+          <TrendingDown className="h-3.5 w-3.5 text-red-400" />
+          <span className="text-xs text-slate-400">Riesgo abandono:</span>
+          <span className={`text-xs font-semibold ${RISK_LEVEL_COLOR[risk_level]}`}>{riskPct}%</span>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900 px-3 py-1.5">
+          <TrendingUp className="h-3.5 w-3.5 text-green-400" />
+          <span className="text-xs text-slate-400">Probabilidad retención:</span>
+          <span className="text-xs font-semibold text-green-400">{retPct}%</span>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900 px-3 py-1.5">
+          <ShieldCheck className="h-3.5 w-3.5 text-orange-400" />
+          <span className="text-xs text-slate-400">Modelo:</span>
+          <span className="text-xs font-medium text-slate-300">IA Reglas v1</span>
+        </div>
+      </div>
+
+      {/* Recommendation */}
+      <div className="flex items-start gap-2 rounded-lg border border-orange-800/40 bg-orange-950/30 px-3 py-2.5">
+        <Brain className="h-3.5 w-3.5 text-orange-400 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-orange-200">{recommendation}</p>
+      </div>
+    </div>
   );
 }
 
@@ -585,6 +661,7 @@ export default function CustomersPage() {
   const [search, setSearch]               = useState("");
   const [statusFilter, setStatusFilter]   = useState("");
   const [segmentFilter, setSegmentFilter] = useState("");
+  const [churnResults, setChurnResults]   = useState<Record<string, ChurnResult>>({});
 
   const hasFilters = !!(search || statusFilter || segmentFilter);
   const clearFilters = () => { setSearch(""); setStatusFilter(""); setSegmentFilter(""); };
@@ -620,7 +697,10 @@ export default function CustomersPage() {
 
   const churnMutation = useMutation({
     mutationFn: (id: string) => aiApi.predictChurn(tokens!.access, organization!.id, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
+    onSuccess: (result, id) => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      setChurnResults((prev) => ({ ...prev, [id]: result as unknown as ChurnResult }));
+    },
   });
 
   const importMutation = useMutation({
@@ -690,10 +770,26 @@ export default function CustomersPage() {
       header: () => (
         <span className="inline-flex items-center gap-1">
           Riesgo abandono
-          <HelpCircle className="h-3.5 w-3.5 text-slate-500" title="Predicción de IA: probabilidad de que el cliente deje de comprar. Verde &lt;40%, Amarillo 40-70%, Rojo &gt;70%" />
+          <HelpCircle className="h-3.5 w-3.5 text-slate-500" title="Predicción de IA: probabilidad de que el cliente deje de comprar. Verde &lt;40%, Amarillo 40-70%, Rojo &gt;70%. Haz clic en el % para ver la explicación." />
         </span>
       ),
-      cell: ({ getValue }) => <ChurnRiskCell risk={getValue() as number} />,
+      cell: ({ getValue, row }) => {
+        const hasBreakdown = !!churnResults[row.original.id];
+        const isExpanded   = row.getIsExpanded();
+        return (
+          <button
+            type="button"
+            onClick={() => hasBreakdown && row.toggleExpanded()}
+            className={`inline-flex items-center gap-1 ${hasBreakdown ? "cursor-pointer hover:opacity-80" : "cursor-default"}`}
+          >
+            <ChurnRiskCell risk={getValue() as number} />
+            {hasBreakdown && (isExpanded
+              ? <ChevronUp className="h-3 w-3 text-slate-400" />
+              : <ChevronDown className="h-3 w-3 text-slate-400" />
+            )}
+          </button>
+        );
+      },
     },
     {
       id: "actions",
@@ -701,12 +797,18 @@ export default function CustomersPage() {
       enableSorting: false,
       cell: ({ row }) => {
         const isPredicting = churnMutation.isPending && churnMutation.variables === row.original.id;
+        const hasBreakdown = !!churnResults[row.original.id];
         return (
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" title="Predecir abandono con IA"
-              onClick={() => churnMutation.mutate(row.original.id)} disabled={isPredicting}
+              onClick={() => {
+                churnMutation.mutate(row.original.id);
+                if (hasBreakdown) row.toggleExpanded();
+              }}
+              disabled={isPredicting}
               className="gap-1 text-xs text-slate-400 hover:text-white px-2">
               {isPredicting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3" />}
+              {isPredicting ? "..." : hasBreakdown ? "Re-analizar" : "Analizar"}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setSelected(row.original)}
               className="px-2 text-slate-400 hover:text-orange-400">
@@ -871,6 +973,11 @@ export default function CustomersPage() {
             data={data?.results ?? []}
             isLoading={isLoading}
             emptyMessage="No hay clientes aún."
+            renderSubRow={(row: Row<Customer>) =>
+              churnResults[row.original.id]
+                ? <ChurnBreakdown result={churnResults[row.original.id]} />
+                : null
+            }
           />
         </div>
 
