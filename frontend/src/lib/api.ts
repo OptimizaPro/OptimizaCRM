@@ -647,6 +647,9 @@ export const crmApi = {
   getCustomers: (token: string, orgId: string, params?: string) =>
     api.get<PaginatedResponse<Customer>>(`/customers/${params ? `?${params}` : ""}`, { token, orgId }),
 
+  getCustomer: (token: string, orgId: string, id: string) =>
+    api.get<Customer>(`/customers/${id}/`, { token, orgId }),
+
   createCustomer: (token: string, orgId: string, data: Partial<Customer>) =>
     api.post<Customer>("/customers/", data, { token, orgId }),
 

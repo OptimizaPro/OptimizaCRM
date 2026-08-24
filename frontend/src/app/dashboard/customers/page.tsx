@@ -846,7 +846,7 @@ function CustomerPanel({
 type SortKey   = "total" | "share_pct" | "name" | "count";
 type SortDir   = "asc" | "desc";
 
-function ProductionTab() {
+function ProductionTab({ onOpenCustomer }: { onOpenCustomer: (id: string) => void }) {
   const { tokens, organization } = useAuthStore();
   const segments = useOrgSegments();
   const nowD     = new Date();
@@ -970,8 +970,19 @@ function ProductionTab() {
                       <td className="px-3 py-3 text-xs text-slate-600 font-mono">{idx + 1}</td>
                       {/* Cliente */}
                       <td className="px-3 py-3">
-                        <p className="font-medium text-slate-200 leading-tight">{row.name}</p>
-                        {row.company && <p className="text-[11px] text-slate-500 truncate max-w-[140px]">{row.company}</p>}
+                        <button
+                          type="button"
+                          onClick={() => onOpenCustomer(row.id)}
+                          className="text-left group"
+                          title="Ver detalles del cliente"
+                        >
+                          <p className="font-medium text-slate-200 group-hover:text-orange-400 transition-colors leading-tight underline-offset-2 group-hover:underline">
+                            {row.name}
+                          </p>
+                          {row.company && (
+                            <p className="text-[11px] text-slate-500 truncate max-w-[140px]">{row.company}</p>
+                          )}
+                        </button>
                       </td>
                       {/* Segmento */}
                       <td className="px-3 py-3">
@@ -1278,7 +1289,15 @@ export default function CustomersPage() {
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
 
         {/* ── PRODUCCIÓN TAB ── */}
-        {pageTab === "produccion" && <ProductionTab />}
+        {pageTab === "produccion" && (
+          <ProductionTab onOpenCustomer={async (id) => {
+            setPageTab("lista");
+            try {
+              const customer = await crmApi.getCustomer(tokens!.access, organization!.id, id);
+              setSelected(customer);
+            } catch { /* silently ignore — panel simply won't open */ }
+          }} />
+        )}
 
         {/* ── SEGMENTACIÓN TAB ── */}
         {pageTab === "segmentacion" && (
