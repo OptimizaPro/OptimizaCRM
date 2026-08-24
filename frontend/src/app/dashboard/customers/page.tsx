@@ -953,7 +953,7 @@ function ProductionTab() {
                     <span className="flex items-center gap-1">Producción <SortIcon col="total" /></span>
                   </th>
                   <th className={thCls} onClick={() => toggleSort("count")}>
-                    <span className="flex items-center gap-1">Registros <SortIcon col="count" /></span>
+                    <span className="flex items-center gap-1">Transacciones <SortIcon col="count" /></span>
                   </th>
                   <th className={thCls} onClick={() => toggleSort("share_pct")}>
                     <span className="flex items-center gap-1">% del total <SortIcon col="share_pct" /></span>
@@ -1016,7 +1016,7 @@ function ProductionTab() {
                       Total — {data.customer_count} clientes
                     </td>
                     <td className="px-3 py-3 font-bold text-slate-100">{formatCurrency(data.total)}</td>
-                    <td className="px-3 py-3 text-slate-400 text-xs">
+                    <td className="px-3 py-3 text-slate-400 text-xs" title="Total de transacciones en el período">
                       {data.customers.reduce((s, c) => s + c.count, 0)}
                     </td>
                     <td className="px-3 py-3 text-xs font-semibold text-slate-400">100%</td>
