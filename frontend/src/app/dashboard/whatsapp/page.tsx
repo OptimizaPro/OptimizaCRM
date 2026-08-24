@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -152,6 +153,36 @@ function MessageStatus({ status }: { status?: "sent" | "delivered" | "read" }) {
   return <Check className="h-3.5 w-3.5 text-white/60" />;
 }
 
+// ─── Tab navigation ───────────────────────────────────────────────────────────
+
+function WhatsAppTabs() {
+  const pathname = usePathname();
+  const tabs = [
+    { label: "Conversaciones", href: "/dashboard/whatsapp" },
+    { label: "Plantillas",     href: "/dashboard/whatsapp/plantillas" },
+  ];
+  return (
+    <nav className="flex border-b border-slate-800 bg-slate-950 px-4">
+      {tabs.map((tab) => {
+        const active = pathname === tab.href;
+        return (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              active
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            {tab.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 // ─── Not-connected card ───────────────────────────────────────────────────────
 
 function NotConnectedCard() {
@@ -266,6 +297,7 @@ export default function WhatsAppPage() {
     >
       <div className="flex h-screen flex-col overflow-hidden">
         <DashboardHeader title="WhatsApp" />
+        <WhatsAppTabs />
 
         {/* Connection status card */}
         {!isConnected && <NotConnectedCard />}
