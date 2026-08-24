@@ -4,7 +4,7 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 """
 
 from rest_framework import serializers
-from .models import Integration, IntegrationLog, Message
+from .models import Integration, IntegrationLog, Message, WhatsAppTemplate
 
 
 class IntegrationSerializer(serializers.ModelSerializer):
@@ -37,3 +37,17 @@ class MessageSerializer(serializers.ModelSerializer):
             "received_at", "metadata", "created_at", "updated_at",
         ]
         read_only_fields = ["id", "external_id", "channel_type", "created_at", "updated_at"]
+
+
+class WhatsAppTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = WhatsAppTemplate
+        fields = [
+            "id", "name", "category", "language", "status",
+            "components", "meta_template_id", "rejection_reason",
+            "submitted_at", "created_at", "updated_at",
+        ]
+        read_only_fields = [
+            "id", "status", "meta_template_id", "submitted_at",
+            "created_at", "updated_at",
+        ]

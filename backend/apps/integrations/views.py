@@ -24,8 +24,8 @@ from rest_framework.response import Response
 
 from core.permissions import IsOrgAdmin, IsReadOnlyOrAbove
 from core.middleware import get_current_organization
-from .models import Integration, IntegrationLog, Message
-from .serializers import IntegrationSerializer, IntegrationLogSerializer, MessageSerializer
+from .models import Integration, IntegrationLog, Message, WhatsAppTemplate
+from .serializers import IntegrationSerializer, IntegrationLogSerializer, MessageSerializer, WhatsAppTemplateSerializer
 
 
 # ─── IMAP / SMTP helpers ──────────────────────────────────────────────────────
@@ -495,6 +495,77 @@ class MessageViewSet(viewsets.ModelViewSet):
             content=f"Respuesta enviada: {subject}", status="success",
         )
         return Response(MessageSerializer(sent).data, status=201)
+
+
+# ─── WhatsApp Templates ───────────────────────────────────────────────────────
+
+class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
+    serializer_class = WhatsAppTemplateSerializer
+    permission_classes = [IsReadOnlyOrAbove]
+
+    def get_queryset(self):
+        org = get_current_organization()
+        return WhatsAppTemplate.objects.filter(organization=org)
+
+    def perform_create(self, serializer):
+        serializer.save(organization=get_current_organization())
+
+    @action(detail=True, methods=["post"])
+    def submit(self, request, pk=None):
+        """Submit template to Meta Graph API for approval."""
+        template = self.get_object()
+        org = get_current_organization()
+
+        # Get WhatsApp integration for this org
+        try:
+            integration = Integration.objects.get(organization=org, channel_type="whatsapp", status="connected")
+        except Integration.DoesNotExist:
+            return Response({"error": "No hay integración de WhatsApp conectada."}, status=400)
+
+        waba_id = integration.config.get("waba_id", "").strip()
+        access_token = integration.config.get("access_token", "").strip()
+
+        if not waba_id:
+            return Response({"error": "Configura el WABA ID en la integración de WhatsApp antes de enviar plantillas."}, status=400)
+        if not access_token:
+            return Response({"error": "La integración no tiene Access Token configurado."}, status=400)
+
+        payload = json.dumps({
+            "name": template.name,
+            "category": template.category,
+            "allow_category_change": True,
+            "language": template.language,
+            "components": template.components,
+        }).encode()
+
+        try:
+            req = urllib.request.Request(
+                f"https://graph.facebook.com/v19.0/{waba_id}/message_templates",
+                data=payload,
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "OptimizaCRM/1.0",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            body = json.loads(e.read().decode())
+            msg = body.get("error", {}).get("message", str(e))
+            return Response({"error": f"Meta rechazó la plantilla: {msg}"}, status=400)
+        except Exception as exc:
+            logger.warning("WhatsApp template submit error: %s", exc)
+            return Response({"error": "Error de conexión con Meta. Inténtalo de nuevo."}, status=400)
+
+        template.meta_template_id = str(data.get("id", ""))
+        meta_status = data.get("status", "PENDING").upper()
+        template.status = {"PENDING": "pending", "APPROVED": "approved", "REJECTED": "rejected"}.get(meta_status, "pending")
+        template.submitted_at = timezone.now()
+        template.save(update_fields=["meta_template_id", "status", "submitted_at"])
+
+        return Response(WhatsAppTemplateSerializer(template).data)
 
 
 # ─── Public Widget views (no JWT required) ────────────────────────────────────

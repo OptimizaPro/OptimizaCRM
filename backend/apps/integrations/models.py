@@ -238,6 +238,37 @@ class VoiceCall(TenantModel):
         return f"Call {self.vapi_call_id[:8]} – {self.organization.name}"
 
 
+class WhatsAppTemplate(TenantModel):
+    CATEGORY_CHOICES = [
+        ("MARKETING",      "Marketing"),
+        ("UTILITY",        "Utilidad"),
+        ("AUTHENTICATION", "Autenticación"),
+    ]
+    STATUS_CHOICES = [
+        ("draft",    "Borrador"),
+        ("pending",  "Pendiente de aprobación"),
+        ("approved", "Aprobado"),
+        ("rejected", "Rechazado"),
+        ("paused",   "Pausado"),
+    ]
+
+    name             = models.CharField(max_length=512)
+    category         = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="MARKETING")
+    language         = models.CharField(max_length=20, default="es")
+    status           = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    components       = models.JSONField(default=list, blank=True)
+    meta_template_id = models.CharField(max_length=100, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    submitted_at     = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "whatsapp_templates"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.status}) – {self.organization.name}"
+
+
 class GoogleDriveToken(TenantModel):
     """OAuth 2.0 tokens de Google Drive por organización."""
     access_token  = models.TextField()

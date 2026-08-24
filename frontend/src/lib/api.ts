@@ -984,6 +984,46 @@ export const integrationsApi = {
     api.delete(`/integrations/${id}/`, { token, orgId }),
 };
 
+// ─── WhatsApp Templates ───────────────────────────────────────────────────────
+
+export interface TemplateComponent {
+  type: "HEADER" | "BODY" | "FOOTER" | "BUTTONS";
+  format?: "TEXT";
+  text?: string;
+  buttons?: { type: "QUICK_REPLY" | "URL"; text: string; url?: string }[];
+}
+
+export interface WhatsAppTemplate {
+  id: string;
+  name: string;
+  category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
+  language: string;
+  status: "draft" | "pending" | "approved" | "rejected" | "paused";
+  components: TemplateComponent[];
+  meta_template_id: string;
+  rejection_reason: string;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const whatsappTemplatesApi = {
+  getWhatsAppTemplates: (token: string, orgId: string) =>
+    api.get<{ results: WhatsAppTemplate[] }>("/whatsapp-templates/", { token, orgId }),
+
+  createWhatsAppTemplate: (token: string, orgId: string, data: Partial<WhatsAppTemplate>) =>
+    api.post<WhatsAppTemplate>("/whatsapp-templates/", data, { token, orgId }),
+
+  updateWhatsAppTemplate: (token: string, orgId: string, id: string, data: Partial<WhatsAppTemplate>) =>
+    api.patch<WhatsAppTemplate>(`/whatsapp-templates/${id}/`, data, { token, orgId }),
+
+  deleteWhatsAppTemplate: (token: string, orgId: string, id: string) =>
+    api.delete<void>(`/whatsapp-templates/${id}/`, { token, orgId }),
+
+  submitWhatsAppTemplate: (token: string, orgId: string, id: string) =>
+    api.post<WhatsAppTemplate>(`/whatsapp-templates/${id}/submit/`, undefined, { token, orgId }),
+};
+
 export const inboxApi = {
   getMessages: (token: string, orgId: string, params?: string) =>
     api.get<PaginatedResponse<Message>>(`/messages/${params ? `?${params}` : ''}`, { token, orgId }),

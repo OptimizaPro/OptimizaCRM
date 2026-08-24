@@ -5,7 +5,7 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import IntegrationViewSet, MessageViewSet, widget_config, widget_submit, widget_manage, hub_config
+from .views import IntegrationViewSet, MessageViewSet, WhatsAppTemplateViewSet, widget_config, widget_submit, widget_manage, hub_config
 from .drive_views import (
     drive_status,
     drive_auth_url,
@@ -38,8 +38,9 @@ from .voice_views import (
 )
 
 router = DefaultRouter()
-router.register(r"integrations", IntegrationViewSet, basename="integration")
-router.register(r"messages",     MessageViewSet,     basename="message")
+router.register(r"integrations",       IntegrationViewSet,       basename="integration")
+router.register(r"messages",           MessageViewSet,           basename="message")
+router.register(r"whatsapp-templates", WhatsAppTemplateViewSet,  basename="whatsapp-template")
 
 urlpatterns = [
     path("", include(router.urls)),
