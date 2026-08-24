@@ -266,6 +266,35 @@ class IntegrationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Validate WhatsApp access token against Meta Graph API
+        if integration.channel_type == "whatsapp":
+            token = config.get("access_token", "")
+            try:
+                req = urllib.request.Request(
+                    f"https://graph.facebook.com/v19.0/me?access_token={token}",
+                    headers={"User-Agent": "OptimizaCRM/1.0"},
+                )
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    data = json.loads(resp.read().decode())
+                    if "error" in data:
+                        return Response(
+                            {"error": f"Token inválido: {data['error'].get('message', 'error desconocido')}"},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+            except urllib.error.HTTPError as e:
+                body = json.loads(e.read().decode())
+                msg = body.get("error", {}).get("message", str(e))
+                return Response(
+                    {"error": f"Token inválido: {msg}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            except Exception as exc:
+                logger.warning("WhatsApp token validation failed: %s", exc)
+                return Response(
+                    {"error": "No se pudo verificar el token con Meta. Comprueba tu conexión e inténtalo de nuevo."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         # Validate Brevo API key before saving
         if integration.channel_type == "brevo":
             _, err = _validate_brevo_key(config["api_key"])

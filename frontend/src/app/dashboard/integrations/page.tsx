@@ -161,6 +161,9 @@ const AnthropicIcon = () => (
   </svg>
 );
 
+const _API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "https://api.optimizacrm.com/api/v1";
+const WHATSAPP_WEBHOOK_URL = `${_API_BASE}/webhooks/whatsapp/`;
+
 const CHANNELS: ChannelConfig[] = [
   {
     channel_type: 'whatsapp',
@@ -182,6 +185,12 @@ const CHANNELS: ChannelConfig[] = [
         helpText: 'Token de acceso permanente de Meta Business Suite. No uses el token temporal de 24h.',
       },
       {
+        key: 'waba_id',
+        label: 'WhatsApp Business Account ID (WABA ID)',
+        placeholder: '123456789012345',
+        helpText: 'Opcional. Requerido para gestionar plantillas. En Meta Business Suite → Cuentas → WhatsApp Business.',
+      },
+      {
         key: 'verify_token',
         label: 'Verify Token',
         placeholder: 'mi_token_secreto',
@@ -192,7 +201,7 @@ const CHANNELS: ChannelConfig[] = [
         label: 'Webhook URL',
         type: 'text',
         readonly: true,
-        placeholder: 'https://tu-dominio.com/api/v1/webhooks/whatsapp/',
+        placeholder: WHATSAPP_WEBHOOK_URL,
         helpText: 'Copia esta URL y pégala en la configuración de Webhook de tu app en Meta for Developers.',
       },
     ],
@@ -201,8 +210,8 @@ const CHANNELS: ChannelConfig[] = [
       steps: [
         { title: 'Crea una app en Meta for Developers', description: 'Ve a developers.facebook.com → Mis apps → Crear app. Selecciona tipo "Empresa" y añade el producto WhatsApp.' },
         { title: 'Verifica tu negocio en Meta Business Suite', description: 'En business.facebook.com, completa la verificación. Puede tardar 1-3 días hábiles y requiere documentos oficiales.' },
-        { title: 'Registra un número de teléfono', description: 'En Meta → WhatsApp → Configuración del número. El número no puede tener WhatsApp personal activo.' },
-        { title: 'Obtén el Phone Number ID y Access Token', description: 'El Phone Number ID está en WhatsApp → Configuración de API. El token permanente: Configuración del sistema → Crear token de sistema.' },
+        { title: 'Registra un número de teléfono', description: 'En Meta → WhatsApp → Configuración del número. Puedes usar un número que ya tenga la app de WhatsApp Business activa — la API de nube de Meta permite coexistencia: tanto la app como la API funcionan en el mismo número simultáneamente.' },
+        { title: 'Obtén el Phone Number ID, WABA ID y Access Token', description: 'Phone Number ID y WABA ID: WhatsApp → Configuración de API. Token permanente: Configuración del sistema → Crear token de sistema (permisos: whatsapp_business_messaging, whatsapp_business_management).' },
         { title: 'Configura el Webhook', description: 'En WhatsApp → Configuración, pega la Webhook URL de este CRM y el Verify Token que definiste. Suscríbete al campo "messages".' },
       ],
     },
