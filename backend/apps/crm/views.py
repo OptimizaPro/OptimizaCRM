@@ -328,6 +328,64 @@ class CustomerViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
 
         return Response(ConsumptionRecordSerializer(record).data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["get"], url_path="consumption-summary")
+    def consumption_summary(self, request, pk=None):
+        """Aggregated consumption for two arbitrary months, for period comparison."""
+        customer = self.get_object()
+        org      = get_current_organization()
+        now      = timezone.now()
+
+        MONTHS_ES = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+        ]
+
+        def _parse_int(key, default):
+            try:
+                return int(request.query_params.get(key, default))
+            except (ValueError, TypeError):
+                return default
+
+        year  = _parse_int("year",  now.year)
+        month = _parse_int("month", now.month)
+        if not (1 <= month <= 12):
+            month = now.month
+
+        def_prev_m = month - 1 if month > 1 else 12
+        def_prev_y = year if month > 1 else year - 1
+        compare_year  = _parse_int("compare_year",  def_prev_y)
+        compare_month = _parse_int("compare_month", def_prev_m)
+        if not (1 <= compare_month <= 12):
+            compare_month = def_prev_m
+
+        def _period_totals(y, m):
+            qs = ConsumptionRecord.objects.filter(
+                organization=org, customer=customer, date__year=y, date__month=m
+            )
+            total = float(qs.aggregate(t=Sum("amount"))["t"] or 0)
+            count = qs.count()
+            by_category = {
+                cat: float(qs.filter(category=cat).aggregate(t=Sum("amount"))["t"] or 0)
+                for cat in ("purchase", "service", "recharge", "other")
+            }
+            return {"total": total, "count": count, "by_category": by_category,
+                    "label": f"{MONTHS_ES[m - 1]} {y}"}
+
+        current = _period_totals(year, month)
+        compare = _period_totals(compare_year, compare_month)
+
+        if compare["total"] > 0:
+            delta_pct = round((current["total"] - compare["total"]) / compare["total"] * 100, 1)
+        else:
+            delta_pct = None
+
+        trend = "neutral"
+        if delta_pct is not None:
+            trend = "up" if delta_pct > 0 else "down" if delta_pct < 0 else "neutral"
+
+        return Response({"current": current, "compare": compare,
+                         "delta_pct": delta_pct, "trend": trend})
+
     @action(detail=True, methods=["delete"], url_path=r"consumption/(?P<record_id>[^/.]+)")
     def delete_consumption(self, request, pk=None, record_id=None):
         customer = self.get_object()

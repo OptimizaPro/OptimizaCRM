@@ -252,6 +252,20 @@ export interface ConsumptionSummary {
   count: number;
 }
 
+export interface ConsumptionPeriodData {
+  total:       number;
+  count:       number;
+  by_category: Record<string, number>;
+  label:       string;
+}
+
+export interface ConsumptionSummaryComparison {
+  current:   ConsumptionPeriodData;
+  compare:   ConsumptionPeriodData;
+  delta_pct: number | null;
+  trend:     "up" | "down" | "neutral";
+}
+
 export interface IncentiveProgram {
   id: string;
   name: string;
@@ -623,6 +637,12 @@ export const crmApi = {
 
   deleteCustomer: (token: string, orgId: string, id: string) =>
     api.delete(`/customers/${id}/`, { token, orgId }),
+
+  getConsumptionSummary: (token: string, orgId: string, customerId: string, year: number, month: number, compareYear: number, compareMonth: number) =>
+    api.get<ConsumptionSummaryComparison>(
+      `/customers/${customerId}/consumption-summary/?year=${year}&month=${month}&compare_year=${compareYear}&compare_month=${compareMonth}`,
+      { token, orgId }
+    ),
 
   getConsumption: (token: string, orgId: string, customerId: string, params?: { date_from?: string; date_to?: string }) => {
     const qs = new URLSearchParams();

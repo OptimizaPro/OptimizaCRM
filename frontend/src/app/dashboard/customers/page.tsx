@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { useAuthStore } from "@/store/auth";
-import { crmApi, aiApi, csvApi, organizationApi, type Customer, type ConsumptionRecord } from "@/lib/api";
+import { crmApi, aiApi, csvApi, organizationApi, type Customer, type ConsumptionRecord, type ConsumptionSummaryComparison } from "@/lib/api";
 import type { CustomerSegment } from "@/lib/api";
 import { DriveDocumentsPanel } from "@/components/dashboard/drive-documents-panel";
 import { formatCurrency } from "@/lib/utils";
@@ -19,7 +19,7 @@ import {
   Pencil, Trash2, Mail, Phone, Building2, MapPin, User,
   Clock, AlertTriangle, Info, Search, Filter, Star, Receipt, Trash, HelpCircle,
   ChevronDown, ChevronUp, ShieldCheck, TrendingUp, TrendingDown,
-  Users, Layers, CheckCircle2, RotateCcw,
+  Users, Layers, CheckCircle2, RotateCcw, ArrowLeftRight, BarChart3,
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -322,6 +322,110 @@ function CustomerSLABadge({ customer }: { customer: Customer }) {
   );
 }
 
+// ─── Consumption analysis helpers ────────────────────────────────────────────
+
+const MONTHS_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  purchase: "bg-orange-500",
+  service:  "bg-blue-500",
+  recharge: "bg-green-500",
+  other:    "bg-slate-500",
+};
+
+function PeriodPicker({
+  label, month, year, onMonthChange, onYearChange, accent,
+}: {
+  label: string; month: number; year: number;
+  onMonthChange: (m: number) => void; onYearChange: (y: number) => void;
+  accent?: boolean;
+}) {
+  const curYear = new Date().getFullYear();
+  const years   = Array.from({ length: curYear - 2022 }, (_, i) => 2023 + i);
+  const cls     = "appearance-none bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs font-medium text-slate-200 focus:outline-none focus:border-orange-500 cursor-pointer";
+  return (
+    <div className="flex flex-col gap-1">
+      <span className={`text-[10px] uppercase tracking-widest font-semibold ${accent ? "text-orange-500" : "text-slate-500"}`}>{label}</span>
+      <div className="flex gap-1.5">
+        <select value={month} onChange={e => onMonthChange(Number(e.target.value))} className={cls}>
+          {MONTHS_ES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+        </select>
+        <select value={year} onChange={e => onYearChange(Number(e.target.value))} className={cls}>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function ConsumptionAnalysis({ data }: { data: ConsumptionSummaryComparison }) {
+  const { current, compare, delta_pct, trend } = data;
+  const trendColor = trend === "up" ? "text-green-400" : trend === "down" ? "text-red-400" : "text-slate-400";
+  const TrendIcon  = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : ArrowLeftRight;
+  const maxCat     = Math.max(...Object.values(current.by_category), ...Object.values(compare.by_category), 1);
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-4 space-y-4">
+      {/* KPI row */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-lg border border-slate-700 bg-slate-900 p-2.5">
+          <p className="text-[10px] text-slate-500 mb-0.5">{current.label}</p>
+          <p className="text-sm font-bold text-slate-100">{formatCurrency(current.total)}</p>
+          <p className="text-[10px] text-slate-500">{current.count} registros</p>
+        </div>
+        <div className="rounded-lg border border-slate-700 bg-slate-900 p-2.5">
+          <p className="text-[10px] text-slate-500 mb-0.5">{compare.label}</p>
+          <p className="text-sm font-bold text-slate-400">{formatCurrency(compare.total)}</p>
+          <p className="text-[10px] text-slate-500">{compare.count} registros</p>
+        </div>
+        <div className="rounded-lg border border-slate-700 bg-slate-900 p-2.5 flex flex-col items-center justify-center">
+          <TrendIcon className={`h-4 w-4 mb-0.5 ${trendColor}`} />
+          <p className={`text-sm font-bold ${trendColor}`}>
+            {delta_pct !== null ? `${delta_pct > 0 ? "+" : ""}${delta_pct}%` : "—"}
+          </p>
+          <p className="text-[10px] text-slate-500">variación</p>
+        </div>
+      </div>
+
+      {/* Category breakdown */}
+      <div className="space-y-1.5">
+        <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Por categoría</p>
+        {Object.entries(CATEGORY_LABELS).map(([cat, label]) => {
+          const curVal = current.by_category[cat] ?? 0;
+          const cmpVal = compare.by_category[cat] ?? 0;
+          if (curVal === 0 && cmpVal === 0) return null;
+          return (
+            <div key={cat} className="space-y-0.5">
+              <div className="flex justify-between text-[10px] text-slate-400">
+                <span>{label}</span>
+                <span className="text-slate-300 font-medium">{formatCurrency(curVal)}</span>
+              </div>
+              <div className="flex gap-1 h-1.5 rounded-full overflow-hidden bg-slate-800">
+                <div
+                  className={`${CATEGORY_COLORS[cat]} rounded-full transition-all`}
+                  style={{ width: `${(curVal / maxCat) * 100}%` }}
+                />
+              </div>
+              {cmpVal > 0 && (
+                <div className="flex gap-1 h-1 rounded-full overflow-hidden bg-slate-800/50">
+                  <div
+                    className={`${CATEGORY_COLORS[cat]} opacity-40 rounded-full`}
+                    style={{ width: `${(cmpVal / maxCat) * 100}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <p className="text-[10px] text-slate-600 pt-0.5">Barra oscura = período comparado</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Panel lateral ────────────────────────────────────────────────────────────
 
 type PanelTab = "info" | "consumo";
@@ -357,6 +461,19 @@ function CustomerPanel({
   const [dateTo,   setDateTo]   = useState("");
   const [newRecord, setNewRecord] = useState({ amount: "", date: new Date().toISOString().slice(0, 10), description: "", category: "purchase", reference: "" });
   const [showAddRecord, setShowAddRecord] = useState(false);
+
+  // ── Consumption analysis (period comparison) ───────────────────────────────
+  const nowD = new Date();
+  const [anaMonth,    setAnaMonth]    = useState(nowD.getMonth() + 1);
+  const [anaYear,     setAnaYear]     = useState(nowD.getFullYear());
+  const [anaCmpMonth, setAnaCmpMonth] = useState(nowD.getMonth() > 0 ? nowD.getMonth() : 12);
+  const [anaCmpYear,  setAnaCmpYear]  = useState(nowD.getMonth() > 0 ? nowD.getFullYear() : nowD.getFullYear() - 1);
+
+  const { data: summaryData, isLoading: loadingSummary } = useQuery({
+    queryKey: ["consumption-summary", customer.id, anaYear, anaMonth, anaCmpYear, anaCmpMonth],
+    queryFn:  () => crmApi.getConsumptionSummary(tokens!.access, organization!.id, customer.id, anaYear, anaMonth, anaCmpYear, anaCmpMonth),
+    enabled:  activeTab === "consumo" && !!tokens && !!organization,
+  });
 
   const { data: consumptionData, isLoading: loadingConsumption } = useQuery({
     queryKey: ["consumption", customer.id, dateFrom, dateTo],
@@ -563,6 +680,34 @@ function CustomerPanel({
         {/* ── TAB: Consumos ──────────────────────────────────────────────────── */}
         {activeTab === "consumo" && (
           <div className="flex-1 p-5 space-y-4">
+
+            {/* ── Análisis comparativo de períodos ── */}
+            <div className="rounded-xl border border-slate-700 bg-slate-900/40 p-3 space-y-3">
+              <div className="flex items-center gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5 text-orange-400" />
+                <p className="text-xs font-semibold text-slate-200">Análisis por período</p>
+              </div>
+              <div className="flex items-end gap-2 flex-wrap">
+                <PeriodPicker
+                  label="Período"
+                  month={anaMonth} year={anaYear}
+                  onMonthChange={setAnaMonth} onYearChange={setAnaYear}
+                  accent
+                />
+                <span className="text-slate-600 pb-2 text-xs font-bold">vs</span>
+                <PeriodPicker
+                  label="Comparar con"
+                  month={anaCmpMonth} year={anaCmpYear}
+                  onMonthChange={setAnaCmpMonth} onYearChange={setAnaCmpYear}
+                />
+              </div>
+              {loadingSummary ? (
+                <div className="h-20 rounded-lg bg-slate-800 animate-pulse" />
+              ) : summaryData ? (
+                <ConsumptionAnalysis data={summaryData} />
+              ) : null}
+            </div>
+
             {/* Summary */}
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-lg border border-slate-800 bg-slate-900 p-3">
