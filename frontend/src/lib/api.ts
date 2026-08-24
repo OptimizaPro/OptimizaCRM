@@ -266,6 +266,24 @@ export interface ConsumptionSummaryComparison {
   trend:     "up" | "down" | "neutral";
 }
 
+export interface CustomerProductionRow {
+  id:        string;
+  name:      string;
+  company:   string;
+  segment:   string;
+  total:     number;
+  count:     number;
+  share_pct: number;
+}
+
+export interface ProductionSummary {
+  period_label:   string;
+  total:          number;
+  customer_count: number;
+  avg_per_client: number;
+  customers:      CustomerProductionRow[];
+}
+
 export interface IncentiveProgram {
   id: string;
   name: string;
@@ -643,6 +661,9 @@ export const crmApi = {
       `/customers/${customerId}/consumption-summary/?year=${year}&month=${month}&compare_year=${compareYear}&compare_month=${compareMonth}`,
       { token, orgId }
     ),
+
+  getProductionSummary: (token: string, orgId: string, year: number, month: number) =>
+    api.get<ProductionSummary>(`/customers/production-summary/?year=${year}&month=${month}`, { token, orgId }),
 
   getConsumption: (token: string, orgId: string, customerId: string, params?: { date_from?: string; date_to?: string }) => {
     const qs = new URLSearchParams();

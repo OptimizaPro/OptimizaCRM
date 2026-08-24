@@ -20,6 +20,7 @@ import {
   Clock, AlertTriangle, Info, Search, Filter, Star, Receipt, Trash, HelpCircle,
   ChevronDown, ChevronUp, ShieldCheck, TrendingUp, TrendingDown,
   Users, Layers, CheckCircle2, RotateCcw, ArrowLeftRight, BarChart3,
+  ChevronsUpDown, ArrowUp, ArrowDown, Activity,
 } from "lucide-react";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -840,9 +841,199 @@ function CustomerPanel({
   );
 }
 
+// ─── Production tab ───────────────────────────────────────────────────────────
+
+type SortKey   = "total" | "share_pct" | "name" | "count";
+type SortDir   = "asc" | "desc";
+
+function ProductionTab() {
+  const { tokens, organization } = useAuthStore();
+  const segments = useOrgSegments();
+  const nowD     = new Date();
+
+  const [prodMonth, setProdMonth] = useState(nowD.getMonth() + 1);
+  const [prodYear,  setProdYear]  = useState(nowD.getFullYear());
+  const [sortKey,   setSortKey]   = useState<SortKey>("total");
+  const [sortDir,   setSortDir]   = useState<SortDir>("desc");
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["production-summary", prodYear, prodMonth],
+    queryFn:  () => crmApi.getProductionSummary(tokens!.access, organization!.id, prodYear, prodMonth),
+    enabled:  !!tokens && !!organization,
+  });
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) setSortDir(d => d === "desc" ? "asc" : "desc");
+    else { setSortKey(key); setSortDir("desc"); }
+  }
+
+  const sorted = [...(data?.customers ?? [])].sort((a, b) => {
+    const mult = sortDir === "desc" ? -1 : 1;
+    if (sortKey === "name") return mult * a.name.localeCompare(b.name);
+    return mult * (a[sortKey] - b[sortKey]);
+  });
+
+  const maxShare = Math.max(...(data?.customers ?? []).map(c => c.share_pct), 1);
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ChevronsUpDown className="h-3 w-3 text-slate-600" />;
+    return sortDir === "desc"
+      ? <ArrowDown className="h-3 w-3 text-orange-400" />
+      : <ArrowUp className="h-3 w-3 text-orange-400" />;
+  }
+
+  const thCls = "px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 cursor-pointer select-none hover:text-slate-300 transition-colors";
+
+  return (
+    <div className="space-y-5">
+      {/* Period picker */}
+      <div className="flex items-end gap-4 rounded-2xl border border-slate-800 bg-slate-950/80 p-4">
+        <Activity className="h-4 w-4 text-orange-400 mb-2 flex-shrink-0" />
+        <PeriodPicker
+          label="Período de análisis"
+          month={prodMonth} year={prodYear}
+          onMonthChange={setProdMonth} onYearChange={setProdYear}
+          accent
+        />
+        {data && (
+          <div className="ml-auto text-right hidden sm:block">
+            <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold">Analizando</p>
+            <p className="text-sm font-bold text-slate-200">{data.period_label}</p>
+          </div>
+        )}
+      </div>
+
+      {/* KPIs */}
+      {isLoading ? (
+        <div className="grid grid-cols-3 gap-3">
+          {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-slate-900 animate-pulse" />)}
+        </div>
+      ) : data ? (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <p className="text-xs text-slate-500 mb-1">Total cartera</p>
+            <p className="text-xl font-bold text-slate-100">{formatCurrency(data.total)}</p>
+            <p className="text-[10px] text-slate-600 mt-0.5">{data.period_label}</p>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <p className="text-xs text-slate-500 mb-1">Clientes activos</p>
+            <p className="text-xl font-bold text-slate-100">{data.customer_count}</p>
+            <p className="text-[10px] text-slate-600 mt-0.5">con consumo en el período</p>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <p className="text-xs text-slate-500 mb-1">Promedio</p>
+            <p className="text-xl font-bold text-slate-100">{formatCurrency(data.avg_per_client)}</p>
+            <p className="text-[10px] text-slate-600 mt-0.5">por cliente</p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Table */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden">
+        {isLoading ? (
+          <div className="space-y-px">
+            {[1,2,3,4,5].map(i => <div key={i} className="h-12 bg-slate-900 animate-pulse" />)}
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="py-16 text-center">
+            <BarChart3 className="mx-auto h-8 w-8 text-slate-700 mb-2" />
+            <p className="text-sm text-slate-500">Sin registros de consumo para {data?.period_label ?? "este período"}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-800 bg-slate-900/60">
+                <tr>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 w-8">#</th>
+                  <th className={thCls} onClick={() => toggleSort("name")}>
+                    <span className="flex items-center gap-1">Cliente <SortIcon col="name" /></span>
+                  </th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500">Segmento</th>
+                  <th className={thCls} onClick={() => toggleSort("total")}>
+                    <span className="flex items-center gap-1">Producción <SortIcon col="total" /></span>
+                  </th>
+                  <th className={thCls} onClick={() => toggleSort("count")}>
+                    <span className="flex items-center gap-1">Registros <SortIcon col="count" /></span>
+                  </th>
+                  <th className={thCls} onClick={() => toggleSort("share_pct")}>
+                    <span className="flex items-center gap-1">% del total <SortIcon col="share_pct" /></span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60">
+                {sorted.map((row, idx) => {
+                  const seg  = segments.find(s => s.key === row.segment);
+                  const barW = Math.max((row.share_pct / maxShare) * 100, 1);
+                  return (
+                    <tr key={row.id} className="hover:bg-slate-900/40 transition-colors">
+                      {/* Rank */}
+                      <td className="px-3 py-3 text-xs text-slate-600 font-mono">{idx + 1}</td>
+                      {/* Cliente */}
+                      <td className="px-3 py-3">
+                        <p className="font-medium text-slate-200 leading-tight">{row.name}</p>
+                        {row.company && <p className="text-[11px] text-slate-500 truncate max-w-[140px]">{row.company}</p>}
+                      </td>
+                      {/* Segmento */}
+                      <td className="px-3 py-3">
+                        {seg ? (
+                          <SegmentBadge segment={row.segment} auto={false} segments={segments} />
+                        ) : (
+                          <span className="text-xs text-slate-600">—</span>
+                        )}
+                      </td>
+                      {/* Producción */}
+                      <td className="px-3 py-3">
+                        <span className="font-semibold text-slate-100">{formatCurrency(row.total)}</span>
+                      </td>
+                      {/* # registros */}
+                      <td className="px-3 py-3 text-slate-400 text-xs">{row.count}</td>
+                      {/* % share con barra */}
+                      <td className="px-3 py-3 min-w-[130px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-1.5 rounded-full bg-orange-500 transition-all duration-300"
+                              style={{ width: `${barW}%` }}
+                            />
+                          </div>
+                          <span className={`text-xs font-semibold tabular-nums ${
+                            row.share_pct >= 20 ? "text-orange-400" :
+                            row.share_pct >= 10 ? "text-yellow-400" : "text-slate-400"
+                          }`}>
+                            {row.share_pct.toFixed(1)}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {/* Total row */}
+              {data && (
+                <tfoot className="border-t border-slate-700 bg-slate-900/60">
+                  <tr>
+                    <td colSpan={3} className="px-3 py-3 text-xs font-semibold text-slate-400">
+                      Total — {data.customer_count} clientes
+                    </td>
+                    <td className="px-3 py-3 font-bold text-slate-100">{formatCurrency(data.total)}</td>
+                    <td className="px-3 py-3 text-slate-400 text-xs">
+                      {data.customers.reduce((s, c) => s + c.count, 0)}
+                    </td>
+                    <td className="px-3 py-3 text-xs font-semibold text-slate-400">100%</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type PageTab = "lista" | "segmentacion";
+type PageTab = "lista" | "segmentacion" | "produccion";
 
 export default function CustomersPage() {
   const { tokens, organization, setOrganization } = useAuthStore();
@@ -1066,6 +1257,7 @@ export default function CustomersPage() {
       <div className="flex border-b border-slate-800 bg-slate-950 px-4 sm:px-6">
         {([
           { id: "lista",        label: "Clientes",    icon: <Users className="h-4 w-4" /> },
+          { id: "produccion",   label: "Producción",  icon: <BarChart3 className="h-4 w-4" /> },
           { id: "segmentacion", label: "Segmentación", icon: <Layers className="h-4 w-4" /> },
         ] as { id: PageTab; label: string; icon: React.ReactNode }[]).map((t) => (
           <button
@@ -1084,6 +1276,9 @@ export default function CustomersPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+
+        {/* ── PRODUCCIÓN TAB ── */}
+        {pageTab === "produccion" && <ProductionTab />}
 
         {/* ── SEGMENTACIÓN TAB ── */}
         {pageTab === "segmentacion" && (

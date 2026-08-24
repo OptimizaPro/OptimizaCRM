@@ -430,6 +430,77 @@ class CustomerViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
             }
         return Response(result)
 
+    @action(detail=False, methods=["get"], url_path="production-summary")
+    def production_summary(self, request):
+        """Aggregate ConsumptionRecord by customer for a given month/year.
+        Returns ranked list with each customer's share of total period revenue."""
+        from django.db.models import Count  # noqa: PLC0415
+        org = get_current_organization()
+        now = timezone.now()
+
+        MONTHS_ES = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+        ]
+
+        def _parse(key, default):
+            try:
+                return int(request.query_params.get(key, default))
+            except (ValueError, TypeError):
+                return default
+
+        year  = _parse("year",  now.year)
+        month = _parse("month", now.month)
+        if not (1 <= month <= 12):
+            month = now.month
+
+        # Aggregate per customer
+        rows = (
+            ConsumptionRecord.objects
+            .filter(organization=org, date__year=year, date__month=month)
+            .values("customer")
+            .annotate(total=Sum("amount"), txn_count=Count("id"))
+        )
+
+        total_all = sum(float(r["total"] or 0) for r in rows)
+
+        # Fetch customer details in one query
+        cust_ids   = [r["customer"] for r in rows]
+        cust_map   = {
+            str(c.id): c
+            for c in Customer.objects.filter(organization=org, id__in=cust_ids)
+        }
+
+        result = []
+        for r in rows:
+            cid   = str(r["customer"])
+            cust  = cust_map.get(cid)
+            if not cust:
+                continue
+            total     = float(r["total"] or 0)
+            share_pct = round(total / total_all * 100, 2) if total_all > 0 else 0
+            result.append({
+                "id":        cid,
+                "name":      cust.name,
+                "company":   cust.company or "",
+                "segment":   cust.segment,
+                "total":     total,
+                "count":     r["txn_count"],
+                "share_pct": share_pct,
+            })
+
+        result.sort(key=lambda x: x["total"], reverse=True)
+
+        avg = round(total_all / len(result), 2) if result else 0
+
+        return Response({
+            "period_label":   f"{MONTHS_ES[month - 1]} {year}",
+            "total":          total_all,
+            "customer_count": len(result),
+            "avg_per_client": avg,
+            "customers":      result,
+        })
+
 
 # ─── Incentive Programs ───────────────────────────────────────────────────────
 
