@@ -371,13 +371,8 @@ export interface PeriodMetric {
   trend:    "up" | "down" | "neutral";
 }
 
-export type DashboardPeriod  = "month" | "quarter" | "year";
-export type DashboardCompare = "previous" | "yoy";
-
 export interface DashboardData {
-  period:        DashboardPeriod;
   period_label:  string;
-  compare:       DashboardCompare;
   compare_label: string;
   revenue: {
     total:          number;
@@ -596,8 +591,8 @@ export const goalsApi = {
 };
 
 export const crmApi = {
-  getDashboard: (token: string, orgId: string, period: DashboardPeriod = "month", compare: DashboardCompare = "previous") =>
-    api.get<DashboardData>(`/dashboard/?period=${period}&compare=${compare}`, { token, orgId }),
+  getDashboard: (token: string, orgId: string, year: number, month: number, compareYear: number, compareMonth: number) =>
+    api.get<DashboardData>(`/dashboard/?year=${year}&month=${month}&compare_year=${compareYear}&compare_month=${compareMonth}`, { token, orgId }),
 
   getLeads: (token: string, orgId: string, params?: string) =>
     api.get<PaginatedResponse<Lead>>(`/leads/${params ? `?${params}` : ""}`, { token, orgId }),

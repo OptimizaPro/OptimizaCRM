@@ -8,16 +8,15 @@ import { DashboardKPIs } from "@/components/dashboard/kpi-cards";
 import { RevenueChart, FunnelChartWidget } from "@/components/dashboard/charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/store/auth";
-import { crmApi, type DashboardPeriod, type DashboardCompare } from "@/lib/api";
+import { crmApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { CalendarDays, TrendingUp, BarChart2, ArrowLeftRight, BarChart } from "lucide-react";
+import { CalendarDays, ArrowLeftRight } from "lucide-react";
 
-// ─── Selectors ────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const PERIODS: { key: DashboardPeriod; label: string; icon: React.ElementType }[] = [
-  { key: "month",   label: "Este mes",  icon: CalendarDays },
-  { key: "quarter", label: "Trimestre", icon: BarChart2    },
-  { key: "year",    label: "Este año",  icon: TrendingUp   },
+const MONTHS_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
 const ACTIVITY_TYPE_LABELS: Record<string, string> = {
@@ -31,69 +30,59 @@ const ACTIVITY_TYPE_LABELS: Record<string, string> = {
   assignment:    "Asignación",
 };
 
-const COMPARES: { key: DashboardCompare; label: string; short: string }[] = [
-  { key: "previous", label: "vs. período anterior",          short: "Per. anterior" },
-  { key: "yoy",      label: "vs. mismo período año anterior", short: "Año anterior"  },
-];
+// ─── MonthYearPicker ─────────────────────────────────────────────────────────
 
-function PeriodTabs({
-  value, onChange,
+function MonthYearPicker({
+  label,
+  month,
+  year,
+  onMonthChange,
+  onYearChange,
+  accent = false,
 }: {
-  value:    DashboardPeriod;
-  onChange: (v: DashboardPeriod) => void;
+  label:         string;
+  month:         number;
+  year:          number;
+  onMonthChange: (m: number) => void;
+  onYearChange:  (y: number) => void;
+  accent?:       boolean;
 }) {
-  return (
-    <div className="flex items-stretch overflow-x-auto scrollbar-hide">
-      {PERIODS.map((p, i) => {
-        const Icon    = p.icon;
-        const active  = value === p.key;
-        return (
-          <button
-            key={p.key}
-            onClick={() => onChange(p.key)}
-            className={`
-              group relative flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 text-sm font-medium transition-all duration-150 whitespace-nowrap
-              ${i > 0 ? "border-l border-slate-800/60" : ""}
-              ${active
-                ? "text-slate-100"
-                : "text-slate-500 hover:text-slate-300"
-              }
-            `}
-          >
-            <Icon className={`h-3.5 w-3.5 flex-shrink-0 transition-colors ${active ? "text-orange-400" : "text-slate-600 group-hover:text-slate-400"}`} />
-            {p.label}
-            {/* Active indicator bar */}
-            <span className={`absolute bottom-0 left-3 right-3 h-[2px] rounded-full transition-all duration-200 ${active ? "bg-orange-500 opacity-100" : "opacity-0"}`} />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+  const currentYear = new Date().getFullYear();
+  // Show years from 3 years ago up to current year
+  const years = Array.from({ length: currentYear - 2022 }, (_, i) => 2023 + i);
 
-function CompareSegment({
-  value, onChange,
-}: {
-  value:    DashboardCompare;
-  onChange: (v: DashboardCompare) => void;
-}) {
+  const selectClass = `
+    appearance-none bg-slate-900 border border-slate-700 rounded-lg
+    px-3 py-1.5 text-sm font-medium text-slate-200
+    focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/30
+    hover:border-slate-600 transition-colors cursor-pointer
+  `;
+
   return (
-    <div className="flex items-center gap-0.5 rounded-lg bg-slate-900 border border-slate-800 p-0.5">
-      {COMPARES.map(c => (
-        <button
-          key={c.key}
-          onClick={() => onChange(c.key)}
-          title={c.label}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150 whitespace-nowrap ${
-            value === c.key
-              ? "bg-slate-700 text-slate-100 shadow-sm"
-              : "text-slate-500 hover:text-slate-300"
-          }`}
+    <div className="flex flex-col gap-1.5">
+      <span className={`text-[10px] uppercase tracking-widest font-semibold ${accent ? "text-orange-500" : "text-slate-500"}`}>
+        {label}
+      </span>
+      <div className="flex items-center gap-2">
+        <select
+          value={month}
+          onChange={e => onMonthChange(Number(e.target.value))}
+          className={selectClass}
         >
-          {c.key === "previous" ? <ArrowLeftRight className="h-3 w-3 flex-shrink-0" /> : <BarChart className="h-3 w-3 flex-shrink-0" />}
-          {c.short}
-        </button>
-      ))}
+          {MONTHS_ES.map((m, i) => (
+            <option key={i} value={i + 1}>{m}</option>
+          ))}
+        </select>
+        <select
+          value={year}
+          onChange={e => onYearChange(Number(e.target.value))}
+          className={selectClass}
+        >
+          {years.map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }
@@ -103,12 +92,19 @@ function CompareSegment({
 export default function DashboardPage() {
   const router = useRouter();
   const { tokens, organization, logout } = useAuthStore();
-  const [period,  setPeriod]  = useState<DashboardPeriod>("month");
-  const [compare, setCompare] = useState<DashboardCompare>("previous");
+
+  // Selected period (defaults to current month/year)
+  const now = new Date();
+  const [selMonth, setSelMonth] = useState(now.getMonth() + 1);
+  const [selYear,  setSelYear]  = useState(now.getFullYear());
+
+  // Comparison period (defaults to previous month)
+  const [cmpMonth, setCmpMonth] = useState(now.getMonth() > 0 ? now.getMonth() : 12);
+  const [cmpYear,  setCmpYear]  = useState(now.getMonth() > 0 ? now.getFullYear() : now.getFullYear() - 1);
 
   const { data: dashboard, isLoading, error } = useQuery({
-    queryKey: ["dashboard", period, compare],
-    queryFn:  () => crmApi.getDashboard(tokens!.access, String(organization!.id), period, compare),
+    queryKey: ["dashboard", selYear, selMonth, cmpYear, cmpMonth],
+    queryFn:  () => crmApi.getDashboard(tokens!.access, String(organization!.id), selYear, selMonth, cmpYear, cmpMonth),
     enabled:  !!tokens && !!organization,
     retry:    false,
   });
@@ -154,25 +150,48 @@ export default function DashboardPage() {
           <div className="space-y-6">
 
             {/* ── Period + Compare selectors ── */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 backdrop-blur-sm shadow-xl shadow-black/20 overflow-hidden">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/80 backdrop-blur-sm shadow-xl shadow-black/20 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
 
-                {/* Period tabs */}
-                <PeriodTabs value={period} onChange={setPeriod} />
+                {/* Selected period */}
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-slate-500 flex-shrink-0 mb-0.5" />
+                  <MonthYearPicker
+                    label="Período"
+                    month={selMonth}
+                    year={selYear}
+                    onMonthChange={setSelMonth}
+                    onYearChange={setSelYear}
+                    accent
+                  />
+                </div>
 
-                {/* Divider + compare + label */}
-                <div className="flex items-center gap-3 border-t sm:border-t-0 sm:border-l border-slate-800 px-4 py-2.5">
-                  <CompareSegment value={compare} onChange={setCompare} />
-                  <div className="hidden lg:block text-right">
-                    <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold">Comparando</p>
+                {/* VS divider */}
+                <div className="flex items-center gap-2 text-slate-600 pb-1">
+                  <ArrowLeftRight className="h-3.5 w-3.5" />
+                  <span className="text-xs font-semibold uppercase tracking-widest">vs</span>
+                </div>
+
+                {/* Comparison period */}
+                <MonthYearPicker
+                  label="Comparar con"
+                  month={cmpMonth}
+                  year={cmpYear}
+                  onMonthChange={setCmpMonth}
+                  onYearChange={setCmpYear}
+                />
+
+                {/* Live label */}
+                {dashboard && (
+                  <div className="hidden lg:flex flex-col justify-end ml-auto text-right pb-1">
+                    <p className="text-[10px] uppercase tracking-widest text-slate-600 font-semibold">Analizando</p>
                     <p className="text-xs text-slate-400 leading-tight">
                       <span className="text-slate-200 font-medium">{dashboard.period_label}</span>
                       {" "}<span className="text-slate-600">·</span>{" "}
                       <span className="text-orange-400">{dashboard.compare_label}</span>
                     </p>
                   </div>
-                </div>
-
+                )}
               </div>
             </div>
 

@@ -21,84 +21,35 @@ from .serializers import ReportSerializer, SalesGoalSerializer, TeamGoalSerializ
 class DashboardView(APIView):
     permission_classes = [IsReadOnlyOrAbove]
 
-    PERIOD_OPTIONS  = ("month", "quarter", "year")
-    COMPARE_OPTIONS = ("previous", "yoy")
+    MONTHS_ES = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+    ]
 
-    PERIOD_LABELS = {
-        "month":   "Este mes",
-        "quarter": "Este trimestre",
-        "year":    "Este año",
-    }
-
-    # Human-readable label for the comparison window shown in the frontend
-    COMPARE_LABELS = {
-        ("month",   "previous"): "mes anterior",
-        ("month",   "yoy"):      "jun. año anterior",   # overridden dynamically
-        ("quarter", "previous"): "trimestre anterior",
-        ("quarter", "yoy"):      "mismo trimestre año anterior",
-        ("year",    "previous"): "año anterior",
-        ("year",    "yoy"):      "año anterior",         # identical for "year"
-    }
-
-    def _period_bounds(self, period, compare, now):
+    def _period_bounds(self, year, month, compare_year, compare_month, now):
         """
-        Returns (cur_start, cur_end, prev_start, prev_end).
+        Returns (cur_start, cur_end, prev_start, prev_end) for two arbitrary months.
 
-        compare="previous" — rolling previous period (MoM / QoQ / YoY rolling)
-        compare="yoy"      — same calendar window exactly one year back
-                             Uses elapsed days so partial periods are fair.
+        cur_end: if the selected month is the current one → now (partial),
+                 otherwise → first day of the following month (full month).
+        prev_end: always first day of the month after compare_month (full month).
         """
         zero = dict(hour=0, minute=0, second=0, microsecond=0)
 
-        # ── Current period start ──────────────────────────────────────────
-        if period == "quarter":
-            q_start_month = ((now.month - 1) // 3) * 3 + 1
-            cur_start     = now.replace(month=q_start_month, day=1, **zero)
-        elif period == "year":
-            cur_start = now.replace(month=1, day=1, **zero)
-        else:  # month
-            cur_start = now.replace(day=1, **zero)
+        cur_start = now.replace(year=year, month=month, day=1, **zero)
+        if year == now.year and month == now.month:
+            cur_end = now
+        else:
+            next_m = month + 1 if month < 12 else 1
+            next_y = year if month < 12 else year + 1
+            cur_end = now.replace(year=next_y, month=next_m, day=1, **zero)
 
-        cur_end = now  # always open-ended at "now"
-
-        # ── Previous period bounds ────────────────────────────────────────
-        if compare == "yoy":
-            # Same calendar window, exactly 1 year earlier.
-            # prev_end mirrors elapsed days so partial periods are comparable.
-            prev_start = cur_start.replace(year=cur_start.year - 1)
-            prev_end   = now.replace(year=now.year - 1)
-
-        else:  # previous
-            if period == "quarter":
-                pq_month = q_start_month - 3
-                pq_year  = now.year
-                if pq_month <= 0:
-                    pq_month += 12
-                    pq_year  -= 1
-                prev_start = now.replace(year=pq_year, month=pq_month, day=1, **zero)
-                prev_end   = cur_start
-
-            elif period == "year":
-                prev_start = cur_start.replace(year=now.year - 1)
-                prev_end   = cur_start
-
-            else:  # month
-                last_of_prev = cur_start - timedelta(days=1)
-                prev_start   = last_of_prev.replace(day=1, **zero)
-                prev_end     = cur_start
+        prev_start = now.replace(year=compare_year, month=compare_month, day=1, **zero)
+        next_cm = compare_month + 1 if compare_month < 12 else 1
+        next_cy = compare_year if compare_month < 12 else compare_year + 1
+        prev_end = now.replace(year=next_cy, month=next_cm, day=1, **zero)
 
         return cur_start, cur_end, prev_start, prev_end
-
-    def _compare_label(self, period, compare, now):
-        """Dynamic label e.g. 'jun. 2024' for month+yoy."""
-        if compare == "yoy":
-            if period == "month":
-                return now.replace(year=now.year - 1).strftime("%b. %Y")
-            if period == "quarter":
-                q = ((now.month - 1) // 3) + 1
-                return f"Q{q} {now.year - 1}"
-            return str(now.year - 1)
-        return self.COMPARE_LABELS.get((period, compare), "período anterior")
 
     def _pct(self, current, previous):
         """Percentage change; None when previous is 0 (undefined)."""
@@ -128,13 +79,33 @@ class DashboardView(APIView):
         if not org:
             return Response({"error": "Sin contexto de organización."}, status=400)
 
-        period  = request.query_params.get("period",  "month")
-        compare = request.query_params.get("compare", "previous")
-        if period  not in self.PERIOD_OPTIONS:  period  = "month"
-        if compare not in self.COMPARE_OPTIONS: compare = "previous"
-
         now = timezone.now()
-        cur_start, cur_end, prev_start, prev_end = self._period_bounds(period, compare, now)
+
+        # ── Parse selected period (year + month) ──────────────────────────
+        try:
+            year  = int(request.query_params.get("year",  now.year))
+            month = int(request.query_params.get("month", now.month))
+            if not (1 <= month <= 12) or year < 2000:
+                year, month = now.year, now.month
+        except (ValueError, TypeError):
+            year, month = now.year, now.month
+
+        # ── Parse comparison period (defaults to previous month) ──────────
+        def_prev_m = month - 1 if month > 1 else 12
+        def_prev_y = year if month > 1 else year - 1
+        try:
+            compare_year  = int(request.query_params.get("compare_year",  def_prev_y))
+            compare_month = int(request.query_params.get("compare_month", def_prev_m))
+            if not (1 <= compare_month <= 12) or compare_year < 2000:
+                compare_year, compare_month = def_prev_y, def_prev_m
+        except (ValueError, TypeError):
+            compare_year, compare_month = def_prev_y, def_prev_m
+
+        cur_start, cur_end, prev_start, prev_end = self._period_bounds(
+            year, month, compare_year, compare_month, now
+        )
+        period_label  = f"{self.MONTHS_ES[month - 1]} {year}"
+        compare_label = f"{self.MONTHS_ES[compare_month - 1]} {compare_year}"
 
         leads         = Lead.objects.filter(organization=org)
         customers     = Customer.objects.filter(organization=org)
@@ -184,10 +155,8 @@ class DashboardView(APIView):
         prev_conv_rate  = round((prev_leads_conv / prev_leads * 100), 2) if prev_leads else 0
 
         return Response({
-            "period":        period,
-            "period_label":  self.PERIOD_LABELS[period],
-            "compare":       compare,
-            "compare_label": self._compare_label(period, compare, now),
+            "period_label":  period_label,
+            "compare_label": compare_label,
             # ── All-time / aggregate (unchanged shape) ───────────────────
             "revenue": {
                 "total":          float(total_revenue),
