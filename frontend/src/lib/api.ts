@@ -959,6 +959,11 @@ export interface Message {
   thread_id: string;
   received_at: string;
   created_at: string;
+  metadata?: {
+    wa_id?: string;
+    sender_name?: string;
+    msg_type?: string;
+  };
 }
 
 export const integrationsApi = {

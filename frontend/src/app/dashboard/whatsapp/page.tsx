@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import { DashboardHeader } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,12 @@ import {
   MessageCircle, Circle, Sparkles, Loader2, WifiOff,
   ExternalLink,
 } from "lucide-react";
-import { writingAssistantApi, integrationsApi, type WritingAction } from "@/lib/api";
+import { writingAssistantApi, inboxApi, integrationsApi, type WritingAction, type Message } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { FeatureGate } from "@/components/dashboard/feature-gate";
 import Link from "next/link";
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 interface WaMessage {
   id: string;
@@ -25,10 +25,11 @@ interface WaMessage {
   direction: "inbound" | "outbound";
   timestamp: string;
   status?: "sent" | "delivered" | "read";
+  raw_id: string; // backend message id for reply
 }
 
 interface WaConversation {
-  id: string;
+  id: string;             // wa_id (phone without +)
   contact_name: string;
   phone: string;
   avatar_initials: string;
@@ -36,104 +37,119 @@ interface WaConversation {
   last_message: string;
   last_time: string;
   unread: number;
-  crm_type?: "lead" | "customer";
-  crm_name?: string;
   messages: WaMessage[];
+  last_inbound_id: string | null; // id of last inbound message for reply
 }
 
-const MOCK_CONVERSATIONS: WaConversation[] = [
-  {
-    id: "1",
-    contact_name: "Carlos Méndez",
-    phone: "+502 5555 1234",
-    avatar_initials: "CM",
-    avatar_color: "bg-emerald-500",
-    last_message: "Perfecto, nos vemos el lunes entonces",
-    last_time: "10:42",
-    unread: 2,
-    crm_type: "lead",
-    crm_name: "Carlos Méndez",
-    messages: [
-      { id: "m1", body: "Buenos días Carlos, ¿pudiste revisar la propuesta que te envié?", direction: "outbound", timestamp: "09:15", status: "read" },
-      { id: "m2", body: "Sí, la revisé. Tengo algunas dudas sobre el precio del plan Enterprise.", direction: "inbound", timestamp: "09:32" },
-      { id: "m3", body: "Claro, con gusto te explico. El plan Enterprise incluye acceso ilimitado a todas las funciones de IA más soporte dedicado 24/7.", direction: "outbound", timestamp: "09:45", status: "read" },
-      { id: "m4", body: "¿Y hay algún descuento si contrato por un año?", direction: "inbound", timestamp: "09:50" },
-      { id: "m5", body: "Sí, ofrecemos un 20% de descuento en contratos anuales. ¿Te gustaría agendar una llamada para cerrar los detalles?", direction: "outbound", timestamp: "10:01", status: "read" },
-      { id: "m6", body: "Perfecto, nos vemos el lunes entonces", direction: "inbound", timestamp: "10:42" },
-    ],
-  },
-  {
-    id: "2",
-    contact_name: "Ana Sofía García",
-    phone: "+502 5555 5678",
-    avatar_initials: "AG",
-    avatar_color: "bg-violet-500",
-    last_message: "¿Me pueden enviar la factura?",
-    last_time: "09:15",
-    unread: 1,
-    crm_type: "customer",
-    crm_name: "Ana Sofía García",
-    messages: [
-      { id: "m1", body: "Hola, acabo de renovar mi suscripción.", direction: "inbound", timestamp: "08:50" },
-      { id: "m2", body: "¡Hola Ana! Muchas gracias por renovar. Tu cuenta ya está activa.", direction: "outbound", timestamp: "08:55", status: "read" },
-      { id: "m3", body: "¿Me pueden enviar la factura?", direction: "inbound", timestamp: "09:15" },
-    ],
-  },
-  {
-    id: "3",
-    contact_name: "Roberto Lima",
-    phone: "+502 5555 9012",
-    avatar_initials: "RL",
-    avatar_color: "bg-blue-500",
-    last_message: "Gracias por la información",
-    last_time: "Ayer",
-    unread: 0,
-    crm_type: "lead",
-    crm_name: "Roberto Lima",
-    messages: [
-      { id: "m1", body: "Hola, vi su anuncio en LinkedIn. ¿Tienen versión para equipos pequeños?", direction: "inbound", timestamp: "Ayer 14:20" },
-      { id: "m2", body: "¡Hola Roberto! Sí, tenemos el plan Starter ideal para equipos de hasta 5 personas.", direction: "outbound", timestamp: "Ayer 14:35", status: "read" },
-      { id: "m3", body: "Gracias por la información", direction: "inbound", timestamp: "Ayer 14:40" },
-    ],
-  },
-  {
-    id: "4",
-    contact_name: "María Fernanda",
-    phone: "+502 5555 3456",
-    avatar_initials: "MF",
-    avatar_color: "bg-rose-500",
-    last_message: "Ok, lo pruebo y te aviso",
-    last_time: "Lun",
-    unread: 0,
-    messages: [
-      { id: "m1", body: "Tengo un problema con el acceso al panel.", direction: "inbound", timestamp: "Lun 11:00" },
-      { id: "m2", body: "Hola María, ¿puedes intentar cerrar sesión y volver a entrar?", direction: "outbound", timestamp: "Lun 11:05", status: "delivered" },
-      { id: "m3", body: "Ok, lo pruebo y te aviso", direction: "inbound", timestamp: "Lun 11:07" },
-    ],
-  },
-  {
-    id: "5",
-    contact_name: "Jorge Castillo",
-    phone: "+502 5555 7890",
-    avatar_initials: "JC",
-    avatar_color: "bg-amber-500",
-    last_message: "Perfecto, quedamos así",
-    last_time: "Dom",
-    unread: 0,
-    messages: [
-      { id: "m1", body: "¿El sistema tiene integración con WhatsApp?", direction: "inbound", timestamp: "Dom 16:30" },
-      { id: "m2", body: "Sí, precisamente estamos hablando por esa integración 😄", direction: "outbound", timestamp: "Dom 16:32", status: "read" },
-      { id: "m3", body: "Perfecto, quedamos así", direction: "inbound", timestamp: "Dom 16:35" },
-    ],
-  },
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = [
+  "bg-emerald-500", "bg-violet-500", "bg-blue-500",
+  "bg-rose-500", "bg-amber-500", "bg-teal-500", "bg-indigo-500",
 ];
 
-const STATS = {
-  sent: 124,
-  delivered: 118,
-  read: 97,
-  replies: 43,
-};
+function colorFor(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
+function initialsFor(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function formatTime(iso: string) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now.getTime() - d.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  if (days === 1) return "Ayer";
+  if (days < 7) return d.toLocaleDateString("es-ES", { weekday: "short" });
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit" });
+}
+
+function buildConversations(messages: Message[]): WaConversation[] {
+  // group by contact wa_id
+  const map = new Map<string, { msgs: Message[]; name: string; phone: string }>();
+
+  for (const msg of messages) {
+    // For inbound: contact is sender (wa_id in metadata)
+    // For outbound: contact is recipient (to_address)
+    const waId =
+      msg.direction === "inbound"
+        ? (msg.metadata?.wa_id ?? msg.from_address)
+        : msg.to_address;
+
+    if (!waId) continue;
+
+    const name =
+      msg.direction === "inbound"
+        ? (msg.metadata?.sender_name ?? msg.from_address ?? waId)
+        : (msg.to_address ?? waId);
+
+    if (!map.has(waId)) {
+      map.set(waId, { msgs: [], name, phone: "+" + waId });
+    }
+    map.get(waId)!.msgs.push(msg);
+
+    // prefer inbound sender_name as the display name
+    if (msg.direction === "inbound" && msg.metadata?.sender_name) {
+      map.get(waId)!.name = msg.metadata.sender_name;
+    }
+  }
+
+  const convs: WaConversation[] = [];
+
+  map.forEach(({ msgs, name, phone }, waId) => {
+    // sort msgs by received_at asc
+    const sorted = [...msgs].sort(
+      (a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime()
+    );
+    const last = sorted[sorted.length - 1];
+    const unread = sorted.filter((m) => m.direction === "inbound" && !m.is_read).length;
+    const lastInbound = [...sorted].reverse().find((m) => m.direction === "inbound");
+
+    const waMsgs: WaMessage[] = sorted.map((m) => ({
+      id: m.id,
+      raw_id: m.id,
+      body: m.body_text,
+      direction: m.direction,
+      timestamp: formatTime(m.received_at),
+      status: m.direction === "outbound" ? "sent" : undefined,
+    }));
+
+    convs.push({
+      id: waId,
+      contact_name: name,
+      phone,
+      avatar_initials: initialsFor(name),
+      avatar_color: colorFor(waId),
+      last_message: last.body_text,
+      last_time: formatTime(last.received_at),
+      unread,
+      messages: waMsgs,
+      last_inbound_id: lastInbound?.id ?? null,
+    });
+  });
+
+  // sort by last message time desc
+  convs.sort((a, b) => {
+    const lastA = messages.filter((m) => {
+      const id = m.direction === "inbound" ? (m.metadata?.wa_id ?? m.from_address) : m.to_address;
+      return id === a.id;
+    }).at(-1)?.received_at ?? "";
+    const lastB = messages.filter((m) => {
+      const id = m.direction === "inbound" ? (m.metadata?.wa_id ?? m.from_address) : m.to_address;
+      return id === b.id;
+    }).at(-1)?.received_at ?? "";
+    return lastB.localeCompare(lastA);
+  });
+
+  return convs;
+}
 
 // ─── Small components ─────────────────────────────────────────────────────────
 
@@ -208,11 +224,30 @@ function NotConnectedCard() {
   );
 }
 
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+function EmptyState({ isConnected }: { isConnected: boolean }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-800">
+        <MessageCircle className="h-7 w-7 text-slate-400" />
+      </div>
+      <p className="text-sm font-semibold text-slate-300">
+        {isConnected ? "Sin conversaciones aún" : "WhatsApp no conectado"}
+      </p>
+      <p className="text-xs text-slate-500 max-w-xs">
+        {isConnected
+          ? "Cuando alguien te escriba por WhatsApp aparecerá aquí."
+          : "Conecta tu número de WhatsApp Business para ver mensajes."}
+      </p>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function WhatsAppPage() {
-  const [selected, setSelected] = useState<WaConversation>(MOCK_CONVERSATIONS[0]);
-  const [conversations, setConversations] = useState<WaConversation[]>(MOCK_CONVERSATIONS);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -223,23 +258,81 @@ export default function WhatsAppPage() {
   const [newBody, setNewBody] = useState("");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
-  // Check if WhatsApp integration is connected
+  const authReady = !!tokens && !!organization;
+
+  // ── Integrations ────────────────────────────────────────────────────────────
   const { data: integrations } = useQuery({
     queryKey: ["integrations"],
-    queryFn: () => integrationsApi.list(tokens!.access, String(organization!.id)),
-    enabled: !!tokens && !!organization,
+    queryFn: () => integrationsApi.getAll(tokens!.access, String(organization!.id)),
+    enabled: authReady,
   });
   const isConnected = integrations?.results?.some(
     (i: { channel_type: string; status: string }) => i.channel_type === "whatsapp" && i.status === "connected"
   ) ?? false;
 
+  // ── WhatsApp messages ────────────────────────────────────────────────────────
+  const { data: messagesData, isLoading: msgsLoading } = useQuery({
+    queryKey: ["whatsapp-messages"],
+    queryFn: () => inboxApi.getMessages(tokens!.access, String(organization!.id), "channel=whatsapp&page_size=500"),
+    enabled: authReady,
+    refetchInterval: 10000, // poll every 10 s
+    select: (data) => data.results ?? [],
+  });
+
+  const conversations = useMemo(
+    () => buildConversations(messagesData ?? []),
+    [messagesData]
+  );
+
+  // Pick first conversation when data loads and nothing is selected
+  useEffect(() => {
+    if (!selectedId && conversations.length > 0) {
+      setSelectedId(conversations[0].id);
+    }
+  }, [conversations, selectedId]);
+
+  const selected = conversations.find((c) => c.id === selectedId) ?? null;
+
+  // ── Scroll to bottom when messages change ────────────────────────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [selected.id, selected.messages.length]);
+  }, [selected?.id, selected?.messages.length]);
+
+  // ── Mark read when conversation opened ───────────────────────────────────────
+  useEffect(() => {
+    if (!selected || !authReady) return;
+    const unreadIds = (messagesData ?? [])
+      .filter(
+        (m) =>
+          m.direction === "inbound" &&
+          !m.is_read &&
+          (m.metadata?.wa_id ?? m.from_address) === selected.id
+      )
+      .map((m) => m.id);
+    unreadIds.forEach((id) => {
+      inboxApi.markRead(tokens!.access, String(organization!.id), id).catch(() => {});
+    });
+    if (unreadIds.length > 0) {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-messages"] });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  // ── Reply mutation ───────────────────────────────────────────────────────────
+  const replyMutation = useMutation({
+    mutationFn: ({ messageId, body }: { messageId: string; body: string }) =>
+      inboxApi.replyMessage(tokens!.access, String(organization!.id), messageId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-messages"] });
+    },
+  });
 
   const handleAiAssist = async (action: WritingAction) => {
-    const lastInbound = [...selected.messages].reverse().find((m) => m.direction === "inbound");
+    const lastInbound = selected
+      ? [...selected.messages].reverse().find((m) => m.direction === "inbound")
+      : null;
     const textToSend = action === "improve" ? input : (lastInbound?.body ?? "");
     if (!textToSend.trim()) return;
     setAiLoading(true);
@@ -257,28 +350,13 @@ export default function WhatsAppPage() {
   };
 
   const handleSend = () => {
-    if (!input.trim()) return;
-    const msg: WaMessage = {
-      id: `m${Date.now()}`,
-      body: input.trim(),
-      direction: "outbound",
-      timestamp: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
-      status: "sent",
-    };
-    const updated = conversations.map((c) =>
-      c.id === selected.id
-        ? { ...c, messages: [...c.messages, msg], last_message: msg.body, last_time: msg.timestamp }
-        : c
-    );
-    setConversations(updated);
-    setSelected({ ...selected, messages: [...selected.messages, msg], last_message: msg.body });
+    if (!input.trim() || !selected?.last_inbound_id) return;
+    replyMutation.mutate({ messageId: selected.last_inbound_id, body: input.trim() });
     setInput("");
   };
 
   const handleSelectConversation = (conv: WaConversation) => {
-    const updated = conversations.map((c) => (c.id === conv.id ? { ...c, unread: 0 } : c));
-    setConversations(updated);
-    setSelected({ ...conv, unread: 0 });
+    setSelectedId(conv.id);
     setMobileChatOpen(true);
   };
 
@@ -287,6 +365,17 @@ export default function WhatsAppPage() {
       c.contact_name.toLowerCase().includes(search.toLowerCase()) ||
       c.phone.includes(search)
   );
+
+  const statsToday = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayMsgs = (messagesData ?? []).filter((m) => m.received_at.startsWith(today));
+    return {
+      sent:      todayMsgs.filter((m) => m.direction === "outbound").length,
+      delivered: todayMsgs.filter((m) => m.direction === "outbound").length,
+      read:      todayMsgs.filter((m) => m.direction === "outbound" && m.is_read).length,
+      replies:   todayMsgs.filter((m) => m.direction === "outbound").length,
+    };
+  }, [messagesData]);
 
   return (
     <FeatureGate
@@ -327,36 +416,44 @@ export default function WhatsAppPage() {
             </div>
 
             {/* List */}
-            <ul className="flex-1 overflow-y-auto divide-y divide-slate-800/60">
-              {filtered.map((conv) => (
-                <li key={conv.id}>
-                  <button
-                    onClick={() => handleSelectConversation(conv)}
-                    className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-900 ${
-                      selected.id === conv.id ? "bg-green-950/30" : ""
-                    }`}
-                  >
-                    <Avatar initials={conv.avatar_initials} color={conv.avatar_color} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="truncate text-sm font-semibold text-slate-100">
-                          {conv.contact_name}
-                        </span>
-                        <span className="flex-shrink-0 text-xs text-slate-400">{conv.last_time}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-1 mt-0.5">
-                        <p className="truncate text-xs text-slate-500">{conv.last_message}</p>
-                        {conv.unread > 0 && (
-                          <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
-                            {conv.unread}
+            {msgsLoading ? (
+              <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <EmptyState isConnected={isConnected} />
+            ) : (
+              <ul className="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+                {filtered.map((conv) => (
+                  <li key={conv.id}>
+                    <button
+                      onClick={() => handleSelectConversation(conv)}
+                      className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-900 ${
+                        selectedId === conv.id ? "bg-green-950/30" : ""
+                      }`}
+                    >
+                      <Avatar initials={conv.avatar_initials} color={conv.avatar_color} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="truncate text-sm font-semibold text-slate-100">
+                            {conv.contact_name}
                           </span>
-                        )}
+                          <span className="flex-shrink-0 text-xs text-slate-400">{conv.last_time}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1 mt-0.5">
+                          <p className="truncate text-xs text-slate-500">{conv.last_message}</p>
+                          {conv.unread > 0 && (
+                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
+                              {conv.unread}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* ── Col 2: Chat ───────────────────────────────────────────────── */}
@@ -370,182 +467,188 @@ export default function WhatsAppPage() {
               ← Volver
             </button>
 
-            {/* Chat header */}
-            <div className="flex items-center gap-3 border-b border-slate-800 bg-slate-950 px-4 py-3">
-              <Avatar initials={selected.avatar_initials} color={selected.avatar_color} />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-100">{selected.contact_name}</p>
-                <div className="flex items-center gap-1.5">
-                  <Phone className="h-3 w-3 text-slate-400" />
-                  <span className="text-xs text-slate-500">{selected.phone}</span>
-                  <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500" />
-                  <span className="text-xs text-green-600 dark:text-green-400">en línea</span>
-                </div>
+            {!selected ? (
+              <div className="flex flex-1 items-center justify-center">
+                <p className="text-sm text-slate-500">Selecciona una conversación</p>
               </div>
-              <button className="rounded-full p-2 text-slate-400 hover:bg-slate-800">
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              <div className="flex justify-center">
-                <span className="rounded-full bg-slate-800 px-3 py-0.5 text-xs text-slate-400 shadow-sm">
-                  Hoy
-                </span>
-              </div>
-
-              {selected.messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`relative max-w-[70%] rounded-2xl px-3 py-2 shadow-sm ${
-                      msg.direction === "outbound"
-                        ? "rounded-tr-sm bg-green-500 text-white"
-                        : "rounded-tl-sm bg-slate-800 text-slate-100"
-                    }`}
-                  >
-                    <p className="text-sm leading-relaxed">{msg.body}</p>
-                    <div className={`mt-1 flex items-center justify-end gap-1 ${
-                      msg.direction === "outbound" ? "text-white/70" : "text-slate-400"
-                    }`}>
-                      <span className="text-[10px]">{msg.timestamp}</span>
-                      {msg.direction === "outbound" && <MessageStatus status={msg.status} />}
+            ) : (
+              <>
+                {/* Chat header */}
+                <div className="flex items-center gap-3 border-b border-slate-800 bg-slate-950 px-4 py-3">
+                  <Avatar initials={selected.avatar_initials} color={selected.avatar_color} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-100">{selected.contact_name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <Phone className="h-3 w-3 text-slate-400" />
+                      <span className="text-xs text-slate-500">{selected.phone}</span>
+                      <Circle className="h-1.5 w-1.5 fill-green-500 text-green-500" />
+                      <span className="text-xs text-green-600 dark:text-green-400">WhatsApp</span>
                     </div>
                   </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input */}
-            <div className="border-t border-slate-800 bg-slate-950">
-              {/* AI bar */}
-              <div className="flex items-center gap-2 flex-wrap border-b border-slate-800 px-4 py-2 bg-slate-900/60">
-                <span className="flex items-center gap-1 text-xs font-medium text-slate-400">
-                  <Sparkles className="h-3.5 w-3.5 text-green-500" />
-                  IA:
-                </span>
-                {([
-                  { action: "professional" as WritingAction, label: "Respuesta" },
-                  { action: "improve" as WritingAction, label: "Mejorar" },
-                  { action: "informal" as WritingAction, label: "Informal" },
-                  { action: "summarize" as WritingAction, label: "Resumir" },
-                ] as const).map(({ action, label }) => (
-                  <button
-                    key={action}
-                    onClick={() => handleAiAssist(action)}
-                    disabled={aiLoading || (action === "improve" && !input.trim())}
-                    className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400 hover:border-green-400 hover:text-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {label}
+                  <button className="rounded-full p-2 text-slate-400 hover:bg-slate-800">
+                    <MoreVertical className="h-4 w-4" />
                   </button>
-                ))}
-                {aiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-green-500" />}
-                {aiError && <span className="text-xs text-red-500">{aiError}</span>}
-              </div>
+                </div>
 
-              <div className="flex items-end gap-2 px-4 py-3">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  placeholder="Escribe un mensaje o usa el asistente IA..."
-                  rows={1}
-                  className="flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-400 focus:border-green-400 focus:outline-none focus:ring-1 focus:ring-green-400/30"
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim()}
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-500 text-white transition-colors hover:bg-green-600 disabled:opacity-40"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-              <p className="pb-2 text-center text-[10px] text-slate-400">
-                Enter para enviar · Shift+Enter para nueva línea
-              </p>
-            </div>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  <div className="flex justify-center">
+                    <span className="rounded-full bg-slate-800 px-3 py-0.5 text-xs text-slate-400 shadow-sm">
+                      Conversación
+                    </span>
+                  </div>
+
+                  {selected.messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`relative max-w-[70%] rounded-2xl px-3 py-2 shadow-sm ${
+                          msg.direction === "outbound"
+                            ? "rounded-tr-sm bg-green-500 text-white"
+                            : "rounded-tl-sm bg-slate-800 text-slate-100"
+                        }`}
+                      >
+                        <p className="text-sm leading-relaxed">{msg.body}</p>
+                        <div className={`mt-1 flex items-center justify-end gap-1 ${
+                          msg.direction === "outbound" ? "text-white/70" : "text-slate-400"
+                        }`}>
+                          <span className="text-[10px]">{msg.timestamp}</span>
+                          {msg.direction === "outbound" && <MessageStatus status={msg.status} />}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <div className="border-t border-slate-800 bg-slate-950">
+                  {/* AI bar */}
+                  <div className="flex items-center gap-2 flex-wrap border-b border-slate-800 px-4 py-2 bg-slate-900/60">
+                    <span className="flex items-center gap-1 text-xs font-medium text-slate-400">
+                      <Sparkles className="h-3.5 w-3.5 text-green-500" />
+                      IA:
+                    </span>
+                    {([
+                      { action: "professional" as WritingAction, label: "Respuesta" },
+                      { action: "improve" as WritingAction, label: "Mejorar" },
+                      { action: "informal" as WritingAction, label: "Informal" },
+                      { action: "summarize" as WritingAction, label: "Resumir" },
+                    ] as const).map(({ action, label }) => (
+                      <button
+                        key={action}
+                        onClick={() => handleAiAssist(action)}
+                        disabled={aiLoading || (action === "improve" && !input.trim())}
+                        className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400 hover:border-green-400 hover:text-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    {aiLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-green-500" />}
+                    {aiError && <span className="text-xs text-red-500">{aiError}</span>}
+                    {replyMutation.isError && (
+                      <span className="text-xs text-red-500">
+                        {replyMutation.error instanceof Error ? replyMutation.error.message : "Error al enviar"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-end gap-2 px-4 py-3">
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                      placeholder={
+                        selected.last_inbound_id
+                          ? "Escribe un mensaje o usa el asistente IA..."
+                          : "Solo puedes responder a conversaciones iniciadas por el contacto"
+                      }
+                      disabled={!selected.last_inbound_id || replyMutation.isPending}
+                      rows={1}
+                      className="flex-1 resize-none rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-400 focus:border-green-400 focus:outline-none focus:ring-1 focus:ring-green-400/30 disabled:opacity-50"
+                    />
+                    <button
+                      onClick={handleSend}
+                      disabled={!input.trim() || !selected.last_inbound_id || replyMutation.isPending}
+                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-500 text-white transition-colors hover:bg-green-600 disabled:opacity-40"
+                    >
+                      {replyMutation.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Send className="h-4 w-4" />
+                      }
+                    </button>
+                  </div>
+                  <p className="pb-2 text-center text-[10px] text-slate-400">
+                    Enter para enviar · Shift+Enter para nueva línea
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* ── Col 3: Contact info ───────────────────────────────────────── */}
-          <div className="hidden w-[280px] flex-shrink-0 flex-col overflow-y-auto border-l border-slate-800 bg-slate-950 xl:flex">
+          {selected && (
+            <div className="hidden w-[280px] flex-shrink-0 flex-col overflow-y-auto border-l border-slate-800 bg-slate-950 xl:flex">
 
-            <div className="flex flex-col items-center gap-2 border-b border-slate-800 px-4 py-5">
-              <Avatar initials={selected.avatar_initials} color={selected.avatar_color} size="lg" />
-              <div className="text-center">
-                <p className="font-semibold text-slate-100">{selected.contact_name}</p>
-                <p className="text-xs text-slate-500">{selected.phone}</p>
-              </div>
-              {selected.crm_type && (
-                <Badge className={`text-xs ${
-                  selected.crm_type === "customer"
-                    ? "bg-orange-950/40 text-orange-400"
-                    : "bg-amber-900/40 text-amber-300"
-                }`}>
-                  {selected.crm_type === "customer" ? "Cliente" : "Lead"}
+              <div className="flex flex-col items-center gap-2 border-b border-slate-800 px-4 py-5">
+                <Avatar initials={selected.avatar_initials} color={selected.avatar_color} size="lg" />
+                <div className="text-center">
+                  <p className="font-semibold text-slate-100">{selected.contact_name}</p>
+                  <p className="text-xs text-slate-500">{selected.phone}</p>
+                </div>
+                <Badge className="text-xs bg-green-950/40 text-green-400">
+                  WhatsApp
                 </Badge>
-              )}
-            </div>
+              </div>
 
-            <div className="border-b border-slate-800 px-4 py-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Vinculación CRM</p>
-              {selected.crm_name ? (
-                <Link
-                  href={selected.crm_type === "customer" ? "/dashboard/customers" : "/dashboard/leads"}
-                  className="flex w-full items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-900"
-                >
-                  <Link2 className="h-4 w-4 text-blue-500" />
-                  <span className="flex-1 truncate">{selected.crm_name}</span>
-                  <span className="text-xs text-slate-400">Ver ficha →</span>
-                </Link>
-              ) : (
+              <div className="border-b border-slate-800 px-4 py-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Vinculación CRM</p>
                 <button className="flex w-full items-center gap-2 rounded-lg border border-dashed border-slate-700 px-3 py-2 text-sm text-slate-400 hover:border-orange-400 hover:text-orange-500">
                   <User className="h-4 w-4" />
                   Vincular a Lead / Cliente
                 </button>
-              )}
-            </div>
+              </div>
 
-            <div className="border-b border-slate-800 px-4 py-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Información</p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2 text-slate-400">
-                  <Tag className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Sin etiquetas</span>
-                </li>
-                <li className="flex items-center gap-2 text-slate-400">
-                  <Clock className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Último contacto: hoy</span>
-                </li>
-                <li className="flex items-center gap-2 text-slate-400">
-                  <MessageCircle className="h-3.5 w-3.5 text-slate-400" />
-                  <span>{selected.messages.length} mensajes en el hilo</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="px-4 py-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Estadísticas del canal (hoy)
-              </p>
-              <ul className="space-y-2">
-                {[
-                  { label: "Enviados",    value: STATS.sent,      color: "text-slate-300" },
-                  { label: "Entregados",  value: STATS.delivered, color: "text-orange-400" },
-                  { label: "Leídos",      value: STATS.read,      color: "text-green-400" },
-                  { label: "Respuestas",  value: STATS.replies,   color: "text-violet-400" },
-                ].map(({ label, value, color }) => (
-                  <li key={label} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">{label}</span>
-                    <span className={`font-semibold ${color}`}>{value}</span>
+              <div className="border-b border-slate-800 px-4 py-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Información</p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-center gap-2 text-slate-400">
+                    <Tag className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Sin etiquetas</span>
                   </li>
-                ))}
-              </ul>
+                  <li className="flex items-center gap-2 text-slate-400">
+                    <Clock className="h-3.5 w-3.5 text-slate-400" />
+                    <span>Último mensaje: {selected.last_time}</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-slate-400">
+                    <MessageCircle className="h-3.5 w-3.5 text-slate-400" />
+                    <span>{selected.messages.length} mensajes en el hilo</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="px-4 py-4">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Estadísticas del canal (hoy)
+                </p>
+                <ul className="space-y-2">
+                  {[
+                    { label: "Enviados",    value: statsToday.sent,      color: "text-slate-300" },
+                    { label: "Entregados",  value: statsToday.delivered, color: "text-orange-400" },
+                    { label: "Leídos",      value: statsToday.read,      color: "text-green-400" },
+                    { label: "Respuestas",  value: statsToday.replies,   color: "text-violet-400" },
+                  ].map(({ label, value, color }) => (
+                    <li key={label} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">{label}</span>
+                      <span className={`font-semibold ${color}`}>{value}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ── New message modal ──────────────────────────────────────────── */}
@@ -565,6 +668,11 @@ export default function WhatsAppPage() {
                 </button>
               </div>
               <div className="space-y-4 p-5">
+                <p className="text-xs text-slate-400 rounded-lg border border-amber-800/40 bg-amber-950/20 px-3 py-2">
+                  WhatsApp solo permite iniciar conversaciones con plantillas aprobadas. Ve a{" "}
+                  <Link href="/dashboard/whatsapp/plantillas" className="text-orange-400 underline">Plantillas</Link>{" "}
+                  para usar una.
+                </p>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-400">
                     Número de WhatsApp
