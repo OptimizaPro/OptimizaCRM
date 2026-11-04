@@ -849,7 +849,7 @@ export type WritingAction = 'improve' | 'professional' | 'informal' | 'summarize
 
 export const writingAssistantApi = {
   assist: (token: string, orgId: string, action: WritingAction, text: string, channel: 'email' | 'whatsapp' = 'email') =>
-    api.post<{ result: string }>('/ai/writing-assistant/', { action, text, channel }, { token, orgId }),
+    api.post<{ result: string }>('/ai/writing/', { action, text, channel }, { token, orgId }),
 };
 
 export const aiApi = {

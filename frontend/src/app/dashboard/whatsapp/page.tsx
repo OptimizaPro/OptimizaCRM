@@ -731,7 +731,7 @@ export default function WhatsAppPage() {
                       <button
                         key={action}
                         onClick={() => handleAiAssist(action)}
-                        disabled={aiLoading || (action === "improve" && !input.trim())}
+                        disabled={aiLoading}
                         className="rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-xs text-slate-400 hover:border-green-400 hover:text-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         {label}
