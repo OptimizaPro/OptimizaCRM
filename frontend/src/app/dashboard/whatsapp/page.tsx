@@ -78,12 +78,16 @@ function buildConversations(messages: Message[]): WaConversation[] {
   for (const msg of messages) {
     // For inbound: contact is sender (wa_id in metadata)
     // For outbound: contact is recipient (to_address)
-    const waId =
+    const rawId =
       msg.direction === "inbound"
         ? (msg.metadata?.wa_id ?? msg.from_address)
         : msg.to_address;
 
-    if (!waId) continue;
+    if (!rawId) continue;
+
+    // Normalize: strip leading '+' so we always store digits-only as the key
+    // then reconstruct phone as "+" + waId to avoid "++..." when from_address already has "+"
+    const waId = rawId.replace(/^\+/, "");
 
     const name =
       msg.direction === "inbound"
