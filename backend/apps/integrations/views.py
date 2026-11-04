@@ -3,6 +3,7 @@ Optimiza-CRM – Integrations views
 Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 """
 
+import datetime
 import imaplib
 import json
 import logging
@@ -223,6 +224,58 @@ def send_brevo_email(api_key, sender_name, sender_email, to_address, subject, bo
 
     _, error = _brevo_request(api_key, "POST", "/smtp/email", payload)
     return error
+
+
+# ─── WhatsApp helpers ────────────────────────────────────────────────────────
+
+META_GRAPH_BASE = "https://graph.facebook.com/v19.0"
+
+
+def _send_whatsapp_message(integration, to_phone: str, body: str):
+    """
+    Send a WhatsApp text message via Meta Business Cloud API.
+    Returns error string or None on success.
+    """
+    config          = integration.config
+    phone_number_id = config.get("phone_number_id", "").strip()
+    access_token    = config.get("access_token", "").strip()
+
+    if not phone_number_id or not access_token:
+        return "Integración sin phone_number_id o access_token."
+
+    # Normalize: strip leading + and spaces/dashes
+    to_phone = to_phone.lstrip("+").replace(" ", "").replace("-", "")
+
+    payload = json.dumps({
+        "messaging_product": "whatsapp",
+        "to":   to_phone,
+        "type": "text",
+        "text": {"body": body},
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"{META_GRAPH_BASE}/{phone_number_id}/messages",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type":  "application/json",
+            "User-Agent":    "OptimizaCRM/1.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            json.loads(resp.read().decode())
+        return None
+    except urllib.error.HTTPError as e:
+        try:
+            err_body = json.loads(e.read().decode())
+            msg = err_body.get("error", {}).get("message", str(e))
+        except Exception:
+            msg = str(e)
+        return msg
+    except Exception as exc:
+        return str(exc)
 
 
 # ─── ViewSets ─────────────────────────────────────────────────────────────────
@@ -454,47 +507,80 @@ class MessageViewSet(viewsets.ModelViewSet):
 
         integration = message.integration
         if integration.status != "connected":
-            return Response({"error": "La integración de email no está conectada."}, status=400)
-        if integration.channel_type != "email":
-            return Response({"error": "Solo se puede responder por email por ahora."}, status=400)
+            return Response({"error": "La integración no está conectada."}, status=400)
 
-        _, from_email = parseaddr(message.from_address)
-        to_address    = from_email or message.from_address
-        subject       = message.subject or ""
-        if not subject.lower().startswith("re:"):
-            subject = f"Re: {subject}"
+        # ── WhatsApp reply ────────────────────────────────────────────────────
+        if integration.channel_type == "whatsapp":
+            to_phone = message.from_address
+            error    = _send_whatsapp_message(integration, to_phone, body)
+            if error:
+                return Response({"error": error}, status=400)
 
-        error = _send_smtp_email(
-            integration=integration,
-            to_address=to_address,
-            subject=subject,
-            body_text=body,
-            in_reply_to=message.external_id,
-            references=" ".join(filter(None, [message.thread_id, message.external_id])),
+            wa_id = message.metadata.get("wa_id", to_phone.lstrip("+"))
+            sent  = Message.objects.create(
+                organization=integration.organization,
+                integration=integration,
+                external_id=f"sent-wa-{timezone.now().timestamp()}",
+                direction="outbound",
+                from_address="",
+                to_address=to_phone,
+                subject=message.subject or "",
+                body_text=body,
+                thread_id=message.thread_id or message.external_id,
+                received_at=timezone.now(),
+                is_read=True,
+                metadata={"wa_id": wa_id, "msg_type": "text"},
+            )
+            IntegrationLog.objects.create(
+                integration=integration, direction="outbound",
+                contact=to_phone, message_type="whatsapp",
+                content=body[:200], status="success",
+            )
+            return Response(MessageSerializer(sent).data, status=201)
+
+        # ── Email reply ───────────────────────────────────────────────────────
+        if integration.channel_type in ("email", "brevo", "outlook"):
+            _, from_email = parseaddr(message.from_address)
+            to_address    = from_email or message.from_address
+            subject       = message.subject or ""
+            if not subject.lower().startswith("re:"):
+                subject = f"Re: {subject}"
+
+            error = _send_smtp_email(
+                integration=integration,
+                to_address=to_address,
+                subject=subject,
+                body_text=body,
+                in_reply_to=message.external_id,
+                references=" ".join(filter(None, [message.thread_id, message.external_id])),
+            )
+            if error:
+                return Response({"error": error}, status=400)
+
+            sent = Message.objects.create(
+                organization=integration.organization,
+                integration=integration,
+                external_id=f"sent-{timezone.now().timestamp()}",
+                direction="outbound",
+                from_address=integration.config.get("username", ""),
+                to_address=to_address,
+                subject=subject,
+                body_text=body,
+                thread_id=message.thread_id or message.external_id,
+                received_at=timezone.now(),
+                is_read=True,
+            )
+            IntegrationLog.objects.create(
+                integration=integration, direction="outbound",
+                contact=to_address, message_type="email",
+                content=f"Respuesta enviada: {subject}", status="success",
+            )
+            return Response(MessageSerializer(sent).data, status=201)
+
+        return Response(
+            {"error": f"Respuesta no soportada para canal {integration.channel_type}."},
+            status=400,
         )
-        if error:
-            return Response({"error": error}, status=400)
-
-        sent = Message.objects.create(
-            organization=integration.organization,
-            integration=integration,
-            external_id=f"sent-{timezone.now().timestamp()}",
-            direction="outbound",
-            from_address=integration.config.get("username", ""),
-            to_address=to_address,
-            subject=subject,
-            body_text=body,
-            thread_id=message.thread_id or message.external_id,
-            received_at=timezone.now(),
-            is_read=True,
-        )
-
-        IntegrationLog.objects.create(
-            integration=integration, direction="outbound",
-            contact=to_address, message_type="email",
-            content=f"Respuesta enviada: {subject}", status="success",
-        )
-        return Response(MessageSerializer(sent).data, status=201)
 
 
 # ─── WhatsApp Templates ───────────────────────────────────────────────────────
@@ -572,7 +658,7 @@ class WhatsAppTemplateViewSet(viewsets.ModelViewSet):
 
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 import json
 
 
@@ -857,3 +943,138 @@ def hub_config(request):
         "channels": channels,
     })
     return _widget_cors_headers(r, request)
+
+
+# ─── WhatsApp Webhook (public, no JWT) ───────────────────────────────────────
+
+@csrf_exempt
+def whatsapp_webhook(request):
+    """
+    GET  — Meta webhook verification challenge.
+    POST — Incoming messages & delivery status updates from Meta.
+    """
+    if request.method == "GET":
+        mode      = request.GET.get("hub.mode")
+        challenge = request.GET.get("hub.challenge", "")
+        token     = request.GET.get("hub.verify_token", "")
+
+        if mode != "subscribe" or not token:
+            return JsonResponse({"error": "invalid request"}, status=400)
+
+        # Find the integration whose verify_token matches
+        integration = Integration.objects.filter(
+            channel_type="whatsapp",
+            status="connected",
+            config__verify_token=token,
+        ).first()
+
+        if not integration:
+            logger.warning("WhatsApp webhook: no integration found for verify_token=%s", token)
+            return JsonResponse({"error": "token mismatch"}, status=403)
+
+        return HttpResponse(challenge, content_type="text/plain")
+
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except (json.JSONDecodeError, Exception):
+            return JsonResponse({"error": "invalid JSON"}, status=400)
+
+        if payload.get("object") != "whatsapp_business_account":
+            return JsonResponse({"ok": True})
+
+        for entry in payload.get("entry", []):
+            for change in entry.get("changes", []):
+                if change.get("field") != "messages":
+                    continue
+
+                value           = change.get("value", {})
+                phone_number_id = value.get("metadata", {}).get("phone_number_id", "")
+
+                # Resolve integration by phone_number_id stored in config
+                integration = Integration.objects.filter(
+                    channel_type="whatsapp",
+                    status="connected",
+                    config__phone_number_id=phone_number_id,
+                ).first()
+
+                if not integration:
+                    logger.warning(
+                        "WhatsApp webhook: no integration for phone_number_id=%s", phone_number_id
+                    )
+                    continue
+
+                # Build wa_id → display name map from contacts array
+                contacts_map = {
+                    c["wa_id"]: c.get("profile", {}).get("name", c["wa_id"])
+                    for c in value.get("contacts", [])
+                }
+
+                for msg in value.get("messages", []):
+                    msg_type  = msg.get("type", "")
+                    wa_id     = msg.get("from", "")
+                    wa_msg_id = msg.get("id", "")
+                    timestamp = int(msg.get("timestamp", 0))
+
+                    # Map message type to readable body
+                    if msg_type == "text":
+                        body_text = msg.get("text", {}).get("body", "")
+                    elif msg_type == "image":
+                        body_text = "[Imagen recibida]"
+                    elif msg_type == "audio":
+                        body_text = "[Audio recibido]"
+                    elif msg_type == "video":
+                        body_text = "[Video recibido]"
+                    elif msg_type == "document":
+                        doc_name  = msg.get("document", {}).get("filename", "")
+                        body_text = f"[Documento recibido: {doc_name}]" if doc_name else "[Documento recibido]"
+                    elif msg_type == "location":
+                        loc       = msg.get("location", {})
+                        body_text = f"[Ubicación: {loc.get('latitude', '')}, {loc.get('longitude', '')}]"
+                    elif msg_type == "sticker":
+                        body_text = "[Sticker recibido]"
+                    else:
+                        body_text = f"[Mensaje tipo {msg_type}]"
+
+                    sender_name  = contacts_map.get(wa_id, wa_id)
+                    from_address = f"+{wa_id}"
+
+                    try:
+                        received_at = datetime.datetime.fromtimestamp(
+                            timestamp, tz=datetime.timezone.utc
+                        )
+                    except Exception:
+                        received_at = timezone.now()
+
+                    _, created = Message.objects.get_or_create(
+                        integration=integration,
+                        external_id=wa_msg_id,
+                        defaults={
+                            "organization":  integration.organization,
+                            "direction":     "inbound",
+                            "from_address":  from_address,
+                            "to_address":    "",
+                            "subject":       f"WhatsApp de {sender_name}",
+                            "body_text":     body_text,
+                            "received_at":   received_at,
+                            "metadata": {
+                                "wa_id":       wa_id,
+                                "sender_name": sender_name,
+                                "msg_type":    msg_type,
+                            },
+                        },
+                    )
+
+                    if created:
+                        IntegrationLog.objects.create(
+                            integration=integration,
+                            direction="inbound",
+                            contact=from_address,
+                            message_type="whatsapp",
+                            content=body_text[:200],
+                            status="success",
+                        )
+
+        return JsonResponse({"ok": True})
+
+    return JsonResponse({"error": "method not allowed"}, status=405)

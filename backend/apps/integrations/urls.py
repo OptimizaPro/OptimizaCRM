@@ -5,7 +5,7 @@ Copyright (c) 2024-2025 Nelson Alvarez / OptimizaPro
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import IntegrationViewSet, MessageViewSet, WhatsAppTemplateViewSet, widget_config, widget_submit, widget_manage, hub_config
+from .views import IntegrationViewSet, MessageViewSet, WhatsAppTemplateViewSet, widget_config, widget_submit, widget_manage, hub_config, whatsapp_webhook
 from .drive_views import (
     drive_status,
     drive_auth_url,
@@ -44,6 +44,9 @@ router.register(r"whatsapp-templates", WhatsAppTemplateViewSet,  basename="whats
 
 urlpatterns = [
     path("", include(router.urls)),
+
+    # ── WhatsApp Webhook (public — called by Meta) ───────────────────────────
+    path("webhooks/whatsapp/", whatsapp_webhook, name="whatsapp-webhook"),
 
     # ── Web Widget (public + authenticated) ───────────────────────────────────
     path("widget/config/",  widget_config,  name="widget-config"),
