@@ -11,12 +11,18 @@ import { inboxApi, integrationsApi, writingAssistantApi, type Message, type Inte
 import { formatDate } from "@/lib/utils";
 import {
   RefreshCw, Mail, CheckCheck, Inbox, AlertCircle,
-  Reply, Send, X, Trash2, Sparkles, Loader2,
+  Reply, Send, X, Trash2, Sparkles, Loader2, MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 
 function getChannelIcon(channelType: string) {
-  return <Mail className={`h-3.5 w-3.5 ${channelType === "email" ? "text-orange-500" : "text-slate-400"}`} />;
+  if (channelType === "whatsapp") return <MessageCircle className="h-3.5 w-3.5 text-green-500" />;
+  return <Mail className="h-3.5 w-3.5 text-orange-500" />;
+}
+
+function getSenderName(message: { from_address: string; to_address: string; metadata?: { wa_id?: string; sender_name?: string }; direction: string }) {
+  if (message.direction === "outbound") return `Para: ${message.to_address || "(sin destinatario)"}`;
+  return message.metadata?.sender_name || message.from_address || "(sin remitente)";
 }
 
 function relativeDate(dateStr: string): string {
@@ -76,6 +82,7 @@ export default function InboxPage() {
   const emailIntegration: Integration | undefined = integrationsData?.results?.find(
     (i) => i.channel_type === "email" && i.status === "connected"
   );
+  const hasAnyIntegration = (integrationsData?.results?.length ?? 0) > 0;
 
   const queryParams = [
     filter === "unread" ? "is_read=false" : filter === "sent" ? "direction=outbound" : "",
@@ -238,8 +245,8 @@ export default function InboxPage() {
           </div>
         </div>
 
-        {/* No email integration notice */}
-        {!emailIntegration && (
+        {/* No email integration notice — only show if user has no email connected but wants to sync */}
+        {!emailIntegration && !hasAnyIntegration && (
           <div className="border-b border-amber-900 bg-amber-950/30 px-4 py-2">
             <p className="flex items-center gap-2 text-sm text-amber-400">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -382,9 +389,7 @@ export default function InboxPage() {
                                 ? "font-semibold text-slate-100"
                                 : "font-medium text-slate-300"
                             }`}>
-                              {filter === "sent"
-                                ? `Para: ${message.to_address || "(sin destinatario)"}`
-                                : message.from_address || "(sin remitente)"}
+                              {getSenderName(message)}
                             </span>
                             <span className="flex-shrink-0 text-xs text-slate-400">
                               {relativeDate(message.received_at)}
@@ -397,11 +402,13 @@ export default function InboxPage() {
                                 ? "font-semibold text-slate-200"
                                 : "text-slate-400"
                             }`}>
-                              {message.subject || "(sin asunto)"}
+                              {message.channel_type === "whatsapp"
+                                ? (message.body_text?.slice(0, 80) || "(sin contenido)")
+                                : (message.subject || "(sin asunto)")}
                             </span>
                           </div>
-                          <p className="line-clamp-2 text-xs text-slate-400">
-                            {message.body_text?.slice(0, 120) || ""}
+                          <p className="line-clamp-1 text-xs text-slate-500">
+                            {message.channel_type !== "whatsapp" ? (message.body_text?.slice(0, 120) || "") : ""}
                           </p>
                         </button>
                       </li>
@@ -432,7 +439,9 @@ export default function InboxPage() {
                 <div className="border-b border-slate-800 bg-slate-950 px-4 py-3 sm:px-6 sm:py-4">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <h2 className="truncate text-base font-semibold text-slate-100 sm:text-lg">
-                      {selectedMessage.subject || "(sin asunto)"}
+                      {selectedMessage.channel_type === "whatsapp"
+                        ? (selectedMessage.metadata?.sender_name || selectedMessage.from_address || "WhatsApp")
+                        : (selectedMessage.subject || "(sin asunto)")}
                     </h2>
                     <div className="flex flex-shrink-0 items-center gap-2">
                       {selectedMessage.direction === "inbound" && (
@@ -478,7 +487,12 @@ export default function InboxPage() {
                   <dl className="space-y-1 text-sm">
                     <div className="flex gap-2">
                       <dt className="w-10 flex-shrink-0 font-medium text-slate-500">De</dt>
-                      <dd className="text-slate-300">{selectedMessage.from_address || "—"}</dd>
+                      <dd className="flex items-center gap-2 text-slate-300">
+                        {getChannelIcon(selectedMessage.channel_type)}
+                        {selectedMessage.metadata?.sender_name
+                          ? `${selectedMessage.metadata.sender_name} (${selectedMessage.from_address || selectedMessage.metadata.wa_id || "—"})`
+                          : selectedMessage.from_address || "—"}
+                      </dd>
                     </div>
                     <div className="flex gap-2">
                       <dt className="w-10 flex-shrink-0 font-medium text-slate-500">Para</dt>
