@@ -230,7 +230,7 @@ export default function WhatsAppPage() {
     queryFn: () => integrationsApi.list(tokens!.access, String(organization!.id)),
     enabled: !!tokens && !!organization,
   });
-  const isConnected = integrations?.some(
+  const isConnected = integrations?.results?.some(
     (i: { channel_type: string; status: string }) => i.channel_type === "whatsapp" && i.status === "connected"
   ) ?? false;
 
