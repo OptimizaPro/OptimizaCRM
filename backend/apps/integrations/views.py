@@ -303,48 +303,56 @@ class IntegrationViewSet(viewsets.ModelViewSet):
         integration = self.get_object()
         config      = request.data.get("config", {})
 
-        required = {
-            "whatsapp":  ["phone_number_id", "access_token", "verify_token"],
-            "email":     ["username", "password"],
-            "brevo":     ["api_key", "sender_email"],
-            "facebook":  ["page_id", "access_token"],
-            "instagram": ["account_id", "access_token"],
-            "telegram":  ["bot_token"],
-            "sms":       ["account_sid", "auth_token", "from_number"],
-        }
-        missing = [f for f in required.get(integration.channel_type, []) if not config.get(f)]
-        if missing:
-            return Response(
-                {"error": f"Campos requeridos: {', '.join(missing)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Validate WhatsApp access token against Meta Graph API
+        # WhatsApp: solo verify_token es obligatorio para guardar.
+        # phone_number_id y access_token son necesarios para enviar/recibir,
+        # pero se puede guardar primero solo con verify_token para validar el webhook en Meta.
         if integration.channel_type == "whatsapp":
-            token = config.get("access_token", "")
-            try:
-                req = urllib.request.Request(
-                    f"https://graph.facebook.com/v19.0/me?access_token={token}",
-                    headers={"User-Agent": "OptimizaCRM/1.0"},
-                )
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    data = json.loads(resp.read().decode())
-                    if "error" in data:
-                        return Response(
-                            {"error": f"Token inválido: {data['error'].get('message', 'error desconocido')}"},
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
-            except urllib.error.HTTPError as e:
-                body = json.loads(e.read().decode())
-                msg = body.get("error", {}).get("message", str(e))
+            if not config.get("verify_token"):
                 return Response(
-                    {"error": f"Token inválido: {msg}"},
+                    {"error": "Campos requeridos: verify_token"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            except Exception as exc:
-                logger.warning("WhatsApp token validation failed: %s", exc)
+            # Validate access_token against Meta only if one is provided
+            token = config.get("access_token", "").strip()
+            if token:
+                try:
+                    req = urllib.request.Request(
+                        f"https://graph.facebook.com/v19.0/me?access_token={token}",
+                        headers={"User-Agent": "OptimizaCRM/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=8) as resp:
+                        data = json.loads(resp.read().decode())
+                        if "error" in data:
+                            return Response(
+                                {"error": f"Token inválido: {data['error'].get('message', 'error desconocido')}"},
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                except urllib.error.HTTPError as e:
+                    body = json.loads(e.read().decode())
+                    msg = body.get("error", {}).get("message", str(e))
+                    return Response(
+                        {"error": f"Token inválido: {msg}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                except Exception as exc:
+                    logger.warning("WhatsApp token validation failed: %s", exc)
+                    return Response(
+                        {"error": "No se pudo verificar el token con Meta. Comprueba tu conexión e inténtalo de nuevo."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+        else:
+            required = {
+                "email":     ["username", "password"],
+                "brevo":     ["api_key", "sender_email"],
+                "facebook":  ["page_id", "access_token"],
+                "instagram": ["account_id", "access_token"],
+                "telegram":  ["bot_token"],
+                "sms":       ["account_sid", "auth_token", "from_number"],
+            }
+            missing = [f for f in required.get(integration.channel_type, []) if not config.get(f)]
+            if missing:
                 return Response(
-                    {"error": "No se pudo verificar el token con Meta. Comprueba tu conexión e inténtalo de nuevo."},
+                    {"error": f"Campos requeridos: {', '.join(missing)}"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -961,10 +969,9 @@ def whatsapp_webhook(request):
         if mode != "subscribe" or not token:
             return JsonResponse({"error": "invalid request"}, status=400)
 
-        # Find the integration whose verify_token matches
+        # Find the integration whose verify_token matches (any status)
         integration = Integration.objects.filter(
             channel_type="whatsapp",
-            status="connected",
             config__verify_token=token,
         ).first()
 
