@@ -261,7 +261,7 @@ export default function InboxPage() {
         {/* Main two-panel layout */}
         <div className="flex flex-1 overflow-hidden lg:grid lg:grid-cols-[360px_1fr]">
           {/* Left panel — message list (hidden on mobile when detail is open) */}
-          <div className={`flex-col overflow-hidden border-r border-slate-800 bg-slate-950 ${mobileDetailOpen ? "hidden lg:flex" : "flex w-full"}`}>
+          <div className={`flex-col overflow-hidden border-r border-slate-800 bg-slate-950 lg:flex ${mobileDetailOpen ? "hidden" : "flex w-full"}`}>
 
             {/* Filter tabs + select-all checkbox */}
             <div className="flex items-center gap-1 border-b border-slate-800 px-3 py-2">
@@ -420,7 +420,7 @@ export default function InboxPage() {
           </div>
 
           {/* Right panel — message detail */}
-          <div className={`flex-col overflow-hidden bg-slate-900 ${mobileDetailOpen ? "fixed inset-0 z-50 flex" : "hidden lg:flex"}`}>
+          <div className={`flex-col overflow-hidden bg-slate-900 lg:flex lg:static lg:inset-auto lg:z-auto ${mobileDetailOpen ? "fixed inset-0 z-50 flex" : "hidden"}`}>
             {/* Mobile back button */}
             <button
               onClick={() => setMobileDetailOpen(false)}
