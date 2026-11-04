@@ -82,21 +82,24 @@ class LeadViewSet(TenantViewSetMixin, viewsets.ModelViewSet):
         lead = serializer.save(organization=org)
 
         # Auto-create a follow-up task for every new lead
-        Task.objects.create(
-            organization = org,
-            created_by   = self.request.user,
-            assigned_to  = lead.assigned_to,
-            title        = f"Seguimiento — {lead.full_name}",
-            description  = (
-                f"Tarea de seguimiento generada automáticamente para el lead "
-                f"{lead.full_name} ({lead.email or 'sin email'})."
-            ),
-            priority     = "medium",
-            status       = "pending",
-            related_type = "lead",
-            related_id   = lead.id,
-            due_date     = timezone.now() + timedelta(days=1),
-        )
+        try:
+            Task.objects.create(
+                organization = org,
+                created_by   = self.request.user,
+                assigned_to  = lead.assigned_to or self.request.user,
+                title        = f"Seguimiento — {lead.full_name}",
+                description  = (
+                    f"Tarea de seguimiento generada automáticamente para el lead "
+                    f"{lead.full_name} ({lead.email or 'sin email'})."
+                ),
+                priority     = "medium",
+                status       = "pending",
+                related_type = "lead",
+                related_id   = lead.id,
+                due_date     = timezone.now() + timedelta(days=1),
+            )
+        except Exception:
+            logger.exception("Could not auto-create follow-up task for lead %s", lead.id)
 
     @action(detail=True, methods=["post"], url_path="convert-to-opportunity")
     def convert_to_opportunity(self, request, pk=None):
