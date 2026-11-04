@@ -469,11 +469,11 @@ export default function PlantillasPage() {
 
   const { data: integrations } = useQuery({
     queryKey: ["integrations"],
-    queryFn: () => integrationsApi.list(tokens!.access, String(organization!.id)),
+    queryFn: () => integrationsApi.getAll(tokens!.access, String(organization!.id)),
     enabled: !!tokens && !!organization,
   });
 
-  const waIntegration = integrations?.find(
+  const waIntegration = integrations?.results?.find(
     (i: { channel_type: string; status: string }) => i.channel_type === "whatsapp"
   );
   const isConnected = waIntegration?.status === "connected";
