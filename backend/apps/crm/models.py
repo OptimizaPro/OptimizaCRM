@@ -23,6 +23,7 @@ class Lead(TenantModel):
         ("cold_call",   "Llamada en frío"),
         ("social",      "Redes sociales"),
         ("event",       "Evento"),
+        ("whatsapp",    "WhatsApp"),
         ("voice_agent", "Agente de voz"),
         ("chatbot",     "Chatbot IA"),
         ("other",       "Otro"),
